@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function: Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function: Check if user owns the recipe
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function: Validate required fields on recipe creation
+    function hasRequiredFields() {
+      return request.resource.data.keys().hasAll([
+        'userId', 
+        'title', 
+        'ingredients', 
+        'instructions', 
+        'isPublic',
+        'createdAt', 
+        'updatedAt'
+      ]);
+    }
+    
+    // Helper function: Validate ingredient structure
+    function hasValidIngredients() {
+      return request.resource.data.ingredients is list &&
+             request.resource.data.ingredients.size() > 0 &&
+             // Each ingredient must have these fields
+             request.resource.data.ingredients[0].keys().hasAll(['name', 'originalText']);
+    }
+    
+    // Recipes collection
+    match /recipes/{recipeId} {
+      // Allow read if authenticated (ALL users can read ANY recipe)
+      allow read: if isAuthenticated();
+      
+      // Allow create if authenticated and userId matches auth.uid
+      // Users can create recipes from frontend OR backend
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       hasRequiredFields() &&
+                       hasValidIngredients();
+      
+      // Allow update if authenticated and owns the recipe
+      allow update: if isOwner(resource.data.userId) &&
+                       request.resource.data.userId == resource.data.userId && // Can't change owner
+                       hasValidIngredients();
+      
+      // Allow delete if authenticated and owns the recipe
+      allow delete: if isOwner(resource.data.userId);
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

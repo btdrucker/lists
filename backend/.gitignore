@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+listster-8ffc9-firebase-adminsdk-fbsvc-9a011b87e1.json
