@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../common/hooks';
-import { addRecipe } from '../../common/slices/recipes';
-import { addRecipe as saveRecipe } from '../../firebase/firestore';
+import { addRecipe, updateRecipeInState } from '../../common/slices/recipes';
+import { addRecipe as saveRecipe, updateRecipe } from '../../firebase/firestore';
 import { getIdToken } from '../../firebase/auth';
 import type { Ingredient } from '../../types/index.ts';
 import styles from './add-recipe.module.css';
@@ -14,7 +14,12 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const AddRecipe = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const user = useAppSelector((state) => state.auth.user);
+  const { id } = useParams<{ id: string }>();
+  const user = useAppSelector((state) => state.auth?.user);
+  const recipes = useAppSelector((state) => state.recipes?.recipes || []);
+  
+  const isEditing = !!id;
+  const existingRecipe = isEditing ? recipes.find((r: any) => r.id === id) : null;
 
   const [mode, setMode] = useState<Mode>('manual');
   const [url, setUrl] = useState('');
@@ -28,6 +33,16 @@ const AddRecipe = () => {
     { amount: null, unit: null, name: '', originalText: '' },
   ]);
   const [instructions, setInstructions] = useState<string[]>(['']);
+
+  // Load existing recipe when editing
+  useEffect(() => {
+    if (existingRecipe) {
+      setTitle(existingRecipe.title);
+      setDescription(existingRecipe.description || '');
+      setIngredients(existingRecipe.ingredients.length > 0 ? existingRecipe.ingredients : [{ amount: null, unit: null, name: '', originalText: '' }]);
+      setInstructions(existingRecipe.instructions.length > 0 ? existingRecipe.instructions : ['']);
+    }
+  }, [existingRecipe]);
 
   const handleScrape = async () => {
     if (!url.trim()) {
@@ -94,32 +109,41 @@ const AddRecipe = () => {
     setError(null);
 
     try {
-      const recipe = await saveRecipe({
-        userId: user!.uid,
+      const recipeData: any = {
         title: title.trim(),
-        description: description.trim() || undefined,
         ingredients: ingredients.filter((i) => i.name.trim()),
         instructions: instructions.filter((i) => i.trim()),
-        isPublic: true,
-      });
+      };
+      
+      // Only add description if it's not empty
+      if (description.trim()) {
+        recipeData.description = description.trim();
+      }
 
-      // Add to Redux state
-      dispatch(addRecipe(recipe));
+      if (isEditing && id) {
+        // Update existing recipe
+        await updateRecipe(id, recipeData);
+        dispatch(updateRecipeInState({ 
+          ...existingRecipe, 
+          ...recipeData,
+          id 
+        }));
+      } else {
+        // Create new recipe
+        recipeData.userId = user!.uid;
+        recipeData.isPublic = true;
+        const recipe = await saveRecipe(recipeData);
+        dispatch(addRecipe(recipe));
+      }
 
       // Navigate back to list
       navigate('/');
     } catch (err) {
-      setError('Failed to save recipe');
+      setError(`Failed to ${isEditing ? 'update' : 'save'} recipe`);
       console.error('Save error:', err);
     } finally {
       setLoading(false);
     }
-  };
-
-  const updateIngredient = (index: number, field: keyof Ingredient, value: any) => {
-    const updated = [...ingredients];
-    updated[index] = { ...updated[index], [field]: value };
-    setIngredients(updated);
   };
 
   const addIngredient = () => {
@@ -147,7 +171,7 @@ const AddRecipe = () => {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>Add Recipe</h1>
+        <h1>{isEditing ? 'Edit Recipe' : 'Add Recipe'}</h1>
         <button onClick={() => navigate('/')} className={styles.cancelButton}>
           Cancel
         </button>
@@ -217,7 +241,16 @@ const AddRecipe = () => {
               <input
                 type="text"
                 value={ingredient.originalText}
-                onChange={(e) => updateIngredient(index, 'originalText', e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const updated = [...ingredients];
+                  updated[index] = { 
+                    ...updated[index], 
+                    originalText: value,
+                    name: value // Set name to the same value for manual entry
+                  };
+                  setIngredients(updated);
+                }}
                 placeholder="e.g., 2 cups flour"
                 className={styles.ingredientInput}
               />
@@ -264,7 +297,7 @@ const AddRecipe = () => {
           disabled={loading}
           className={styles.saveButton}
         >
-          {loading ? 'Saving...' : 'Save Recipe'}
+          {loading ? (isEditing ? 'Updating...' : 'Saving...') : (isEditing ? 'Update Recipe' : 'Save Recipe')}
         </button>
       </div>
     </div>

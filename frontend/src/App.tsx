@@ -12,7 +12,7 @@ import AddRecipe from './features/add-recipe/AddRecipe';
 
 function AppContent() {
   const dispatch = useAppDispatch();
-  const { user, loading } = useAppSelector((state) => state.auth);
+  const { user, loading } = useAppSelector((state) => state.auth || { user: null, loading: true, error: null });
 
   useEffect(() => {
     // Listen for auth state changes
@@ -50,6 +50,7 @@ function AppContent() {
           <>
             <Route path="/" element={<RecipeList />} />
             <Route path="/add" element={<AddRecipe />} />
+            <Route path="/edit/:id" element={<AddRecipe />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         )}

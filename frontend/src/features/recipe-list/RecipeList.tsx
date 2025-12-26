@@ -75,7 +75,11 @@ const RecipeList = () => {
       ) : (
         <div className={styles.grid}>
           {recipes.map((recipe: any) => (
-            <div key={recipe.id} className={styles.card}>
+            <div 
+              key={recipe.id} 
+              className={styles.card}
+              onClick={() => navigate(`/edit/${recipe.id}`)}
+            >
               {recipe.imageUrl && (
                 <img
                   src={recipe.imageUrl}
