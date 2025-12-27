@@ -1,7 +1,9 @@
+@import '../../common/styles.css';
+
 .container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 20px;
+  padding: var(--spacing-lg);
   min-height: 100vh;
 }
 
@@ -9,89 +11,90 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: var(--spacing-xl);
+  gap: var(--spacing-md);
 }
 
 .header h1 {
-  font-size: 32px;
+  flex: 1;
+  text-align: center;
+  font-size: 24px;
   margin: 0;
-  color: #333;
+  color: var(--color-text-primary);
 }
 
-.cancelButton {
-  padding: 8px 16px;
-  background: #f5f5f5;
-  color: #333;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
+.backButton {
+  background: var(--color-bg-white);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-light);
 }
 
-.cancelButton:hover {
-  background: #e5e5e5;
+.backButton:hover:not(:disabled) {
+  background: var(--color-bg-light);
+  border-color: var(--color-border-medium);
+  color: var(--color-text-primary);
 }
 
 .modeToggle {
   display: flex;
   gap: 0;
-  margin-bottom: 24px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  margin-bottom: var(--spacing-xl);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
 .modeActive,
 .modeInactive {
   flex: 1;
-  padding: 12px;
+  padding: var(--spacing-sm);
   border: none;
   cursor: pointer;
   font-size: 15px;
-  transition: all 0.2s;
+  transition: all var(--transition-fast);
 }
 
 .modeActive {
-  background: #667eea;
+  background: var(--color-primary);
   color: white;
   font-weight: 500;
 }
 
 .modeInactive {
-  background: white;
-  color: #666;
+  background: var(--color-bg-white);
+  color: var(--color-text-secondary);
 }
 
 .modeInactive:hover {
-  background: #f5f5f5;
+  background: var(--color-bg-lighter);
 }
 
 .urlSection {
   display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xl);
 }
 
 .urlInput {
   flex: 1;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
   font-size: 16px;
 }
 
 .scrapeButton {
-  padding: 12px 24px;
-  background: #667eea;
+  padding: var(--spacing-sm) var(--spacing-xl);
+  background: var(--color-primary);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .scrapeButton:hover:not(:disabled) {
-  background: #5568d3;
+  background: var(--color-primary-hover);
 }
 
 .scrapeButton:disabled {
@@ -100,38 +103,38 @@
 }
 
 .error {
-  padding: 12px;
-  background: #fee;
-  border: 1px solid #fcc;
-  border-radius: 6px;
-  color: #c33;
-  margin-bottom: 20px;
+  padding: var(--spacing-sm);
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-error);
+  margin-bottom: var(--spacing-lg);
 }
 
 .form {
-  background: white;
-  padding: 24px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: var(--color-bg-white);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
 }
 
 .field {
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-lg);
 }
 
 .field label {
   display: block;
   margin-bottom: 6px;
   font-weight: 500;
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 .field input,
 .field textarea {
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  padding: 10px var(--spacing-sm);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
   font-size: 16px;
   font-family: inherit;
 }
@@ -142,17 +145,17 @@
 }
 
 .immutableUrl {
-  padding: 10px 12px;
-  background: #f8f8f8;
+  padding: 10px var(--spacing-sm);
+  background: var(--color-bg-light);
   border: 1px solid #e5e5e5;
-  border-radius: 6px;
-  color: #666;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
   font-size: 14px;
   word-break: break-all;
 }
 
 .immutableUrl a {
-  color: #667eea;
+  color: var(--color-primary);
   text-decoration: none;
 }
 
@@ -161,28 +164,28 @@
 }
 
 .section {
-  margin-bottom: 24px;
+  margin-bottom: var(--spacing-xl);
 }
 
 .section h3 {
-  margin: 0 0 12px 0;
+  margin: 0 0 var(--spacing-sm) 0;
   font-size: 18px;
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 .ingredientRow,
 .instructionRow {
   display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
   align-items: flex-start;
 }
 
 .ingredientInput {
   flex: 1;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  padding: 10px var(--spacing-sm);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
   font-size: 16px;
 }
 
@@ -191,17 +194,17 @@
 }
 
 .stepNumber {
-  padding: 10px 8px;
+  padding: 10px var(--spacing-xs);
   font-weight: 500;
-  color: #666;
+  color: var(--color-text-secondary);
   min-width: 32px;
 }
 
 .instructionInput {
   flex: 1;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  padding: 10px var(--spacing-sm);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
   font-size: 16px;
   font-family: inherit;
   resize: none;
@@ -212,10 +215,10 @@
   width: 32px;
   height: 32px;
   padding: 0;
-  background: #fee;
-  color: #c33;
+  background: var(--color-error-bg);
+  color: var(--color-error);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 20px;
   line-height: 1;
@@ -228,11 +231,11 @@
 }
 
 .addButton {
-  padding: 8px 16px;
-  background: #f5f5f5;
-  color: #333;
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-bg-lighter);
+  color: var(--color-text-primary);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 14px;
 }
@@ -241,24 +244,34 @@
   background: #e5e5e5;
 }
 
-.saveButton {
+.header .saveButton {
+  background: var(--color-primary);
+  color: white;
+}
+
+.header .saveButton:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+/* Bottom save button styling */
+.form .saveButton {
   width: 100%;
   padding: 14px;
-  background: #667eea;
+  font-size: 17px;
+  border-radius: var(--radius-md);
+  margin-top: var(--spacing-xs);
+  background: var(--color-primary);
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 17px;
-  font-weight: 500;
   cursor: pointer;
-  margin-top: 8px;
+  font-weight: 500;
 }
 
-.saveButton:hover:not(:disabled) {
-  background: #5568d3;
+.form .saveButton:hover:not(:disabled) {
+  background: var(--color-primary-hover);
 }
 
-.saveButton:disabled {
+.form .saveButton:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

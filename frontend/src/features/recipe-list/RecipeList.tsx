@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../common/hooks';
 import { setRecipes, setLoading, removeRecipe } from '../../common/slices/recipes';
 import { clearAuth } from '../auth/slice';
 import { getAllRecipes, deleteRecipe } from '../../firebase/firestore';
 import { signOut } from '../../firebase/auth';
+import IconButton from '../../common/IconButton';
 import styles from './recipe-list.module.css';
 
 const RecipeList = () => {
@@ -13,6 +14,7 @@ const RecipeList = () => {
   const { recipes, loading } = useAppSelector((state) => state.recipes || { recipes: [], loading: false, error: null });
   const user = useAppSelector((state) => state.auth?.user);
   const hasLoadedRef = useRef(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleSignOut = async () => {
     await signOut();
@@ -33,6 +35,38 @@ const RecipeList = () => {
       alert('Failed to delete recipe');
     }
   };
+
+  // Filter recipes based on search query (client-side)
+  const filteredRecipes = recipes.filter((recipe: any) => {
+    if (!searchQuery.trim()) return true;
+
+    const query = searchQuery.toLowerCase();
+    
+    // Search in title
+    if (recipe.title.toLowerCase().includes(query)) {
+      return true;
+    }
+    
+    // Search in ingredient names
+    const matchesIngredient = recipe.ingredients.some((ingredient: any) => 
+      ingredient.name.toLowerCase().includes(query)
+    );
+    if (matchesIngredient) {
+      return true;
+    }
+    
+    // Search in tags (if they exist)
+    if (recipe.tags && recipe.tags.length > 0) {
+      const matchesTag = recipe.tags.some((tag: string) => 
+        tag.toLowerCase().includes(query)
+      );
+      if (matchesTag) {
+        return true;
+      }
+    }
+    
+    return false;
+  });
 
   useEffect(() => {
     const loadRecipes = async () => {
@@ -67,29 +101,57 @@ const RecipeList = () => {
       <header className={styles.header}>
         <h1>My Recipes</h1>
         <div className={styles.headerButtons}>
-          <button
-            onClick={() => navigate('/recipe/new')}
+          <IconButton
+            onClick={() => navigate('/edit-recipe/new')}
+            icon="fa-plus"
+            hideTextOnMobile={true}
             className={styles.addButton}
           >
-            + Add Recipe
-          </button>
-          <button
+            Add Recipe
+          </IconButton>
+          <IconButton
             onClick={handleSignOut}
+            icon="fa-sign-out"
+            hideTextOnMobile={true}
             className={styles.signOutButton}
           >
             Sign Out
-          </button>
+          </IconButton>
         </div>
       </header>
 
-      {recipes.length === 0 ? (
+      <div className={styles.searchSection}>
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search recipes, ingredients, or tags..."
+          className={styles.searchInput}
+        />
+        {searchQuery.trim() && (
+          <div className={styles.searchInfo}>
+            Found {filteredRecipes.length} recipe{filteredRecipes.length !== 1 ? 's' : ''}
+          </div>
+        )}
+      </div>
+
+      {filteredRecipes.length === 0 ? (
         <div className={styles.empty}>
-          <p>No recipes yet!</p>
-          <p>Click "Add Recipe" to get started.</p>
+          {searchQuery ? (
+            <>
+              <p>No recipes found</p>
+              <p>Try a different search term</p>
+            </>
+          ) : (
+            <>
+              <p>No recipes yet!</p>
+              <p>Click "Add Recipe" to get started.</p>
+            </>
+          )}
         </div>
       ) : (
         <div className={styles.grid}>
-          {recipes.map((recipe: any) => (
+          {filteredRecipes.map((recipe: any) => (
             <div 
               key={recipe.id} 
               className={styles.card}

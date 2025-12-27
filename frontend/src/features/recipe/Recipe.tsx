@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch, useAutoHeight } from '../../common/hooks';
 import { addRecipe, updateRecipeInState } from '../../common/slices/recipes';
 import { addRecipe as saveRecipe, updateRecipe } from '../../firebase/firestore';
+import IconButton from '../../common/IconButton';
 import type { Ingredient } from '../../types/index.ts';
 import styles from './recipe.module.css';
 
@@ -45,7 +46,7 @@ const Recipe = () => {
   const user = useAppSelector((state) => state.auth?.user);
   const recipes = useAppSelector((state) => state.recipes?.recipes || []);
   
-  const isEditing = !!id;
+  const isEditing = !!id && id !== 'new';
   const existingRecipe = isEditing ? recipes.find((r: any) => r.id === id) : null;
 
   const [isSaving, setIsSaving] = useState(false);
@@ -123,16 +124,17 @@ const Recipe = () => {
           ...recipeData,
           id 
         }));
+        // Navigate to view the updated recipe
+        navigate(`/recipe/${id}`);
       } else {
         // Create new recipe
         recipeData.userId = user!.uid;
         recipeData.isPublic = true;
         const recipe = await saveRecipe(recipeData);
         dispatch(addRecipe(recipe));
+        // Navigate to view the new recipe
+        navigate(`/recipe/${recipe.id}`);
       }
-
-      // Navigate back to list
-      navigate('/');
     } catch (err) {
       setError(`Failed to save recipe`);
       console.error('Save error:', err);
@@ -175,16 +177,30 @@ const Recipe = () => {
       );
       if (!confirmed) return;
     }
-    navigate('/');
+    navigate('/recipe-list');
   };
 
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>Recipe</h1>
-        <button onClick={handleCancel} className={styles.cancelButton}>
-          Cancel
-        </button>
+        <IconButton
+          onClick={handleCancel}
+          icon="fa-angle-left"
+          hideTextOnMobile={true}
+          className={styles.backButton}
+        >
+          All recipes
+        </IconButton>
+        <h1>Edit recipe</h1>
+        <IconButton
+          onClick={handleSave}
+          disabled={isSaving || !hasChanges}
+          icon="fa-floppy-disk"
+          hideTextOnMobile={true}
+          className={styles.saveButton}
+        >
+          {isSaving ? 'Saving...' : 'Save'}
+        </IconButton>
       </header>
 
       {error && <div className={styles.error}>{error}</div>}

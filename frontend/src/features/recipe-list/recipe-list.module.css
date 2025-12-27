@@ -1,7 +1,9 @@
+@import '../../common/styles.css';
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: var(--spacing-lg);
   min-height: 100vh;
 }
 
@@ -15,112 +17,129 @@
 .header h1 {
   font-size: 32px;
   margin: 0;
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 .headerButtons {
   display: flex;
-  gap: 12px;
+  gap: var(--spacing-sm);
   align-items: center;
 }
 
-.addButton {
-  padding: 12px 24px;
-  background: #667eea;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
+.searchSection {
+  margin-bottom: var(--spacing-xl);
 }
 
-.addButton:hover {
-  background: #5568d3;
+.searchInput {
+  width: 100%;
+  padding: 14px var(--spacing-lg);
+  font-size: 16px;
+  border: 2px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--transition-fast);
+  font-family: inherit;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.searchInfo {
+  margin-top: var(--spacing-sm);
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.addButton {
+  background: var(--color-primary);
+  color: white;
+}
+
+.addButton:hover:not(:disabled) {
+  background: var(--color-primary-hover);
 }
 
 .signOutButton {
-  padding: 12px 24px;
-  background: white;
-  color: #666;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
+  background: var(--color-bg-white);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-light);
 }
 
-.signOutButton:hover {
-  background: #f8f8f8;
-  border-color: #bbb;
-  color: #333;
+.signOutButton:hover:not(:disabled) {
+  background: var(--color-bg-light);
+  border-color: var(--color-border-medium);
+  color: var(--color-text-primary);
 }
 
 .loading {
   text-align: center;
   padding: 40px;
   font-size: 18px;
-  color: #666;
+  color: var(--color-text-secondary);
 }
 
 .empty {
   text-align: center;
-  padding: 60px 20px;
-  color: #666;
+  padding: 60px var(--spacing-lg);
+  color: var(--color-text-secondary);
 }
 
 .empty p:first-child {
   font-size: 24px;
   font-weight: 500;
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-xs);
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 24px;
+  gap: var(--spacing-xl);
   margin-bottom: 40px;
 }
 
 .card {
-  background: white;
-  border-radius: 12px;
+  background: var(--color-bg-white);
+  border-radius: var(--radius-xl);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
   cursor: pointer;
   position: relative;
 }
 
 .card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
 }
 
 .deleteButton {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: var(--spacing-sm);
+  right: var(--spacing-sm);
   width: 36px;
   height: 36px;
   border-radius: 50%;
   border: none;
   background: rgba(255, 255, 255, 0.95);
-  color: #dc3545;
+  color: var(--color-delete);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  transition: background 0.2s, transform 0.2s;
+  box-shadow: var(--shadow-sm);
+  transition: background var(--transition-fast), transform var(--transition-fast);
   z-index: 10;
 }
 
 .deleteButton:hover {
-  background: #dc3545;
+  background: var(--color-delete);
   color: white;
   transform: scale(1.1);
 }
@@ -136,20 +155,20 @@
 }
 
 .content {
-  padding: 16px;
+  padding: var(--spacing-md);
 }
 
 .title {
   font-size: 20px;
-  margin: 0 0 8px 0;
-  color: #333;
+  margin: 0 0 var(--spacing-xs) 0;
+  color: var(--color-text-primary);
   font-weight: 600;
 }
 
 .description {
   font-size: 14px;
-  color: #666;
-  margin: 0 0 12px 0;
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-sm) 0;
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -160,16 +179,23 @@
 
 .meta {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-xs);
   font-size: 13px;
-  color: #999;
+  color: var(--color-text-tertiary);
 }
 
 .footer {
   text-align: center;
-  padding: 20px;
-  color: #666;
+  padding: var(--spacing-lg);
+  color: var(--color-text-secondary);
   font-size: 14px;
   border-top: 1px solid #eee;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .searchInput {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
 }
 
