@@ -1,13 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch, useAutoHeight } from '../../common/hooks';
 import { addRecipe, updateRecipeInState } from '../../common/slices/recipes';
 import { addRecipe as saveRecipe, updateRecipe } from '../../firebase/firestore';
-import { getIdToken } from '../../firebase/auth';
 import type { Ingredient } from '../../types/index.ts';
 import styles from './recipe.module.css';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 // Instruction row component with auto-height textarea
 const InstructionRow = ({ 
@@ -43,6 +40,7 @@ const InstructionRow = ({
 const Recipe = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const user = useAppSelector((state) => state.auth?.user);
   const recipes = useAppSelector((state) => state.recipes?.recipes || []);
@@ -50,8 +48,6 @@ const Recipe = () => {
   const isEditing = !!id;
   const existingRecipe = isEditing ? recipes.find((r: any) => r.id === id) : null;
 
-  const [url, setUrl] = useState('');
-  const [isScraping, setIsScraping] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,94 +63,25 @@ const Recipe = () => {
   // Auto-height refs for textareas
   const descriptionRef = useAutoHeight<HTMLTextAreaElement>(description);
 
+  // Load initial title from navigation state (for manual create flow)
+  useEffect(() => {
+    const state = location.state as { initialTitle?: string } | null;
+    if (state?.initialTitle && !isEditing) {
+      setTitle(state.initialTitle);
+      setHasChanges(true); // Mark as changed since we have initial data
+    }
+  }, [location.state, isEditing]);
+
   // Load existing recipe when editing
   useEffect(() => {
     if (existingRecipe) {
       setTitle(existingRecipe.title);
       setDescription(existingRecipe.description || '');
-      setUrl(existingRecipe.sourceUrl || '');
       setIngredients(existingRecipe.ingredients.length > 0 ? existingRecipe.ingredients : [{ amount: null, unit: null, name: '', originalText: '' }]);
       setInstructions(existingRecipe.instructions.length > 0 ? existingRecipe.instructions : ['']);
       setHasChanges(false); // Reset changes flag when loading
     }
   }, [existingRecipe]);
-
-  // Check if form has any data
-  const hasFormData = () => {
-    return title.trim() !== '' || 
-           description.trim() !== '' || 
-           ingredients.some(i => i.name.trim() !== '' || i.originalText.trim() !== '') ||
-           instructions.some(i => i.trim() !== '');
-  };
-
-  // Validate URL
-  const isValidUrl = (urlString: string) => {
-    try {
-      const url = new URL(urlString);
-      return url.protocol === 'http:' || url.protocol === 'https:';
-    } catch {
-      return false;
-    }
-  };
-
-  const handleScrape = async () => {
-    if (!url.trim() || !isValidUrl(url.trim())) {
-      setError('Please enter a valid URL');
-      return;
-    }
-
-    // Confirm if form has data
-    if (hasFormData()) {
-      const confirmed = window.confirm(
-        'Scraping a recipe will overwrite the current form data. Continue?'
-      );
-      if (!confirmed) return;
-    }
-
-    setIsScraping(true);
-    setError(null);
-
-    try {
-      const token = await getIdToken();
-      if (!token) {
-        setError('Not authenticated');
-        return;
-      }
-
-      const response = await fetch(`${API_URL}/scrape`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ url }),
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.recipe) {
-        const recipe = data.recipe;
-        setTitle(recipe.title);
-        setDescription(recipe.description || '');
-        setIngredients(recipe.ingredients);
-        setInstructions(recipe.instructions);
-        setHasChanges(true); // Mark as changed after scraping
-        
-        // Add to Redux state immediately
-        dispatch(addRecipe(recipe));
-        
-        // Navigate back to list
-        navigate('/');
-      } else {
-        setError(data.error || 'Failed to scrape recipe');
-      }
-    } catch (err) {
-      setError('Failed to scrape recipe. Please try manual entry.');
-      console.error('Scrape error:', err);
-    } finally {
-      setIsScraping(false);
-    }
-  };
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -177,12 +104,15 @@ const Recipe = () => {
         instructions: instructions.filter((i) => i.trim()),
       };
       
-      // Only add optional fields if they have values
+      // Only add description if it's not empty
       if (description.trim()) {
         recipeData.description = description.trim();
       }
-      if (url.trim()) {
-        recipeData.sourceUrl = url.trim();
+      
+      // Note: sourceUrl is NOT saved here - it's only set by the backend scrape endpoint
+      // If editing a recipe with existing sourceUrl, preserve it
+      if (isEditing && existingRecipe?.sourceUrl) {
+        recipeData.sourceUrl = existingRecipe.sourceUrl;
       }
 
       if (isEditing && id) {
@@ -238,31 +168,24 @@ const Recipe = () => {
     setHasChanges(true);
   };
 
+  const handleCancel = () => {
+    if (hasChanges) {
+      const confirmed = window.confirm(
+        'You have unsaved changes. Are you sure you want to leave? Your changes will be lost.'
+      );
+      if (!confirmed) return;
+    }
+    navigate('/');
+  };
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
         <h1>Recipe</h1>
-        <button onClick={() => navigate('/')} className={styles.cancelButton}>
+        <button onClick={handleCancel} className={styles.cancelButton}>
           Cancel
         </button>
       </header>
-
-      <div className={styles.urlSection}>
-        <input
-          type="url"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://example.com/recipe (optional)"
-          className={styles.urlInput}
-        />
-        <button
-          onClick={handleScrape}
-          disabled={isScraping || !url.trim() || !isValidUrl(url.trim())}
-          className={styles.scrapeButton}
-        >
-          {isScraping ? 'Scraping...' : 'Scrape Recipe'}
-        </button>
-      </div>
 
       {error && <div className={styles.error}>{error}</div>}
 
@@ -279,6 +202,18 @@ const Recipe = () => {
             placeholder="Recipe title"
           />
         </div>
+
+        {/* Show immutable URL between title and description if it exists */}
+        {existingRecipe?.sourceUrl && (
+          <div className={styles.field}>
+            <label>Source URL</label>
+            <div className={styles.immutableUrl}>
+              <a href={existingRecipe.sourceUrl} target="_blank" rel="noopener noreferrer">
+                {existingRecipe.sourceUrl}
+              </a>
+            </div>
+          </div>
+        )}
 
         <div className={styles.field}>
           <label>Description</label>

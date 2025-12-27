@@ -18,7 +18,7 @@ export function useAutoHeight<T extends HTMLTextAreaElement>(
     if (!element) return;
 
     // Set minimum height: minLines * 1em + some space for padding
-    element.style.minHeight = `${minLines + 0.25}em`;
+    //element.style.minHeight = `${minLines + 0.25}em`;
 
     // Reset height to recalculate
     element.style.height = 'auto';

@@ -68,7 +68,7 @@ const RecipeList = () => {
         <h1>My Recipes</h1>
         <div className={styles.headerButtons}>
           <button
-            onClick={() => navigate('/recipe')}
+            onClick={() => navigate('/recipe/new')}
             className={styles.addButton}
           >
             + Add Recipe
