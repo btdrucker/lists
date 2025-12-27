@@ -21,8 +21,8 @@ export interface Recipe {
   cookTime?: number;
   tags?: string[];
   isPublic: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;  // ISO string for Redux serialization
+  updatedAt: string;  // ISO string for Redux serialization
 }
 
 export interface SerializableUser {

@@ -1,37 +1,20 @@
-import { firestore, firebaseAdmin } from './firebase.js';
+import { firestore } from './firebase.js';
 import { Recipe } from '../types/index.js';
 
 export async function saveRecipe(recipe: Omit<Recipe, 'id'>): Promise<Recipe> {
-  try {
-    console.log('[FIRESTORE] Getting recipes collection...');
-    const recipesRef = firestore.collection('recipes');
-    console.log('[FIRESTORE] Adding document...');
-    console.log('[FIRESTORE] Recipe data keys:', Object.keys(recipe));
-    
-    // Add with timeout
-    const addPromise = recipesRef.add({
-      ...recipe,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Firestore add timeout after 10 seconds')), 10000);
-    });
-    
-    const docRef = await Promise.race([addPromise, timeoutPromise]) as FirebaseFirestore.DocumentReference;
-    console.log('[FIRESTORE] Document added with ID:', docRef.id);
+  const recipesRef = firestore.collection('recipes');
+  const docRef = await recipesRef.add({
+    ...recipe,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
 
-    const savedRecipe: Recipe = {
-      ...recipe,
-      id: docRef.id,
-    };
+  const savedRecipe: Recipe = {
+    ...recipe,
+    id: docRef.id,
+  };
 
-    return savedRecipe;
-  } catch (error) {
-    console.error('[FIRESTORE] Error saving recipe:', error);
-    throw error;
-  }
+  return savedRecipe;
 }
 
 export async function getRecipeById(recipeId: string): Promise<Recipe | null> {

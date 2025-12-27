@@ -137,7 +137,8 @@
 }
 
 .field textarea {
-  resize: vertical;
+  resize: none;
+  overflow: hidden;
 }
 
 .section {
@@ -184,7 +185,8 @@
   border-radius: 6px;
   font-size: 16px;
   font-family: inherit;
-  resize: vertical;
+  resize: none;
+  overflow: hidden;
 }
 
 .removeButton {

@@ -16,17 +16,12 @@ const initializeFirebase = () => {
     const serviceAccountPath = join(__dirname, '../../listster-8ffc9-firebase-adminsdk-fbsvc-9a011b87e1.json');
     
     try {
-      console.log('[FIREBASE] Loading service account from:', serviceAccountPath);
       const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
-      console.log('[FIREBASE] Service account loaded for project:', serviceAccount.project_id);
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       });
-      console.log('[FIREBASE] Admin SDK initialized successfully');
-      console.log('[FIREBASE] Project ID:', serviceAccount.project_id);
     } catch (error) {
       // Fallback to environment variables
-      console.log('[FIREBASE] Service account file not found, using environment variables');
       admin.initializeApp({
         credential: admin.credential.cert({
           projectId: process.env.FIREBASE_PROJECT_ID,
@@ -34,10 +29,7 @@ const initializeFirebase = () => {
           clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
         }),
       });
-      console.log('[FIREBASE] Admin SDK initialized from env vars');
     }
-  } else {
-    console.log('[FIREBASE] Admin SDK already initialized');
   }
   return admin;
 };
@@ -49,21 +41,7 @@ export const auth = firebaseAdmin.auth();
 const firestoreInstance = firebaseAdmin.firestore();
 firestoreInstance.settings({
   ignoreUndefinedProperties: true,
-  preferRest: true,  // Use REST API instead of gRPC
+  preferRest: true,  // Use REST API instead of gRPC to avoid connection issues
 });
 export const firestore = firestoreInstance;
-
-console.log('[FIREBASE] Firestore initialized');
-
-// Test Firestore connectivity at startup
-(async () => {
-  try {
-    console.log('[FIREBASE] Testing Firestore connectivity...');
-    const testRef = firestoreInstance.collection('_test_connection');
-    await testRef.limit(1).get();
-    console.log('[FIREBASE] ✓ Firestore connectivity test successful');
-  } catch (error) {
-    console.error('[FIREBASE] ✗ Firestore connectivity test failed:', error);
-  }
-})();
 

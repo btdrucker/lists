@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAppSelector, useAppDispatch } from '../../common/hooks';
+import { useAppSelector, useAppDispatch, useAutoHeight } from '../../common/hooks';
 import { addRecipe, updateRecipeInState } from '../../common/slices/recipes';
 import { addRecipe as saveRecipe, updateRecipe } from '../../firebase/firestore';
 import { getIdToken } from '../../firebase/auth';
@@ -8,6 +8,37 @@ import type { Ingredient } from '../../types/index.ts';
 import styles from './recipe.module.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+// Instruction row component with auto-height textarea
+const InstructionRow = ({ 
+  index, 
+  value, 
+  onChange, 
+  onRemove 
+}: { 
+  index: number; 
+  value: string; 
+  onChange: (value: string) => void; 
+  onRemove: () => void;
+}) => {
+  const textareaRef = useAutoHeight<HTMLTextAreaElement>(value);
+  
+  return (
+    <div className={styles.instructionRow}>
+      <span className={styles.stepNumber}>{index + 1}.</span>
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Describe this step"
+        className={styles.instructionInput}
+      />
+      <button onClick={onRemove} className={styles.removeButton}>
+        ×
+      </button>
+    </div>
+  );
+};
 
 const Recipe = () => {
   const navigate = useNavigate();
@@ -20,7 +51,8 @@ const Recipe = () => {
   const existingRecipe = isEditing ? recipes.find((r: any) => r.id === id) : null;
 
   const [url, setUrl] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isScraping, setIsScraping] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Recipe form state
@@ -32,11 +64,15 @@ const Recipe = () => {
   const [instructions, setInstructions] = useState<string[]>(['']);
   const [hasChanges, setHasChanges] = useState(false); // Always start with no changes
 
+  // Auto-height refs for textareas
+  const descriptionRef = useAutoHeight<HTMLTextAreaElement>(description);
+
   // Load existing recipe when editing
   useEffect(() => {
     if (existingRecipe) {
       setTitle(existingRecipe.title);
       setDescription(existingRecipe.description || '');
+      setUrl(existingRecipe.sourceUrl || '');
       setIngredients(existingRecipe.ingredients.length > 0 ? existingRecipe.ingredients : [{ amount: null, unit: null, name: '', originalText: '' }]);
       setInstructions(existingRecipe.instructions.length > 0 ? existingRecipe.instructions : ['']);
       setHasChanges(false); // Reset changes flag when loading
@@ -75,20 +111,16 @@ const Recipe = () => {
       if (!confirmed) return;
     }
 
-    setLoading(true);
+    setIsScraping(true);
     setError(null);
 
     try {
-      console.log('Getting auth token...');
       const token = await getIdToken();
       if (!token) {
         setError('Not authenticated');
         return;
       }
 
-      console.log('Sending scrape request to:', `${API_URL}/scrape`);
-      console.log('URL to scrape:', url);
-      
       const response = await fetch(`${API_URL}/scrape`, {
         method: 'POST',
         headers: {
@@ -98,9 +130,7 @@ const Recipe = () => {
         body: JSON.stringify({ url }),
       });
 
-      console.log('Response status:', response.status);
       const data = await response.json();
-      console.log('Response data:', data);
 
       if (data.success && data.recipe) {
         const recipe = data.recipe;
@@ -122,7 +152,7 @@ const Recipe = () => {
       setError('Failed to scrape recipe. Please try manual entry.');
       console.error('Scrape error:', err);
     } finally {
-      setLoading(false);
+      setIsScraping(false);
     }
   };
 
@@ -137,7 +167,7 @@ const Recipe = () => {
       return;
     }
 
-    setLoading(true);
+    setIsSaving(true);
     setError(null);
 
     try {
@@ -147,9 +177,12 @@ const Recipe = () => {
         instructions: instructions.filter((i) => i.trim()),
       };
       
-      // Only add description if it's not empty
+      // Only add optional fields if they have values
       if (description.trim()) {
         recipeData.description = description.trim();
+      }
+      if (url.trim()) {
+        recipeData.sourceUrl = url.trim();
       }
 
       if (isEditing && id) {
@@ -174,7 +207,7 @@ const Recipe = () => {
       setError(`Failed to save recipe`);
       console.error('Save error:', err);
     } finally {
-      setLoading(false);
+      setIsSaving(false);
       setHasChanges(false);
     }
   };
@@ -224,10 +257,10 @@ const Recipe = () => {
         />
         <button
           onClick={handleScrape}
-          disabled={loading || !url.trim() || !isValidUrl(url.trim())}
+          disabled={isScraping || !url.trim() || !isValidUrl(url.trim())}
           className={styles.scrapeButton}
         >
-          {loading ? 'Scraping...' : 'Scrape Recipe'}
+          {isScraping ? 'Scraping...' : 'Scrape Recipe'}
         </button>
       </div>
 
@@ -250,13 +283,13 @@ const Recipe = () => {
         <div className={styles.field}>
           <label>Description</label>
           <textarea
+            ref={descriptionRef}
             value={description}
             onChange={(e) => {
               setDescription(e.target.value);
               setHasChanges(true);
             }}
             placeholder="Brief description"
-            rows={3}
           />
         </div>
 
@@ -297,25 +330,16 @@ const Recipe = () => {
         <div className={styles.section}>
           <h3>Instructions</h3>
           {instructions.map((instruction, index) => (
-            <div key={index} className={styles.instructionRow}>
-              <span className={styles.stepNumber}>{index + 1}.</span>
-              <textarea
-                value={instruction}
-                onChange={(e) => {
-                  updateInstruction(index, e.target.value);
-                  setHasChanges(true);
-                }}
-                placeholder="Describe this step"
-                rows={2}
-                className={styles.instructionInput}
-              />
-              <button
-                onClick={() => removeInstruction(index)}
-                className={styles.removeButton}
-              >
-                ×
-              </button>
-            </div>
+            <InstructionRow
+              key={index}
+              index={index}
+              value={instruction}
+              onChange={(value) => {
+                updateInstruction(index, value);
+                setHasChanges(true);
+              }}
+              onRemove={() => removeInstruction(index)}
+            />
           ))}
           <button onClick={addInstruction} className={styles.addButton}>
             + Add Step
@@ -324,10 +348,10 @@ const Recipe = () => {
 
         <button
           onClick={handleSave}
-          disabled={loading || !hasChanges}
+          disabled={isSaving || !hasChanges}
           className={styles.saveButton}
         >
-          {loading ? 'Saving...' : 'Save'}
+          {isSaving ? 'Saving...' : 'Save'}
         </button>
       </div>
     </div>

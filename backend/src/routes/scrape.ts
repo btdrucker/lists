@@ -3,7 +3,6 @@ import { scrapeRecipe } from '../services/scraper.js';
 import { saveRecipe } from '../services/firestore.js';
 import { authenticateUser } from '../middleware/auth.js';
 import { ScrapeRequest, ScrapeResponse } from '../types/index.js';
-import { firestore } from '../services/firebase.js';
 
 export async function scrapeRoutes(fastify: FastifyInstance) {
   fastify.post<{
@@ -15,12 +14,9 @@ export async function scrapeRoutes(fastify: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Body: ScrapeRequest }>, reply: FastifyReply) => {
       try {
-        console.log('Received scrape request');
         const { url } = request.body;
-        console.log('URL to scrape:', url);
 
         if (!url) {
-          console.log('Error: URL is required');
           return reply.status(400).send({
             success: false,
             error: 'URL is required',
@@ -38,12 +34,9 @@ export async function scrapeRoutes(fastify: FastifyInstance) {
         }
 
         const user = request.user!;
-        console.log('User authenticated:', user.uid);
 
         // Scrape the recipe from the URL
-        console.log('Starting scrape...');
         const scrapedRecipe = await scrapeRecipe(url);
-        console.log('Scrape completed:', scrapedRecipe.title);
 
         // Build recipe object, only including defined optional fields
         const recipeData: any = {
@@ -64,20 +57,8 @@ export async function scrapeRoutes(fastify: FastifyInstance) {
         if (scrapedRecipe.prepTime !== undefined) recipeData.prepTime = scrapedRecipe.prepTime;
         if (scrapedRecipe.cookTime !== undefined) recipeData.cookTime = scrapedRecipe.cookTime;
 
-        // Test Firestore connectivity first
-        console.log('Testing Firestore read...');
-        try {
-          const testSnapshot = await firestore.collection('recipes').limit(1).get();
-          console.log('Firestore read test successful, found', testSnapshot.size, 'documents');
-        } catch (readError) {
-          console.error('Firestore read test failed:', readError);
-          throw new Error('Cannot connect to Firestore');
-        }
-        
         // Save to Firestore
-        console.log('Saving to Firestore...');
         const recipe = await saveRecipe(recipeData);
-        console.log('Saved successfully with ID:', recipe.id);
 
         return reply.send({
           success: true,

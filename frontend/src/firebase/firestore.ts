@@ -18,12 +18,16 @@ export const getAllRecipes = async (): Promise<Recipe[]> => {
   const recipesRef = collection(db, 'recipes');
   const snapshot = await getDocs(recipesRef);
   
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-    createdAt: doc.data().createdAt?.toDate() || new Date(),
-    updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-  })) as Recipe[];
+  return snapshot.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      ...data,
+      // Convert Firestore Timestamps to ISO strings for Redux serialization
+      createdAt: (data.createdAt?.toDate?.() || new Date()).toISOString(),
+      updatedAt: (data.updatedAt?.toDate?.() || new Date()).toISOString(),
+    };
+  }) as Recipe[];
 };
 
 // Get recipes by user ID
@@ -49,11 +53,13 @@ export const getRecipeById = async (recipeId: string): Promise<Recipe | null> =>
     return null;
   }
   
+  const data = docSnap.data();
   return {
     id: docSnap.id,
-    ...docSnap.data(),
-    createdAt: docSnap.data().createdAt?.toDate() || new Date(),
-    updatedAt: docSnap.data().updatedAt?.toDate() || new Date(),
+    ...data,
+    // Convert Firestore Timestamps to ISO strings
+    createdAt: (data.createdAt?.toDate?.() || new Date()).toISOString(),
+    updatedAt: (data.updatedAt?.toDate?.() || new Date()).toISOString(),
   } as Recipe;
 };
 
@@ -71,8 +77,9 @@ export const addRecipe = async (recipe: Omit<Recipe, 'id' | 'createdAt' | 'updat
   return {
     ...recipe,
     id: docRef.id,
-    createdAt: now.toDate(),
-    updatedAt: now.toDate(),
+    // Return ISO strings for Redux serialization
+    createdAt: now.toDate().toISOString(),
+    updatedAt: now.toDate().toISOString(),
   };
 };
 
