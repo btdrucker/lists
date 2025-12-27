@@ -50,16 +50,40 @@ function extractFromJsonLd($: cheerio.CheerioAPI): ScrapedRecipe | null {
 
       for (const data of recipes) {
         if (data['@type'] === 'Recipe') {
-          return {
+          const recipe: ScrapedRecipe = {
             title: data.name || 'Untitled Recipe',
-            description: data.description || undefined,
             ingredients: parseIngredientList(data.recipeIngredient || []),
             instructions: parseInstructions(data.recipeInstructions || []),
-            imageUrl: getImageUrl(data.image),
-            servings: data.recipeYield ? parseInt(String(data.recipeYield)) : undefined,
-            prepTime: parseDuration(data.prepTime),
-            cookTime: parseDuration(data.cookTime),
           };
+          
+          // Only add optional fields if they have values
+          if (data.description) {
+            recipe.description = data.description;
+          }
+          
+          const imageUrl = getImageUrl(data.image);
+          if (imageUrl) {
+            recipe.imageUrl = imageUrl;
+          }
+          
+          if (data.recipeYield) {
+            const servings = parseInt(String(data.recipeYield));
+            if (!isNaN(servings)) {
+              recipe.servings = servings;
+            }
+          }
+          
+          const prepTime = parseDuration(data.prepTime);
+          if (prepTime) {
+            recipe.prepTime = prepTime;
+          }
+          
+          const cookTime = parseDuration(data.cookTime);
+          if (cookTime) {
+            recipe.cookTime = cookTime;
+          }
+          
+          return recipe;
         }
       }
     }
@@ -79,10 +103,9 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
     'Untitled Recipe';
 
   // Try to extract description
-  const description =
+  const descriptionText =
     $('meta[name="description"]').attr('content') ||
-    $('p[class*="description"]').first().text().trim() ||
-    undefined;
+    $('p[class*="description"]').first().text().trim();
 
   // Try to extract ingredients
   const ingredients: string[] = [];
@@ -107,17 +130,26 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
   }
 
   // Extract image
-  const imageUrl = 
+  const imageUrlText = 
     $('meta[property="og:image"]').attr('content') ||
-    $('img[class*="recipe"]').first().attr('src') ||
-    undefined;
+    $('img[class*="recipe"]').first().attr('src');
 
-  return {
+  const recipe: ScrapedRecipe = {
     title,
-    description,
     ingredients: parseIngredientList(ingredients),
     instructions: instructions.length > 0 ? instructions : ['No instructions found. Please add manually.'],
   };
+  
+  // Only add optional fields if they have values
+  if (descriptionText) {
+    recipe.description = descriptionText;
+  }
+  
+  if (imageUrlText) {
+    recipe.imageUrl = imageUrlText;
+  }
+  
+  return recipe;
 }
 
 function parseIngredientList(ingredients: string[]): Ingredient[] {

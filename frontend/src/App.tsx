@@ -8,7 +8,7 @@ import { setUser } from './features/auth/slice';
 import { onAuthStateChange } from './firebase/auth';
 import AuthScreen from './features/auth/AuthScreen';
 import RecipeList from './features/recipe-list/RecipeList';
-import AddRecipe from './features/add-recipe/AddRecipe';
+import Recipe from './features/recipe/Recipe';
 
 function AppContent() {
   const dispatch = useAppDispatch();
@@ -49,8 +49,8 @@ function AppContent() {
         ) : (
           <>
             <Route path="/" element={<RecipeList />} />
-            <Route path="/add" element={<AddRecipe />} />
-            <Route path="/edit/:id" element={<AddRecipe />} />
+            <Route path="/recipe" element={<Recipe />} />
+            <Route path="/recipe/:id" element={<Recipe />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         )}

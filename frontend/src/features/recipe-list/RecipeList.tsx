@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../common/hooks';
-import { setRecipes, setLoading } from '../../common/slices/recipes';
+import { setRecipes, setLoading, removeRecipe } from '../../common/slices/recipes';
 import { clearAuth } from '../auth/slice';
-import { getAllRecipes } from '../../firebase/firestore';
+import { getAllRecipes, deleteRecipe } from '../../firebase/firestore';
 import { signOut } from '../../firebase/auth';
 import styles from './recipe-list.module.css';
 
@@ -17,6 +17,21 @@ const RecipeList = () => {
   const handleSignOut = async () => {
     await signOut();
     dispatch(clearAuth());
+  };
+
+  const handleDelete = async (recipeId: string, recipeTitle: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click navigation
+    
+    const confirmed = window.confirm(`Are you sure you want to delete "${recipeTitle}"?`);
+    if (!confirmed) return;
+
+    try {
+      await deleteRecipe(recipeId);
+      dispatch(removeRecipe(recipeId));
+    } catch (error) {
+      console.error('Error deleting recipe:', error);
+      alert('Failed to delete recipe');
+    }
   };
 
   useEffect(() => {
@@ -53,7 +68,7 @@ const RecipeList = () => {
         <h1>My Recipes</h1>
         <div className={styles.headerButtons}>
           <button
-            onClick={() => navigate('/add')}
+            onClick={() => navigate('/recipe')}
             className={styles.addButton}
           >
             + Add Recipe
@@ -78,8 +93,15 @@ const RecipeList = () => {
             <div 
               key={recipe.id} 
               className={styles.card}
-              onClick={() => navigate(`/edit/${recipe.id}`)}
+              onClick={() => navigate(`/recipe/${recipe.id}`)}
             >
+              <button
+                className={styles.deleteButton}
+                onClick={(e) => handleDelete(recipe.id, recipe.title, e)}
+                title="Delete recipe"
+              >
+                <i className="fa-solid fa-trash-can"></i>
+              </button>
               {recipe.imageUrl && (
                 <img
                   src={recipe.imageUrl}

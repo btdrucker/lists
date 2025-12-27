@@ -5,13 +5,11 @@ import { addRecipe, updateRecipeInState } from '../../common/slices/recipes';
 import { addRecipe as saveRecipe, updateRecipe } from '../../firebase/firestore';
 import { getIdToken } from '../../firebase/auth';
 import type { Ingredient } from '../../types/index.ts';
-import styles from './add-recipe.module.css';
-
-type Mode = 'manual' | 'url';
+import styles from './recipe.module.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-const AddRecipe = () => {
+const Recipe = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { id } = useParams<{ id: string }>();
@@ -21,7 +19,6 @@ const AddRecipe = () => {
   const isEditing = !!id;
   const existingRecipe = isEditing ? recipes.find((r: any) => r.id === id) : null;
 
-  const [mode, setMode] = useState<Mode>('manual');
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +30,7 @@ const AddRecipe = () => {
     { amount: null, unit: null, name: '', originalText: '' },
   ]);
   const [instructions, setInstructions] = useState<string[]>(['']);
+  const [hasChanges, setHasChanges] = useState(false); // Always start with no changes
 
   // Load existing recipe when editing
   useEffect(() => {
@@ -41,25 +39,56 @@ const AddRecipe = () => {
       setDescription(existingRecipe.description || '');
       setIngredients(existingRecipe.ingredients.length > 0 ? existingRecipe.ingredients : [{ amount: null, unit: null, name: '', originalText: '' }]);
       setInstructions(existingRecipe.instructions.length > 0 ? existingRecipe.instructions : ['']);
+      setHasChanges(false); // Reset changes flag when loading
     }
   }, [existingRecipe]);
 
+  // Check if form has any data
+  const hasFormData = () => {
+    return title.trim() !== '' || 
+           description.trim() !== '' || 
+           ingredients.some(i => i.name.trim() !== '' || i.originalText.trim() !== '') ||
+           instructions.some(i => i.trim() !== '');
+  };
+
+  // Validate URL
+  const isValidUrl = (urlString: string) => {
+    try {
+      const url = new URL(urlString);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
   const handleScrape = async () => {
-    if (!url.trim()) {
-      setError('Please enter a URL');
+    if (!url.trim() || !isValidUrl(url.trim())) {
+      setError('Please enter a valid URL');
       return;
+    }
+
+    // Confirm if form has data
+    if (hasFormData()) {
+      const confirmed = window.confirm(
+        'Scraping a recipe will overwrite the current form data. Continue?'
+      );
+      if (!confirmed) return;
     }
 
     setLoading(true);
     setError(null);
 
     try {
+      console.log('Getting auth token...');
       const token = await getIdToken();
       if (!token) {
         setError('Not authenticated');
         return;
       }
 
+      console.log('Sending scrape request to:', `${API_URL}/scrape`);
+      console.log('URL to scrape:', url);
+      
       const response = await fetch(`${API_URL}/scrape`, {
         method: 'POST',
         headers: {
@@ -69,7 +98,9 @@ const AddRecipe = () => {
         body: JSON.stringify({ url }),
       });
 
+      console.log('Response status:', response.status);
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (data.success && data.recipe) {
         const recipe = data.recipe;
@@ -77,6 +108,7 @@ const AddRecipe = () => {
         setDescription(recipe.description || '');
         setIngredients(recipe.ingredients);
         setInstructions(recipe.instructions);
+        setHasChanges(true); // Mark as changed after scraping
         
         // Add to Redux state immediately
         dispatch(addRecipe(recipe));
@@ -139,19 +171,22 @@ const AddRecipe = () => {
       // Navigate back to list
       navigate('/');
     } catch (err) {
-      setError(`Failed to ${isEditing ? 'update' : 'save'} recipe`);
+      setError(`Failed to save recipe`);
       console.error('Save error:', err);
     } finally {
       setLoading(false);
+      setHasChanges(false);
     }
   };
 
   const addIngredient = () => {
     setIngredients([...ingredients, { amount: null, unit: null, name: '', originalText: '' }]);
+    setHasChanges(true);
   };
 
   const removeIngredient = (index: number) => {
     setIngredients(ingredients.filter((_, i) => i !== index));
+    setHasChanges(true);
   };
 
   const updateInstruction = (index: number, value: string) => {
@@ -162,54 +197,39 @@ const AddRecipe = () => {
 
   const addInstruction = () => {
     setInstructions([...instructions, '']);
+    setHasChanges(true);
   };
 
   const removeInstruction = (index: number) => {
     setInstructions(instructions.filter((_, i) => i !== index));
+    setHasChanges(true);
   };
 
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>{isEditing ? 'Edit Recipe' : 'Add Recipe'}</h1>
+        <h1>Recipe</h1>
         <button onClick={() => navigate('/')} className={styles.cancelButton}>
           Cancel
         </button>
       </header>
 
-      <div className={styles.modeToggle}>
+      <div className={styles.urlSection}>
+        <input
+          type="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://example.com/recipe (optional)"
+          className={styles.urlInput}
+        />
         <button
-          className={mode === 'manual' ? styles.modeActive : styles.modeInactive}
-          onClick={() => setMode('manual')}
+          onClick={handleScrape}
+          disabled={loading || !url.trim() || !isValidUrl(url.trim())}
+          className={styles.scrapeButton}
         >
-          Manual Entry
-        </button>
-        <button
-          className={mode === 'url' ? styles.modeActive : styles.modeInactive}
-          onClick={() => setMode('url')}
-        >
-          Scrape from URL
+          {loading ? 'Scraping...' : 'Scrape Recipe'}
         </button>
       </div>
-
-      {mode === 'url' && (
-        <div className={styles.urlSection}>
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://example.com/recipe"
-            className={styles.urlInput}
-          />
-          <button
-            onClick={handleScrape}
-            disabled={loading}
-            className={styles.scrapeButton}
-          >
-            {loading ? 'Scraping...' : 'Scrape Recipe'}
-          </button>
-        </div>
-      )}
 
       {error && <div className={styles.error}>{error}</div>}
 
@@ -219,7 +239,10 @@ const AddRecipe = () => {
           <input
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setHasChanges(true);
+            }}
             placeholder="Recipe title"
           />
         </div>
@@ -228,7 +251,10 @@ const AddRecipe = () => {
           <label>Description</label>
           <textarea
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              setHasChanges(true);
+            }}
             placeholder="Brief description"
             rows={3}
           />
@@ -250,6 +276,7 @@ const AddRecipe = () => {
                     name: value // Set name to the same value for manual entry
                   };
                   setIngredients(updated);
+                  setHasChanges(true);
                 }}
                 placeholder="e.g., 2 cups flour"
                 className={styles.ingredientInput}
@@ -274,7 +301,10 @@ const AddRecipe = () => {
               <span className={styles.stepNumber}>{index + 1}.</span>
               <textarea
                 value={instruction}
-                onChange={(e) => updateInstruction(index, e.target.value)}
+                onChange={(e) => {
+                  updateInstruction(index, e.target.value);
+                  setHasChanges(true);
+                }}
                 placeholder="Describe this step"
                 rows={2}
                 className={styles.instructionInput}
@@ -294,15 +324,15 @@ const AddRecipe = () => {
 
         <button
           onClick={handleSave}
-          disabled={loading}
+          disabled={loading || !hasChanges}
           className={styles.saveButton}
         >
-          {loading ? (isEditing ? 'Updating...' : 'Saving...') : (isEditing ? 'Update Recipe' : 'Save Recipe')}
+          {loading ? 'Saving...' : 'Save'}
         </button>
       </div>
     </div>
   );
 };
 
-export default AddRecipe;
+export default Recipe;
 

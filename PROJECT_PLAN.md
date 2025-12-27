@@ -125,23 +125,34 @@ Navigate Back → Recipe List (shows new recipe instantly, no Firestore read)
 
 ## Frontend Features
 
+**Design Requirements**:
+- ✅ **Responsive Design**: Must work on mobile devices (phones and tablets)
+- ✅ **Touch-Friendly**: All interactive elements sized and positioned for touch input
+- ✅ **No Hover-Dependent Features**: Always-visible controls instead of hover-only UI
+- ✅ **Mobile-First CSS**: Using flexible layouts, proper viewport settings, and touch feedback
+
 ### 1. Auth Feature (`src/features/auth/`)
 - Login and signup screens
 - Adapted from groups app pattern
 - Firebase authentication flow
+- Google sign-in support
 
 ### 2. Recipe List Feature (`src/features/recipe-list/`)
 - Displays user's recipes from Redux state
 - Empty state message when no recipes
 - "Add Recipe" button → navigates to add-recipe
+- Delete button on each recipe card (with confirmation)
+- Click recipe card to edit
+- Sign out button in header
 - Reactively updates when Redux state changes
+- **Mobile Features**: Always-visible delete buttons, touch-friendly card sizes
 
 **Components**:
 - `RecipeList.tsx` - Main container
 - `RecipeListHeader.tsx` - Header with add button
 - `RecipeListItem.tsx` - Individual recipe display
 
-### 3. Add Recipe Feature (`src/features/add-recipe/`)
+### 3. Recipe Feature (`src/features/recipe/`) - Add/Edit
 - **Two input modes**:
   1. **Manual Entry**: Users can create recipes directly (without backend)
   2. **URL Scraping**: Input URL → backend scrapes → pre-fills form
@@ -155,6 +166,8 @@ Navigate Back → Recipe List (shows new recipe instantly, no Firestore read)
   - (Future: image, servings, prep/cook time, tags)
 - Save button → updates Redux + writes to Firestore directly
 - Navigate back to list after save
+- **Edit Mode**: Load existing recipe and update instead of create
+- **Mobile Features**: Touch-friendly form inputs, proper keyboard handling
 
 **Components**:
 - `AddRecipe.tsx` - Main container with mode toggle
@@ -631,9 +644,10 @@ export const firebaseConfig = {
 
 ## Future Enhancements
 
-- Manual recipe entry (without URL)
-- Recipe editing (modify existing recipes)
-- Recipe deletion
+- ✅ Manual recipe entry (without URL) - **COMPLETED**
+- ✅ Recipe editing (modify existing recipes) - **COMPLETED**
+- ✅ Recipe deletion - **COMPLETED**
+- ✅ Google sign-in - **COMPLETED**
 - Search and filtering
 - Categories and tags
 - Recipe images/photos
@@ -644,6 +658,9 @@ export const firebaseConfig = {
 - Webhooks for scraping status
 - Nutrition information
 - Shopping list generation
+- Dark mode
+- Recipe import/export
+- Meal planning
 
 ## Questions/Decisions
 
