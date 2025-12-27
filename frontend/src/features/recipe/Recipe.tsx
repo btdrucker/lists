@@ -67,11 +67,11 @@ const Recipe = () => {
   // Load initial title from navigation state (for manual create flow)
   useEffect(() => {
     const state = location.state as { initialTitle?: string } | null;
-    if (state?.initialTitle && !isEditing) {
+    if (state?.initialTitle && id === 'new') {
       setTitle(state.initialTitle);
       setHasChanges(true); // Mark as changed since we have initial data
     }
-  }, [location.state, isEditing]);
+  }, [id, location]);
 
   // Load existing recipe when editing
   useEffect(() => {
