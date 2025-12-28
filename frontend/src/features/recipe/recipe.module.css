@@ -253,6 +253,15 @@
   background: var(--color-primary-hover);
 }
 
+.notFound {
+  text-align: center;
+  padding: 60px var(--spacing-lg);
+  font-size: 18px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-lighter);
+  border-radius: var(--radius-md);
+}
+
 /* Bottom save button styling */
 .form .saveButton {
   width: 100%;

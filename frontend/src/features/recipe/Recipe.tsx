@@ -46,8 +46,8 @@ const Recipe = () => {
   const user = useAppSelector((state) => state.auth?.user);
   const recipes = useAppSelector((state) => state.recipes?.recipes || []);
   
-  const isEditing = !!id && id !== 'new';
-  const existingRecipe = isEditing ? recipes.find((r: any) => r.id === id) : null;
+  const isNewRecipe = id === 'new';
+  const existingRecipe = !isNewRecipe && id ? recipes.find((r: any) => r.id === id) : null;
 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +55,7 @@ const Recipe = () => {
   // Recipe form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [notes, setNotes] = useState('');
   const [ingredients, setIngredients] = useState<Ingredient[]>([
     { amount: null, unit: null, name: '', originalText: '' },
   ]);
@@ -63,11 +64,12 @@ const Recipe = () => {
 
   // Auto-height refs for textareas
   const descriptionRef = useAutoHeight<HTMLTextAreaElement>(description);
+  const notesRef = useAutoHeight<HTMLTextAreaElement>(notes);
 
   // Load initial title from navigation state (for manual create flow)
   useEffect(() => {
     const state = location.state as { initialTitle?: string } | null;
-    if (state?.initialTitle && id === 'new') {
+    if (state?.initialTitle && isNewRecipe) {
       setTitle(state.initialTitle);
       setHasChanges(true); // Mark as changed since we have initial data
     }
@@ -78,6 +80,7 @@ const Recipe = () => {
     if (existingRecipe) {
       setTitle(existingRecipe.title);
       setDescription(existingRecipe.description || '');
+      setNotes(existingRecipe.notes || '');
       setIngredients(existingRecipe.ingredients.length > 0 ? existingRecipe.ingredients : [{ amount: null, unit: null, name: '', originalText: '' }]);
       setInstructions(existingRecipe.instructions.length > 0 ? existingRecipe.instructions : ['']);
       setHasChanges(false); // Reset changes flag when loading
@@ -105,18 +108,21 @@ const Recipe = () => {
         instructions: instructions.filter((i) => i.trim()),
       };
       
-      // Only add description if it's not empty
+      // Only add optional fields if they're not empty
       if (description.trim()) {
         recipeData.description = description.trim();
       }
+      if (notes.trim()) {
+        recipeData.notes = notes.trim();
+      }
       
       // Note: sourceUrl is NOT saved here - it's only set by the backend scrape endpoint
-      // If editing a recipe with existing sourceUrl, preserve it
-      if (isEditing && existingRecipe?.sourceUrl) {
+      // If updating a recipe with existing sourceUrl, preserve it
+      if (!isNewRecipe && existingRecipe?.sourceUrl) {
         recipeData.sourceUrl = existingRecipe.sourceUrl;
       }
 
-      if (isEditing && id) {
+      if (!isNewRecipe && id) {
         // Update existing recipe
         await updateRecipe(id, recipeData);
         dispatch(updateRecipeInState({ 
@@ -177,8 +183,38 @@ const Recipe = () => {
       );
       if (!confirmed) return;
     }
-    navigate('/recipe-list');
+    
+    // If updating an existing recipe, go back to view mode
+    // If creating new recipe, go to recipe list
+    if (!isNewRecipe && id) {
+      navigate(`/recipe/${id}`);
+    } else {
+      navigate('/recipe-list');
+    }
   };
+
+  // Handle case where recipe ID is provided but recipe doesn't exist
+  if (!isNewRecipe && id && !existingRecipe) {
+    return (
+      <div className={styles.container}>
+        <header className={styles.header}>
+          <IconButton
+            onClick={() => navigate('/recipe-list')}
+            icon="fa-angle-left"
+            hideTextOnMobile={true}
+            className={styles.backButton}
+          >
+            All recipes
+          </IconButton>
+        </header>
+        <div className={styles.form}>
+          <div className={styles.notFound}>
+            Recipe not found
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -189,7 +225,7 @@ const Recipe = () => {
           hideTextOnMobile={true}
           className={styles.backButton}
         >
-          All recipes
+          Done
         </IconButton>
         <h1>Edit recipe</h1>
         <IconButton
@@ -241,6 +277,19 @@ const Recipe = () => {
               setHasChanges(true);
             }}
             placeholder="Brief description"
+          />
+        </div>
+
+        <div className={styles.field}>
+          <label>Notes</label>
+          <textarea
+            ref={notesRef}
+            value={notes}
+            onChange={(e) => {
+              setNotes(e.target.value);
+              setHasChanges(true);
+            }}
+            placeholder="Personal notes, modifications, tips..."
           />
         </div>
 
