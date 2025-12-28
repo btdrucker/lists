@@ -1,5 +1,9 @@
 {
   "projects": {
-    "default": "listster-8ffc9"
-  }
+    "default": "listster-8ffc9",
+    "test": "listster-test",
+    "prod": "listster-8ffc9"
+  },
+  "targets": {},
+  "etags": {}
 }
