@@ -76,7 +76,7 @@ const RecipeStart = () => {
       return;
     }
 
-    // Navigate to recipe editor with title in state
+    // Navigate to recipe editor with 'new' as the id and title in state
     navigate('/edit-recipe/new', { state: { initialTitle: title.trim() } });
   };
 

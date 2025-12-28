@@ -52,7 +52,7 @@ function AppContent() {
           <>
             <Route path="/recipe-list" element={<RecipeList />} />
             <Route path="/recipe/:id" element={<ViewRecipe />} />
-            <Route path="/edit-recipe/new" element={<RecipeStart />} />
+            <Route path="/recipe-start" element={<RecipeStart />} />
             <Route path="/edit-recipe/:id" element={<Recipe />} />
             <Route path="/" element={<Navigate to="/recipe-list" replace />} />
             <Route path="*" element={<Navigate to="/recipe-list" replace />} />

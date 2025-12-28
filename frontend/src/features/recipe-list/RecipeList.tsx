@@ -102,7 +102,7 @@ const RecipeList = () => {
         <h1>My Recipes</h1>
         <div className={styles.headerButtons}>
           <IconButton
-            onClick={() => navigate('/edit-recipe/new')}
+            onClick={() => navigate('/recipe-start')}
             icon="fa-plus"
             hideTextOnMobile={true}
             className={styles.addButton}

@@ -60,30 +60,82 @@ const Recipe = () => {
     { amount: null, unit: null, name: '', originalText: '' },
   ]);
   const [instructions, setInstructions] = useState<string[]>(['']);
-  const [hasChanges, setHasChanges] = useState(false); // Always start with no changes
+  
+  // Track original state for deep comparison
+  const [originalState, setOriginalState] = useState<{
+    title: string;
+    description: string;
+    notes: string;
+    ingredients: Ingredient[];
+    instructions: string[];
+  } | null>(null);
 
   // Auto-height refs for textareas
   const descriptionRef = useAutoHeight<HTMLTextAreaElement>(description);
   const notesRef = useAutoHeight<HTMLTextAreaElement>(notes);
+
+  // Deep comparison to detect actual changes
+  const hasActualChanges = (): boolean => {
+    if (!originalState) return true; // New recipe always has changes
+    
+    // Compare scalar fields (trimmed, since save trims them)
+    if (title.trim() !== originalState.title) return true;
+    if (description.trim() !== (originalState.description || '')) return true;
+    if (notes.trim() !== (originalState.notes || '')) return true;
+    
+    // Compare ingredients (filter out empty ones like save does)
+    const currIngredients = ingredients.filter(i => i.name.trim());
+    const origIngredients = originalState.ingredients.filter(i => i.name.trim());
+    if (currIngredients.length !== origIngredients.length) return true;
+    
+    for (let i = 0; i < currIngredients.length; i++) {
+      if (currIngredients[i].name.trim() !== origIngredients[i].name.trim()) return true;
+      if (currIngredients[i].originalText?.trim() !== origIngredients[i].originalText?.trim()) return true;
+    }
+    
+    // Compare instructions (filter out empty ones like save does)
+    const currInstructions = instructions.filter(i => i.trim());
+    const origInstructions = originalState.instructions.filter(i => i.trim());
+    if (currInstructions.length !== origInstructions.length) return true;
+    
+    for (let i = 0; i < currInstructions.length; i++) {
+      if (currInstructions[i].trim() !== origInstructions[i].trim()) return true;
+    }
+    
+    return false; // No changes detected
+  };
 
   // Load initial title from navigation state (for manual create flow)
   useEffect(() => {
     const state = location.state as { initialTitle?: string } | null;
     if (state?.initialTitle && isNewRecipe) {
       setTitle(state.initialTitle);
-      setHasChanges(true); // Mark as changed since we have initial data
+      // For new recipes, set original state to null (no saved state to compare against)
+      setOriginalState(null);
     }
   }, [id, location]);
 
   // Load existing recipe when editing
   useEffect(() => {
     if (existingRecipe) {
-      setTitle(existingRecipe.title);
-      setDescription(existingRecipe.description || '');
-      setNotes(existingRecipe.notes || '');
-      setIngredients(existingRecipe.ingredients.length > 0 ? existingRecipe.ingredients : [{ amount: null, unit: null, name: '', originalText: '' }]);
-      setInstructions(existingRecipe.instructions.length > 0 ? existingRecipe.instructions : ['']);
-      setHasChanges(false); // Reset changes flag when loading
+      const initialState = {
+        title: existingRecipe.title,
+        description: existingRecipe.description || '',
+        notes: existingRecipe.notes || '',
+        ingredients: existingRecipe.ingredients.length > 0 
+          ? existingRecipe.ingredients 
+          : [{ amount: null, unit: null, name: '', originalText: '' }],
+        instructions: existingRecipe.instructions.length > 0 
+          ? existingRecipe.instructions 
+          : ['']
+      };
+      
+      setTitle(initialState.title);
+      setDescription(initialState.description);
+      setNotes(initialState.notes);
+      setIngredients(initialState.ingredients);
+      setInstructions(initialState.instructions);
+      setOriginalState(initialState); // Store original for comparison
     }
   }, [existingRecipe]);
 
@@ -146,18 +198,15 @@ const Recipe = () => {
       console.error('Save error:', err);
     } finally {
       setIsSaving(false);
-      setHasChanges(false);
     }
   };
 
   const addIngredient = () => {
     setIngredients([...ingredients, { amount: null, unit: null, name: '', originalText: '' }]);
-    setHasChanges(true);
   };
 
   const removeIngredient = (index: number) => {
     setIngredients(ingredients.filter((_, i) => i !== index));
-    setHasChanges(true);
   };
 
   const updateInstruction = (index: number, value: string) => {
@@ -168,16 +217,14 @@ const Recipe = () => {
 
   const addInstruction = () => {
     setInstructions([...instructions, '']);
-    setHasChanges(true);
   };
 
   const removeInstruction = (index: number) => {
     setInstructions(instructions.filter((_, i) => i !== index));
-    setHasChanges(true);
   };
 
   const handleCancel = () => {
-    if (hasChanges) {
+    if (hasActualChanges()) {
       const confirmed = window.confirm(
         'You have unsaved changes. Are you sure you want to leave? Your changes will be lost.'
       );
@@ -230,7 +277,7 @@ const Recipe = () => {
         <h1>Edit recipe</h1>
         <IconButton
           onClick={handleSave}
-          disabled={isSaving || !hasChanges}
+          disabled={isSaving || !hasActualChanges()}
           icon="fa-floppy-disk"
           hideTextOnMobile={true}
           className={styles.saveButton}
@@ -249,7 +296,6 @@ const Recipe = () => {
             value={title}
             onChange={(e) => {
               setTitle(e.target.value);
-              setHasChanges(true);
             }}
             placeholder="Recipe title"
           />
@@ -274,7 +320,6 @@ const Recipe = () => {
             value={description}
             onChange={(e) => {
               setDescription(e.target.value);
-              setHasChanges(true);
             }}
             placeholder="Brief description"
           />
@@ -287,7 +332,6 @@ const Recipe = () => {
             value={notes}
             onChange={(e) => {
               setNotes(e.target.value);
-              setHasChanges(true);
             }}
             placeholder="Personal notes, modifications, tips..."
           />
@@ -309,7 +353,6 @@ const Recipe = () => {
                     name: value // Set name to the same value for manual entry
                   };
                   setIngredients(updated);
-                  setHasChanges(true);
                 }}
                 placeholder="e.g., 2 cups flour"
                 className={styles.ingredientInput}
@@ -336,7 +379,6 @@ const Recipe = () => {
               value={instruction}
               onChange={(value) => {
                 updateInstruction(index, value);
-                setHasChanges(true);
               }}
               onRemove={() => removeInstruction(index)}
             />
@@ -348,7 +390,7 @@ const Recipe = () => {
 
         <button
           onClick={handleSave}
-          disabled={isSaving || !hasChanges}
+          disabled={isSaving || !hasActualChanges()}
           className={styles.saveButton}
         >
           {isSaving ? 'Saving...' : 'Save'}
