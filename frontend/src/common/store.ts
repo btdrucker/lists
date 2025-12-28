@@ -40,6 +40,7 @@ const persistConfig = {
   transforms: [recipesTransform],
 };
 
+// @ts-ignore - redux-persist types are complex, this is a known TypeScript issue
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
 const store = configureStore({

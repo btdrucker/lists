@@ -12,22 +12,21 @@ const __dirname = dirname(__filename);
 // Initialize Firebase Admin SDK
 const initializeFirebase = () => {
   if (admin.apps.length === 0) {
-    // Try to use service account JSON file if it exists
-    const serviceAccountPath = join(__dirname, '../../listster-8ffc9-firebase-adminsdk-fbsvc-9a011b87e1.json');
-    
-    try {
-      const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-      });
-    } catch (error) {
-      // Fallback to environment variables
+    // Prefer environment variables (for deployments)
+    if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
       admin.initializeApp({
         credential: admin.credential.cert({
           projectId: process.env.FIREBASE_PROJECT_ID,
-          privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
           clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
         }),
+      });
+    } else {
+      // Fallback to service account JSON file (for local development)
+      const serviceAccountPath = join(__dirname, '../../listster-8ffc9-firebase-adminsdk-fbsvc-9a011b87e1.json');
+      const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
       });
     }
   }

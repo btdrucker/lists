@@ -1,8 +1,0 @@
-# Get these from Firebase Console → Project Settings → Service Accounts → Generate new private key
-FIREBASE_PROJECT_ID=listster-8ffc9
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@listster-8ffc9.iam.gserviceaccount.com
-
-PORT=3001
-NODE_ENV=development
-FRONTEND_URL=http://localhost:5173

@@ -66,6 +66,19 @@ node_modules/
 
 # dotenv environment variables file
 .env
+.env.*
+backend/.env
+backend/.env.*
+
+# Firebase config files with sensitive data
+frontend/src/firebase/config.test.ts
+frontend/src/firebase/config.production.ts
+
+# Frontend environment files
+frontend/.env.test
+frontend/.env.production
 
 # dataconnect generated files
 .dataconnect
+
+*-firebase-adminsdk-*.json
