@@ -48,6 +48,11 @@
   /* Transitions */
   --transition-fast: 0.2s;
   --transition-normal: 0.3s;
+  
+  /* Breakpoints (Note: CSS variables can't be used in @media queries)
+     Use these values consistently across all CSS files:
+     - Mobile/Tablet: @media (max-width: 640px)
+  */
 }
 
 /* Button modifier classes */
