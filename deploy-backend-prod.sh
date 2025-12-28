@@ -22,7 +22,7 @@ gcloud run deploy listster-backend-prod \
   --region us-central1 \
   --allow-unauthenticated \
   --project listster-8ffc9 \
-  --set-env-vars NODE_ENV=production,FRONTEND_URL=https://listster-8ffc9.web.app,FIREBASE_PROJECT_ID=listster-8ffc9,FIREBASE_CLIENT_EMAIL=YOUR_PROD_CLIENT_EMAIL \
+  --set-env-vars NODE_ENV=production,FRONTEND_URL=https://listster-8ffc9.web.app,FIREBASE_PROJECT_ID=listster-8ffc9,FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@listster-8ffc9.iam.gserviceaccount.com \
   --update-secrets=FIREBASE_PRIVATE_KEY=listster-prod-firebase-key:latest
 
 echo ""
