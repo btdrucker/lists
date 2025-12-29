@@ -217,14 +217,18 @@
 }
 
 .ingredientList {
-  list-style: none;
-  padding: 0;
+  list-style: square;
+  padding-left: var(--spacing-xl);
   margin: 0;
 }
 
 .ingredientList li {
   padding: var(--spacing-sm) 0;
   color: var(--color-text-primary);
+}
+
+.ingredientList li::marker {
+  color: var(--color-text-secondary);
 }
 
 .instructionList {
