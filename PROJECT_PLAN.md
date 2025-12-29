@@ -467,6 +467,26 @@ For future queries like filtering/sorting, create in Firebase Console or `firest
 - **Ingredient Parsing**: `recipe-ingredient-parser-v3` or custom parser for structured ingredient data
 - **Database**: Firestore via Admin SDK
 
+### Recipe Schema Standards
+
+**Key References**:
+- [Schema.org Recipe Specification](https://schema.org/Recipe) - Official structured data vocabulary for recipes
+- [Google Recipe Structured Data Guidelines](https://developers.google.com/search/docs/appearance/structured-data/recipe) - Best practices for recipe markup
+
+**JSON-LD Recipe Format**:
+Most modern recipe websites use JSON-LD (JavaScript Object Notation for Linked Data) embedded in `<script type="application/ld+json">` tags. The scraper prioritizes extracting data from JSON-LD when available.
+
+**Common Structured Data Patterns**:
+1. **Simple text ingredients**: `"1 yellow onion"` (most common)
+2. **PropertyValue objects**: `{ "@type": "PropertyValue", "value": 1, "name": "egg" }`
+3. **PropertyValue with units**: `{ "@type": "PropertyValue", "value": "3/4", "name": "sugar", "unitCode": "G21" }`
+4. **@graph wrapper**: WordPress sites often nest Recipe data inside a `@graph` array
+
+**Implementation Notes**:
+- Our scraper checks for `@graph` structure and extracts Recipe objects from it
+- Falls back to HTML parsing when JSON-LD is unavailable or malformed
+- Preserves original ingredient text while attempting to parse structured data
+
 ### API Endpoints
 
 #### POST `/scrape`

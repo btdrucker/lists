@@ -3,6 +3,7 @@ export interface Ingredient {
   amountMax?: number | null;
   unit: string | null;
   name: string;
+  section?: string;
   optional?: boolean;
   originalText: string;
 }
