@@ -214,7 +214,10 @@ function extractFromJsonLd($: cheerio.CheerioAPI): ScrapedRecipe | null {
       }
 
       for (const data of recipes) {
-        if (data['@type'] === 'Recipe') {
+        const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
+        const isRecipe = typeArray.includes('Recipe');
+        
+        if (isRecipe) {
           // Debug: Check JSON-LD ingredient format
           console.log('\n=== JSON-LD INGREDIENT FORMAT ===');
           if (data.recipeIngredient && data.recipeIngredient.length > 0) {
@@ -343,6 +346,64 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
   
   if (imageUrlText) {
     recipe.imageUrl = imageUrlText;
+  }
+  
+  // Try to get servings, prepTime, cookTime from JSON-LD if available
+  console.log('\n--- Supplementary data from JSON-LD (HTML extraction) ---');
+  try {
+    const scriptTags = $('script[type="application/ld+json"]');
+    console.log(`Found ${scriptTags.length} JSON-LD script tags`);
+    
+    for (let i = 0; i < scriptTags.length; i++) {
+      const scriptContent = $(scriptTags[i]).html();
+      if (!scriptContent) continue;
+      
+      const jsonData = JSON.parse(scriptContent);
+      let recipes = Array.isArray(jsonData) ? jsonData : [jsonData];
+      if (jsonData['@graph']) {
+        recipes = jsonData['@graph'];
+      }
+      
+      for (const data of recipes) {
+        const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
+        const isRecipe = typeArray.includes('Recipe');
+        
+        if (isRecipe) {
+          console.log('Found Recipe in JSON-LD');
+          console.log('  recipeYield:', data.recipeYield);
+          console.log('  prepTime:', data.prepTime);
+          console.log('  cookTime:', data.cookTime);
+          
+          if (data.recipeYield) {
+            const servings = parseInt(String(data.recipeYield));
+            if (!isNaN(servings)) {
+              recipe.servings = servings;
+              console.log('  ✓ Extracted servings:', servings);
+            }
+          }
+          
+          if (data.prepTime) {
+            const prepTime = parseDuration(data.prepTime);
+            if (prepTime) {
+              recipe.prepTime = prepTime;
+              console.log('  ✓ Extracted prepTime:', prepTime, 'minutes');
+            }
+          }
+          
+          if (data.cookTime) {
+            const cookTime = parseDuration(data.cookTime);
+            if (cookTime) {
+              recipe.cookTime = cookTime;
+              console.log('  ✓ Extracted cookTime:', cookTime, 'minutes');
+            }
+          }
+          
+          break;
+        }
+      }
+    }
+  } catch (error) {
+    console.log('Error extracting supplementary data from JSON-LD:', error);
   }
   
   return recipe;
@@ -486,6 +547,79 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
     recipe.imageUrl = imageUrl;
   }
 
+  // Try to get servings, prepTime, cookTime from JSON-LD if available
+  console.log('\n--- Supplementary data from JSON-LD ---');
+  try {
+    const scriptTags = $('script[type="application/ld+json"]');
+    console.log(`Found ${scriptTags.length} JSON-LD script tags`);
+    
+    for (let i = 0; i < scriptTags.length; i++) {
+      const scriptContent = $(scriptTags[i]).html();
+      if (!scriptContent) {
+        console.log(`  Script ${i}: empty`);
+        continue;
+      }
+      
+      const jsonData = JSON.parse(scriptContent);
+      console.log(`  Script ${i} @type:`, jsonData['@type']);
+      console.log(`  Script ${i} has @graph:`, !!jsonData['@graph']);
+      
+      let recipes = Array.isArray(jsonData) ? jsonData : [jsonData];
+      if (jsonData['@graph']) {
+        recipes = jsonData['@graph'];
+        console.log(`  @graph contains ${recipes.length} items`);
+        recipes.forEach((item: any, idx: number) => {
+          console.log(`    Item ${idx} @type:`, item['@type']);
+        });
+      }
+      
+      for (const data of recipes) {
+        const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
+        const isRecipe = typeArray.includes('Recipe');
+        
+        if (isRecipe) {
+          console.log('✓ Found Recipe in JSON-LD');
+          console.log('  recipeYield:', data.recipeYield);
+          console.log('  prepTime:', data.prepTime);
+          console.log('  cookTime:', data.cookTime);
+          
+          if (data.recipeYield && !recipe.servings) {
+            const servings = parseInt(String(data.recipeYield));
+            if (!isNaN(servings)) {
+              recipe.servings = servings;
+              console.log('  ✓ Extracted servings:', servings);
+            }
+          }
+          
+          if (data.prepTime && !recipe.prepTime) {
+            const prepTime = parseDuration(data.prepTime);
+            if (prepTime) {
+              recipe.prepTime = prepTime;
+              console.log('  ✓ Extracted prepTime:', prepTime, 'minutes');
+            }
+          }
+          
+          if (data.cookTime && !recipe.cookTime) {
+            const cookTime = parseDuration(data.cookTime);
+            if (cookTime) {
+              recipe.cookTime = cookTime;
+              console.log('  ✓ Extracted cookTime:', cookTime, 'minutes');
+            }
+          }
+          
+          break;
+        }
+      }
+    }
+  } catch (error) {
+    console.log('Error extracting supplementary data from JSON-LD:', error);
+  }
+
+  console.log('\n--- Final recipe metadata ---');
+  console.log('Servings:', recipe.servings || 'not set');
+  console.log('Prep time:', recipe.prepTime ? `${recipe.prepTime} minutes` : 'not set');
+  console.log('Cook time:', recipe.cookTime ? `${recipe.cookTime} minutes` : 'not set');
+
   return recipe;
 }
 
@@ -614,6 +748,91 @@ function extractFromWPRM($: cheerio.CheerioAPI): ScrapedRecipe | null {
   const imageUrl = wprmContainer.find('.wprm-recipe-image img').attr('src');
   if (imageUrl) {
     recipe.imageUrl = imageUrl;
+  }
+
+  // Extract servings, prepTime, cookTime from WPRM fields
+  const servingsText = wprmContainer.find('.wprm-recipe-servings').text().trim();
+  if (servingsText) {
+    const servings = parseInt(servingsText);
+    if (!isNaN(servings)) {
+      recipe.servings = servings;
+    }
+  }
+
+  const prepTimeText = wprmContainer.find('.wprm-recipe-prep_time-minutes').text().trim();
+  if (prepTimeText) {
+    const prepTime = parseInt(prepTimeText);
+    if (!isNaN(prepTime)) {
+      recipe.prepTime = prepTime;
+    }
+  }
+
+  const cookTimeText = wprmContainer.find('.wprm-recipe-cook_time-minutes').text().trim();
+  if (cookTimeText) {
+    const cookTime = parseInt(cookTimeText);
+    if (!isNaN(cookTime)) {
+      recipe.cookTime = cookTime;
+    }
+  }
+
+  // If we didn't get times from WPRM, try JSON-LD as fallback
+  if (!recipe.servings || !recipe.prepTime || !recipe.cookTime) {
+    console.log('\n--- Supplementary data from JSON-LD (WPRM fallback) ---');
+    try {
+      const scriptTags = $('script[type="application/ld+json"]');
+      console.log(`Found ${scriptTags.length} JSON-LD script tags`);
+      
+      for (let i = 0; i < scriptTags.length; i++) {
+        const scriptContent = $(scriptTags[i]).html();
+        if (!scriptContent) continue;
+        
+        const jsonData = JSON.parse(scriptContent);
+        let recipes = Array.isArray(jsonData) ? jsonData : [jsonData];
+        if (jsonData['@graph']) {
+          recipes = jsonData['@graph'];
+        }
+        
+        for (const data of recipes) {
+          const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
+          const isRecipe = typeArray.includes('Recipe');
+          
+          if (isRecipe) {
+            console.log('Found Recipe in JSON-LD');
+            console.log('  recipeYield:', data.recipeYield);
+            console.log('  prepTime:', data.prepTime);
+            console.log('  cookTime:', data.cookTime);
+            
+            if (data.recipeYield && !recipe.servings) {
+              const servings = parseInt(String(data.recipeYield));
+              if (!isNaN(servings)) {
+                recipe.servings = servings;
+                console.log('  ✓ Extracted servings:', servings);
+              }
+            }
+            
+            if (data.prepTime && !recipe.prepTime) {
+              const prepTime = parseDuration(data.prepTime);
+              if (prepTime) {
+                recipe.prepTime = prepTime;
+                console.log('  ✓ Extracted prepTime:', prepTime, 'minutes');
+              }
+            }
+            
+            if (data.cookTime && !recipe.cookTime) {
+              const cookTime = parseDuration(data.cookTime);
+              if (cookTime) {
+                recipe.cookTime = cookTime;
+                console.log('  ✓ Extracted cookTime:', cookTime, 'minutes');
+              }
+            }
+            
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      console.log('Error extracting supplementary data from JSON-LD:', error);
+    }
   }
 
   return recipe;
