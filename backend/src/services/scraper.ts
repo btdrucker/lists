@@ -304,14 +304,22 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
 
   // Try to extract instructions
   const instructions: string[] = [];
-  $('li[class*="instruction"], .instruction, [itemprop="recipeInstructions"] li, ol[class*="instruction"] li').each((_, elem) => {
+  $('li[class*="instruction"], li[class*="direction"], li[class*="step"], .instruction, [itemprop="recipeInstructions"] li, ol[class*="instruction"] li, ol[class*="direction"] li, ol[class*="step"] li').each((_, elem) => {
     const text = $(elem).text().trim();
     if (text) instructions.push(cleanListItemText(text));
   });
 
+  // Try Dotdash/AllRecipes pattern (mntl-sc-block)
+  if (instructions.length === 0) {
+    $('.mntl-sc-block-group--OL li.mntl-sc-block-group--LI p.mntl-sc-block-html').each((_, elem) => {
+      const text = $(elem).text().trim();
+      if (text) instructions.push(cleanListItemText(text));
+    });
+  }
+
   // If no list items found, try paragraphs
   if (instructions.length === 0) {
-    $('[class*="instruction"] p, [class*="direction"] p').each((_, elem) => {
+    $('[class*="instruction"] p, [class*="direction"] p, [class*="step"] p').each((_, elem) => {
       const text = $(elem).text().trim();
       if (text) instructions.push(cleanListItemText(text));
     });
@@ -433,15 +441,26 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
 
   // Extract instructions
   const instructions: string[] = [];
-  $('li[class*="instruction"], .instruction, [itemprop="recipeInstructions"] li, ol[class*="instruction"] li').each((_, elem) => {
+  $('li[class*="instruction"], li[class*="direction"], li[class*="step"], .instruction, [itemprop="recipeInstructions"] li, ol[class*="instruction"] li, ol[class*="direction"] li, ol[class*="step"] li').each((_, elem) => {
     const text = $(elem).text().trim();
     if (text) {
       instructions.push(cleanListItemText(text));
     }
   });
 
+  // Try Dotdash/AllRecipes pattern (mntl-sc-block)
   if (instructions.length === 0) {
-    $('[class*="instruction"] p, [class*="direction"] p').each((_, elem) => {
+    $('.mntl-sc-block-group--OL li.mntl-sc-block-group--LI p.mntl-sc-block-html').each((_, elem) => {
+      const text = $(elem).text().trim();
+      if (text) {
+        instructions.push(cleanListItemText(text));
+      }
+    });
+  }
+
+  // Generic fallback
+  if (instructions.length === 0) {
+    $('[class*="instruction"] p, [class*="direction"] p, [class*="step"] p').each((_, elem) => {
       const text = $(elem).text().trim();
       if (text) {
         instructions.push(cleanListItemText(text));
