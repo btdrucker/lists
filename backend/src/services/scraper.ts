@@ -541,6 +541,21 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
   // Build a map of sections by looking for headings before ingredient lists
   const sectionMap = new Map<any, string>();
   
+  // AllRecipes uses specific class for ingredient section headings
+  $('.mm-recipes-structured-ingredients__list-heading').each((_, header) => {
+    const $header = $(header);
+    const headerText = $header.text().trim();
+    
+    // The next sibling should be the ul.mm-recipes-structured-ingredients__list
+    const $list = $header.next('ul.mm-recipes-structured-ingredients__list');
+    if ($list.length) {
+      $list.find('[data-ingredient-name]').each((_, ing) => {
+        sectionMap.set(ing, headerText);
+      });
+    }
+  });
+  
+  // Generic fallback for other sites using h2/h3/h4/strong
   $('h2, h3, h4, strong').each((_, header) => {
     const $header = $(header);
     const headerText = $header.text().trim();

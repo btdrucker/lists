@@ -194,13 +194,31 @@ const ViewRecipe = () => {
 
         <section className={styles.section}>
           <h2>Ingredients</h2>
-          <ul className={styles.ingredientList}>
-            {recipe.ingredients.map((ingredient: any, index: number) => (
-              <li key={index}>
-                {ingredient.originalText || ingredient.name}
-              </li>
-            ))}
-          </ul>
+          {(() => {
+            // Group ingredients by section
+            const sections = new Map<string | null, any[]>();
+            recipe.ingredients.forEach((ingredient: any) => {
+              const section = ingredient.section || null;
+              if (!sections.has(section)) {
+                sections.set(section, []);
+              }
+              sections.get(section)!.push(ingredient);
+            });
+
+            // Render each section
+            return Array.from(sections.entries()).map(([sectionName, ingredients], sectionIndex) => (
+              <div key={sectionIndex} className={styles.ingredientSection}>
+                {sectionName && <h3 className={styles.ingredientSectionTitle}>{sectionName}</h3>}
+                <ul className={styles.ingredientList}>
+                  {ingredients.map((ingredient: any, index: number) => (
+                    <li key={index}>
+                      {ingredient.originalText || ingredient.name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ));
+          })()}
         </section>
 
         <section className={styles.section}>
