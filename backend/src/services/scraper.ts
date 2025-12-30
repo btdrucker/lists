@@ -13,75 +13,189 @@ interface ScrapedRecipe {
 }
 
 // Unit synonyms: normalized unit → array of variations
-// The key is the normalized form, values are all synonyms (including the normalized form)
+// The key is the canonical/normalized form, values are ONLY the synonyms (not including the key)
+// Empty array means no synonyms exist
 // This enables unit normalization for shopping list aggregation:
 //   e.g., "1 lb carrots" + "2 pounds carrots" → both use "pound" unit
 const UNIT_SYNONYMS: Record<string, string[]> = {
   // Volume
-  'cup': ['cup', 'cups', 'c'],
-  'tablespoon': ['tablespoon', 'tablespoons', 'tbsp', 'tbs', 'T'],
-  'teaspoon': ['teaspoon', 'teaspoons', 'tsp', 't'],
-  'fluid ounce': ['fluid ounce', 'fluid ounces', 'fl oz', 'fl. oz.'],
-  'milliliter': ['milliliter', 'milliliters', 'ml', 'mL'],
-  'liter': ['liter', 'liters', 'l', 'L'],
-  'pint': ['pint', 'pints', 'pt'],
-  'quart': ['quart', 'quarts', 'qt'],
-  'gallon': ['gallon', 'gallons', 'gal'],
+  'cup': ['cups', 'c'],
+  'tablespoon': ['tablespoons', 'tbsp', 'tbs', 'T'],
+  'teaspoon': ['teaspoons', 'tsp', 't'],
+  'fluid ounce': ['fluid ounces', 'fl oz', 'fl. oz.'],
+  'milliliter': ['milliliters', 'ml', 'mL'],
+  'liter': ['liters', 'l', 'L'],
+  'pint': ['pints', 'pt'],
+  'quart': ['quarts', 'qt'],
+  'gallon': ['gallons', 'gal'],
   // Weight
-  'pound': ['pound', 'pounds', 'lb', 'lbs'],
-  'ounce': ['ounce', 'ounces', 'oz'],
-  'gram': ['gram', 'grams', 'g'],
-  'kilogram': ['kilogram', 'kilograms', 'kg'],
+  'pound': ['pounds', 'lb', 'lbs'],
+  'ounce': ['ounces', 'oz'],
+  'gram': ['grams', 'g'],
+  'kilogram': ['kilograms', 'kg'],
   // Count/Pieces
-  'piece': ['piece', 'pieces', 'pc'],
-  'whole': ['whole', 'wholes'],
-  'clove': ['clove', 'cloves'],
-  'slice': ['slice', 'slices'],
-  'can': ['can', 'cans'],
-  'package': ['package', 'packages', 'pkg'],
-  'jar': ['jar', 'jars'],
-  'bunch': ['bunch', 'bunches'],
-  'head': ['head', 'heads'],
-  'stalk': ['stalk', 'stalks'],
-  'sprig': ['sprig', 'sprigs'],
-  'leaf': ['leaf', 'leaves'],
+  'piece': ['pieces', 'pc'],
+  'whole': ['wholes'],
+  'clove': ['cloves'],
+  'slice': ['slices'],
+  'can': ['cans'],
+  'package': ['packages', 'pkg'],
+  'jar': ['jars'],
+  'bunch': ['bunches'],
+  'head': ['heads'],
+  'stalk': ['stalks'],
+  'sprig': ['sprigs'],
+  'leaf': ['leaves'],
   // Special
-  'pinch': ['pinch', 'pinches'],
-  'dash': ['dash', 'dashes'],
-  'handful': ['handful', 'handfuls'],
-  'to taste': ['to taste'],
+  'pinch': ['pinches'],
+  'dash': ['dashes'],
+  'handful': ['handfuls'],
+  'to taste': [],
 };
 
 // Flatten to list for matching, and build reverse lookup map
-const COMMON_UNITS = Object.values(UNIT_SYNONYMS).flat();
+// Include both canonical forms and their synonyms
+const COMMON_UNITS = [
+  ...Object.keys(UNIT_SYNONYMS),
+  ...Object.values(UNIT_SYNONYMS).flat()
+];
+
 const UNIT_NORMALIZATION_MAP: Record<string, string> = {};
 for (const [normalized, synonyms] of Object.entries(UNIT_SYNONYMS)) {
+  // Map canonical form to itself
+  UNIT_NORMALIZATION_MAP[normalized.toLowerCase()] = normalized;
+  // Map each synonym to the canonical form
   for (const synonym of synonyms) {
     UNIT_NORMALIZATION_MAP[synonym.toLowerCase()] = normalized;
   }
 }
 
-// Unicode fraction mappings
-const UNICODE_FRACTIONS: Record<string, string> = {
-  '¼': '1/4',
-  '½': '1/2',
-  '¾': '3/4',
-  '⅐': '1/7',
-  '⅑': '1/9',
-  '⅒': '1/10',
-  '⅓': '1/3',
-  '⅔': '2/3',
-  '⅕': '1/5',
-  '⅖': '2/5',
-  '⅗': '3/5',
-  '⅘': '4/5',
-  '⅙': '1/6',
-  '⅚': '5/6',
-  '⅛': '1/8',
-  '⅜': '3/8',
-  '⅝': '5/8',
-  '⅞': '7/8',
-};
+/**
+ * Normalize Unicode fractions to ASCII format using NFKD normalization
+ * E.g., "¼" → "1/4", "½" → "1/2"
+ * 
+ * NFKD decomposition turns "¼" into "1⁄4" (using the special fraction slash U+2044)
+ * We then replace the special Unicode fraction slash with an ASCII forward slash
+ */
+function normalizeFractions(input: string): string {
+  // 1. Decompose characters using NFKD normalization
+  // This turns "¼" into "1⁄4" (using the special fraction slash U+2044)
+  const decomposed = input.normalize("NFKD");
+
+  // 2. Replace the special Unicode fraction slash (U+2044) with an ASCII forward slash (U+002F)
+  // The fraction slash character is different from a standard forward slash
+  const normalized = decomposed.replace(/\u2044/g, '/');
+
+  return normalized;
+}
+
+/**
+ * Parse a single amount string (no ranges)
+ * Handles Unicode fractions (e.g., "½" → "1/2") and mixed fractions (e.g., "1 1/2")
+ * 
+ * @param amountStr - A single amount string (should not contain ranges)
+ * @param parseFunc - The parsing function to use (parseFraction for text, parseFloat for decimals)
+ * @returns Parsed number or null
+ */
+function parseSingleAmount(
+  amountStr: string,
+  parseFunc: (str: string) => number | null = parseFraction
+): number | null {
+  // Normalize Unicode fractions (e.g., "½" → "1/2")
+  const normalized = normalizeFractions(amountStr);
+  
+  // Check for mixed fractions like "1 1/2" (only when using parseFraction)
+  if (parseFunc === parseFraction) {
+    const mixedMatch = normalized.match(/^(\d+)\s+(\d+\/\d+)$/);
+    if (mixedMatch) {
+      const whole = parseFloat(mixedMatch[1]);
+      const frac = parseFraction(mixedMatch[2]);
+      return frac !== null ? whole + frac : whole;
+    }
+  }
+  
+  // Parse the normalized string
+  return parseFunc(normalized);
+}
+
+/**
+ * Detect if an amount string contains a range and split it
+ * E.g., "1-2" → { isRange: true, min: "1", max: "2" }
+ * E.g., "½" → { isRange: false, value: "½" }
+ * 
+ * @param amountStr - The amount string to check
+ * @returns Object indicating if it's a range and the value(s)
+ */
+function splitAmountRange(amountStr: string): 
+  | { isRange: false; value: string }
+  | { isRange: true; min: string; max: string } {
+  
+  // Check if there's a range (before normalizing, to avoid confusion with fractions like "1/2")
+  if (amountStr.includes('-')) {
+    // Handle ranges like "1-2" or "½-1" or "1 1/2 - 2 1/2"
+    const parts = amountStr.split('-').map(s => s.trim());
+    if (parts.length === 2) {
+      return {
+        isRange: true,
+        min: parts[0],
+        max: parts[1],
+      };
+    }
+  }
+  
+  // No range - single value
+  return {
+    isRange: false,
+    value: amountStr,
+  };
+}
+
+/**
+ * Parse an amount string that may contain ranges (e.g., "1-2", "½-1") or mixed fractions (e.g., "1 1/2")
+ * Each part of a range gets full parsing/normalization treatment
+ * 
+ * @param amountStr - The amount string to parse (may contain Unicode fractions and/or ranges)
+ * @param parseFunc - The parsing function to use (parseFraction for text, parseFloat for decimals)
+ * @returns Object with amount and optional amountMax
+ */
+function parseAmountWithRange(
+  amountStr: string,
+  parseFunc: (str: string) => number | null = parseFraction
+): { amount: number | null; amountMax?: number | null } {
+  const split = splitAmountRange(amountStr);
+  
+  if (split.isRange) {
+    // Parse each side of the range with full normalization and mixed fraction handling
+    return {
+      amount: parseSingleAmount(split.min, parseFunc),
+      amountMax: parseSingleAmount(split.max, parseFunc),
+    };
+  } else {
+    // No range - parse as single amount
+    return {
+      amount: parseSingleAmount(split.value, parseFunc),
+    };
+  }
+}
+
+/**
+ * Helper to log recipe sample data
+ * Always shows all fields, indicating when values are missing
+ */
+function logRecipeSample(recipe: ScrapedRecipe): void {
+  console.log('Title:', recipe.title || 'N/A');
+  console.log('Description:', recipe.description ? recipe.description.substring(0, 100) + '...' : 'N/A');
+  console.log('Image URL:', recipe.imageUrl || 'N/A');
+  console.log('Servings:', recipe.servings ?? 'N/A');
+  console.log('Prep Time:', recipe.prepTime ? `${recipe.prepTime} min` : 'N/A');
+  console.log('Cook Time:', recipe.cookTime ? `${recipe.cookTime} min` : 'N/A');
+  console.log('Ingredients count:', recipe.ingredients.length);
+  console.log('Sample ingredients:');
+  recipe.ingredients.slice(0, 3).forEach((ing, i) => {
+    console.log(`  [${i}]`, JSON.stringify(ing, null, 2));
+  });
+  console.log('Instructions count:', recipe.instructions.length);
+}
 
 /**
  * Scrape recipe from HTML content (useful for testing with fixtures)
@@ -108,13 +222,7 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
     const wprmRecipe = extractFromWPRM($);
     if (wprmRecipe) {
       console.log('✓ WPRM extraction successful');
-      console.log('Title:', wprmRecipe.title);
-      console.log('Ingredients count:', wprmRecipe.ingredients.length);
-      console.log('Sample ingredients:');
-      wprmRecipe.ingredients.slice(0, 3).forEach((ing, i) => {
-        console.log(`  [${i}]`, JSON.stringify(ing, null, 2));
-      });
-      console.log('Instructions count:', wprmRecipe.instructions.length);
+      logRecipeSample(wprmRecipe);
       console.log('\n✅ Using WPRM extraction');
       return wprmRecipe;
     }
@@ -125,13 +233,7 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
     const dataAttrRecipe = extractFromDataAttributes($);
     if (dataAttrRecipe && dataAttrRecipe.ingredients.length > 0) {
       console.log('✓ Data attribute extraction successful');
-      console.log('Title:', dataAttrRecipe.title);
-      console.log('Ingredients count:', dataAttrRecipe.ingredients.length);
-      console.log('Sample ingredients:');
-      dataAttrRecipe.ingredients.slice(0, 3).forEach((ing, i) => {
-        console.log(`  [${i}]`, JSON.stringify(ing, null, 2));
-      });
-      console.log('Instructions count:', dataAttrRecipe.instructions.length);
+      logRecipeSample(dataAttrRecipe);
       console.log('\n✅ Using data attribute extraction');
       return dataAttrRecipe;
     }
@@ -142,18 +244,7 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
     const jsonLdRecipe = extractFromJsonLd($);
     if (jsonLdRecipe) {
       console.log('✓ JSON-LD extraction successful');
-      console.log('Title:', jsonLdRecipe.title);
-      console.log('Description:', jsonLdRecipe.description ? jsonLdRecipe.description.substring(0, 100) + '...' : 'N/A');
-      console.log('Image URL:', jsonLdRecipe.imageUrl || 'N/A');
-      console.log('Servings:', jsonLdRecipe.servings || 'N/A');
-      console.log('Prep Time:', jsonLdRecipe.prepTime ? `${jsonLdRecipe.prepTime} min` : 'N/A');
-      console.log('Cook Time:', jsonLdRecipe.cookTime ? `${jsonLdRecipe.cookTime} min` : 'N/A');
-      console.log('Ingredients count:', jsonLdRecipe.ingredients.length);
-      console.log('Sample ingredients:');
-      jsonLdRecipe.ingredients.slice(0, 3).forEach((ing, i) => {
-        console.log(`  [${i}]`, JSON.stringify(ing, null, 2));
-      });
-      console.log('Instructions count:', jsonLdRecipe.instructions.length);
+      logRecipeSample(jsonLdRecipe);
       console.log('\n✅ Using JSON-LD extraction (with text parsing)');
       return jsonLdRecipe;
     }
@@ -163,14 +254,7 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
     console.log('\n--- Falling back to generic HTML extraction ---');
     const htmlRecipe = extractFromHtml($, url);
     console.log('✓ HTML extraction complete');
-    console.log('Title:', htmlRecipe.title);
-    console.log('Description:', htmlRecipe.description ? htmlRecipe.description.substring(0, 100) + '...' : 'N/A');
-    console.log('Ingredients count:', htmlRecipe.ingredients.length);
-    console.log('Sample ingredients:');
-    htmlRecipe.ingredients.slice(0, 3).forEach((ing, i) => {
-      console.log(`  [${i}]`, JSON.stringify(ing, null, 2));
-    });
-    console.log('Instructions count:', htmlRecipe.instructions.length);
+    logRecipeSample(htmlRecipe);
     console.log('\n✅ Using HTML extraction (with text parsing)');
     
     console.log('\n========================================\n');
@@ -182,15 +266,24 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
 }
 
 /**
+ * Fetch HTML from a URL
+ * @param url - The URL to fetch
+ * @returns The HTML text content
+ */
+async function fetchHTML(url: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch URL: ${response.statusText}`);
+  }
+  return await response.text();
+}
+
+/**
  * Scrape recipe from URL (fetches HTML then processes)
  */
 export async function scrapeRecipe(url: string): Promise<ScrapedRecipe> {
+  const html = await fetchHTML(url);
   try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch URL: ${response.statusText}`);
-    }
-    const html = await response.text();
     return await scrapeRecipeFromHTML(html, url);
   } catch (error) {
     throw new Error(`Failed to scrape recipe: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -348,8 +441,25 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
     recipe.imageUrl = imageUrlText;
   }
   
-  // Try to get servings, prepTime, cookTime from JSON-LD if available
-  console.log('\n--- Supplementary data from JSON-LD (HTML extraction) ---');
+  // Try to extract servings, prepTime, cookTime from generic HTML patterns
+  console.log('\n--- Extracting metadata from HTML (generic extraction) ---');
+  const metadata = extractMetadataFromHTML($);
+  if (metadata.servings) {
+    recipe.servings = metadata.servings;
+    console.log('  ✓ Found servings in HTML:', metadata.servings);
+  }
+  if (metadata.prepTime) {
+    recipe.prepTime = metadata.prepTime;
+    console.log('  ✓ Found prep time in HTML:', metadata.prepTime, 'minutes');
+  }
+  if (metadata.cookTime) {
+    recipe.cookTime = metadata.cookTime;
+    console.log('  ✓ Found cook time in HTML:', metadata.cookTime, 'minutes');
+  }
+  
+  // Try to get servings, prepTime, cookTime from JSON-LD if not found yet
+  if (!recipe.servings || !recipe.prepTime || !recipe.cookTime) {
+    console.log('\n--- Supplementary data from JSON-LD (HTML extraction) ---');
   try {
     const scriptTags = $('script[type="application/ld+json"]');
     console.log(`Found ${scriptTags.length} JSON-LD script tags`);
@@ -374,7 +484,7 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
           console.log('  prepTime:', data.prepTime);
           console.log('  cookTime:', data.cookTime);
           
-          if (data.recipeYield) {
+          if (data.recipeYield && !recipe.servings) {
             const servings = parseInt(String(data.recipeYield));
             if (!isNaN(servings)) {
               recipe.servings = servings;
@@ -382,7 +492,7 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
             }
           }
           
-          if (data.prepTime) {
+          if (data.prepTime && !recipe.prepTime) {
             const prepTime = parseDuration(data.prepTime);
             if (prepTime) {
               recipe.prepTime = prepTime;
@@ -390,7 +500,7 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
             }
           }
           
-          if (data.cookTime) {
+          if (data.cookTime && !recipe.cookTime) {
             const cookTime = parseDuration(data.cookTime);
             if (cookTime) {
               recipe.cookTime = cookTime;
@@ -404,6 +514,7 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
     }
   } catch (error) {
     console.log('Error extracting supplementary data from JSON-LD:', error);
+  }
   }
   
   return recipe;
@@ -475,14 +586,9 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
       let parsedAmountMax: number | null = null;
 
       if (quantity) {
-        const normalized = normalizeUnicodeFractions(quantity);
-        if (normalized.includes('-')) {
-          const [minStr, maxStr] = normalized.split('-').map(s => s.trim());
-          parsedAmount = parseFraction(minStr);
-          parsedAmountMax = parseFraction(maxStr);
-        } else {
-          parsedAmount = parseFraction(normalized);
-        }
+        const parsed = parseAmountWithRange(quantity);
+        parsedAmount = parsed.amount;
+        parsedAmountMax = parsed.amountMax || null;
       }
 
       // Build original text
@@ -547,8 +653,25 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
     recipe.imageUrl = imageUrl;
   }
 
-  // Try to get servings, prepTime, cookTime from JSON-LD if available
-  console.log('\n--- Supplementary data from JSON-LD ---');
+  // Try to extract servings, prepTime, cookTime from generic HTML patterns
+  console.log('\n--- Extracting metadata from HTML ---');
+  const metadata = extractMetadataFromHTML($);
+  if (metadata.servings) {
+    recipe.servings = metadata.servings;
+    console.log('  ✓ Found servings in HTML:', metadata.servings);
+  }
+  if (metadata.prepTime) {
+    recipe.prepTime = metadata.prepTime;
+    console.log('  ✓ Found prep time in HTML:', metadata.prepTime, 'minutes');
+  }
+  if (metadata.cookTime) {
+    recipe.cookTime = metadata.cookTime;
+    console.log('  ✓ Found cook time in HTML:', metadata.cookTime, 'minutes');
+  }
+
+  // Try to get servings, prepTime, cookTime from JSON-LD if not found yet
+  if (!recipe.servings || !recipe.prepTime || !recipe.cookTime) {
+    console.log('\n--- Supplementary data from JSON-LD ---');
   try {
     const scriptTags = $('script[type="application/ld+json"]');
     console.log(`Found ${scriptTags.length} JSON-LD script tags`);
@@ -614,6 +737,7 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
   } catch (error) {
     console.log('Error extracting supplementary data from JSON-LD:', error);
   }
+  }
 
   console.log('\n--- Final recipe metadata ---');
   console.log('Servings:', recipe.servings || 'not set');
@@ -621,6 +745,45 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
   console.log('Cook time:', recipe.cookTime ? `${recipe.cookTime} minutes` : 'not set');
 
   return recipe;
+}
+
+/**
+ * Helper function to parse a single WPRM ingredient element
+ */
+function parseWPRMIngredient($: cheerio.CheerioAPI, elem: any, section?: string): Ingredient | null {
+  const $elem = $(elem);
+  const amount = $elem.find('.wprm-recipe-ingredient-amount').text().trim();
+  const unit = $elem.find('.wprm-recipe-ingredient-unit').text().trim();
+  const name = $elem.find('.wprm-recipe-ingredient-name').text().trim();
+  const notes = $elem.find('.wprm-recipe-ingredient-notes').text().trim();
+
+  // Build original text
+  const parts = [amount, unit, name, notes].filter(p => p);
+  const originalText = parts.join(' ');
+
+  if (!originalText) {
+    return null;
+  }
+
+  // Parse amount (handle fractions, decimals, ranges)
+  let parsedAmount: number | null = null;
+  let parsedAmountMax: number | null = null;
+  
+  if (amount) {
+    // Use parseFloat for WPRM (which provides clean decimal numbers)
+    const parsed = parseAmountWithRange(amount, (str) => parseFloat(str) || null);
+    parsedAmount = parsed.amount;
+    parsedAmountMax = parsed.amountMax || null;
+  }
+
+  return {
+    amount: parsedAmount,
+    amountMax: parsedAmountMax,
+    unit: unit || null,
+    name: name || originalText,
+    section: section,
+    originalText: originalText,
+  };
 }
 
 function extractFromWPRM($: cheerio.CheerioAPI): ScrapedRecipe | null {
@@ -646,79 +809,18 @@ function extractFromWPRM($: cheerio.CheerioAPI): ScrapedRecipe | null {
       const section = $group.find('.wprm-recipe-ingredient-group-name').text().trim() || undefined;
       
       $group.find('.wprm-recipe-ingredient').each((_, elem) => {
-        const $elem = $(elem);
-        const amount = $elem.find('.wprm-recipe-ingredient-amount').text().trim();
-        const unit = $elem.find('.wprm-recipe-ingredient-unit').text().trim();
-        const name = $elem.find('.wprm-recipe-ingredient-name').text().trim();
-        const notes = $elem.find('.wprm-recipe-ingredient-notes').text().trim();
-
-        // Build original text
-        const parts = [amount, unit, name, notes].filter(p => p);
-        const originalText = parts.join(' ');
-
-        if (originalText) {
-          // Parse amount (handle fractions, decimals, ranges)
-          let parsedAmount: number | null = null;
-          let parsedAmountMax: number | null = null;
-          
-          if (amount) {
-            // Handle ranges like "1-2"
-            if (amount.includes('-')) {
-              const [min, max] = amount.split('-').map(s => s.trim());
-              parsedAmount = parseFloat(min) || null;
-              parsedAmountMax = parseFloat(max) || null;
-            } else {
-              parsedAmount = parseFloat(amount) || null;
-            }
-          }
-
-          ingredients.push({
-            amount: parsedAmount,
-            amountMax: parsedAmountMax,
-            unit: unit || null,
-            name: name || originalText,
-            section: section,
-            originalText: originalText,
-          });
+        const ingredient = parseWPRMIngredient($, elem, section);
+        if (ingredient) {
+          ingredients.push(ingredient);
         }
       });
     });
   } else {
     // No groups, just flat list
     wprmContainer.find('.wprm-recipe-ingredient').each((_, elem) => {
-      const $elem = $(elem);
-      const amount = $elem.find('.wprm-recipe-ingredient-amount').text().trim();
-      const unit = $elem.find('.wprm-recipe-ingredient-unit').text().trim();
-      const name = $elem.find('.wprm-recipe-ingredient-name').text().trim();
-      const notes = $elem.find('.wprm-recipe-ingredient-notes').text().trim();
-
-      // Build original text
-      const parts = [amount, unit, name, notes].filter(p => p);
-      const originalText = parts.join(' ');
-
-      if (originalText) {
-        // Parse amount (handle fractions, decimals, ranges)
-        let parsedAmount: number | null = null;
-        let parsedAmountMax: number | null = null;
-        
-        if (amount) {
-          // Handle ranges like "1-2"
-          if (amount.includes('-')) {
-            const [min, max] = amount.split('-').map(s => s.trim());
-            parsedAmount = parseFloat(min) || null;
-            parsedAmountMax = parseFloat(max) || null;
-          } else {
-            parsedAmount = parseFloat(amount) || null;
-          }
-        }
-
-        ingredients.push({
-          amount: parsedAmount,
-          amountMax: parsedAmountMax,
-          unit: unit || null,
-          name: name || originalText,
-          originalText: originalText,
-        });
+      const ingredient = parseWPRMIngredient($, elem);
+      if (ingredient) {
+        ingredients.push(ingredient);
       }
     });
   }
@@ -904,14 +1006,6 @@ function parseFraction(str: string): number | null {
   return isNaN(parsed) ? null : parsed;
 }
 
-function normalizeUnicodeFractions(text: string): string {
-  let normalized = text;
-  for (const [unicode, ascii] of Object.entries(UNICODE_FRACTIONS)) {
-    normalized = normalized.replace(new RegExp(unicode, 'g'), ascii);
-  }
-  return normalized;
-}
-
 /**
  * Normalize a unit string to its canonical form
  * E.g., "lbs" → "pound", "tbsp" → "tablespoon"
@@ -924,7 +1018,7 @@ function normalizeUnit(unit: string | null): string | null {
 
 function parseIngredientText(text: string): Ingredient {
   const cleaned = cleanListItemText(text);
-  const normalized = normalizeUnicodeFractions(cleaned);
+  const normalized = normalizeFractions(cleaned);
   
   // Try to parse: [amount] [unit] [name]
   // Regex explanation:
@@ -950,25 +1044,10 @@ function parseIngredientText(text: string): Ingredient {
   const amountStr = amountMatch[1];
   const rest = amountMatch[2];
   
-  // Parse amount (handle ranges like "1-2")
-  let amount: number | null = null;
-  let amountMax: number | null = null;
-  
-  if (amountStr.includes('-')) {
-    const [minStr, maxStr] = amountStr.split('-').map(s => s.trim());
-    amount = parseFraction(minStr);
-    amountMax = parseFraction(maxStr);
-  } else {
-    // Handle mixed fractions like "1 1/2"
-    const mixedMatch = amountStr.match(/^(\d+)\s+(\d+\/\d+)$/);
-    if (mixedMatch) {
-      const whole = parseFloat(mixedMatch[1]);
-      const frac = parseFraction(mixedMatch[2]);
-      amount = frac !== null ? whole + frac : whole;
-    } else {
-      amount = parseFraction(amountStr);
-    }
-  }
+  // Parse amount (handle ranges like "1-2" and mixed fractions like "1 1/2")
+  const parsed = parseAmountWithRange(amountStr);
+  let amount = parsed.amount;
+  let amountMax = parsed.amountMax || null;
   
   // Try to find a unit at the start of the rest
   let unit: string | null = null;
@@ -1045,5 +1124,117 @@ function parseDuration(duration?: string): number | undefined {
   }
   
   return undefined;
+}
+
+/**
+ * Parse duration from natural language text
+ * E.g., "15 min", "1 hour 30 minutes", "45 mins", "1 hr 15 min"
+ */
+function parseDurationFromText(text: string): number | undefined {
+  if (!text) return undefined;
+  
+  const normalized = text.toLowerCase();
+  let totalMinutes = 0;
+  
+  // Match hours: "1 hour", "2 hrs", "1 h"
+  const hourMatch = normalized.match(/(\d+)\s*(?:hour|hours|hr|hrs|h)\b/);
+  if (hourMatch) {
+    totalMinutes += parseInt(hourMatch[1]) * 60;
+  }
+  
+  // Match minutes: "30 minutes", "45 mins", "15 min", "20 m"
+  const minMatch = normalized.match(/(\d+)\s*(?:minute|minutes|mins|min|m)\b/);
+  if (minMatch) {
+    totalMinutes += parseInt(minMatch[1]);
+  }
+  
+  return totalMinutes > 0 ? totalMinutes : undefined;
+}
+
+/**
+ * Extract servings from text
+ * E.g., "Serves 4", "Yield: 6 servings", "Makes 8", "4 servings"
+ */
+function parseServingsFromText(text: string): number | undefined {
+  if (!text) return undefined;
+  
+  const normalized = text.toLowerCase();
+  
+  // Try patterns: "serves 4", "yield: 6", "makes 8", "4 servings"
+  const patterns = [
+    /serves?\s*:?\s*(\d+)/,
+    /yield\s*:?\s*(\d+)/,
+    /makes?\s*:?\s*(\d+)/,
+    /(\d+)\s*servings?/,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (match) {
+      const num = parseInt(match[1]);
+      if (num > 0 && num < 100) { // Reasonable serving size
+        return num;
+      }
+    }
+  }
+  
+  return undefined;
+}
+
+/**
+ * Try to extract servings, prepTime, and cookTime from generic HTML
+ * Uses common selectors and text patterns
+ */
+function extractMetadataFromHTML($: cheerio.CheerioAPI): {
+  servings?: number;
+  prepTime?: number;
+  cookTime?: number;
+} {
+  const result: { servings?: number; prepTime?: number; cookTime?: number } = {};
+  
+  // Common selectors for recipe metadata
+  const metaSelectors = [
+    '[class*="recipe-meta"]',
+    '[class*="recipe-info"]',
+    '[class*="recipe-details"]',
+    '[class*="meta"]',
+    '.recipe-yield',
+    '.yield',
+    '.servings',
+    '.prep-time',
+    '.cook-time',
+  ];
+  
+  // Search through common metadata areas
+  metaSelectors.forEach(selector => {
+    $(selector).each((_, elem) => {
+      const text = $(elem).text();
+      
+      // Try to extract servings
+      if (!result.servings) {
+        result.servings = parseServingsFromText(text);
+      }
+      
+      // Try to extract prep time
+      if (!result.prepTime && /prep/i.test(text)) {
+        result.prepTime = parseDurationFromText(text);
+      }
+      
+      // Try to extract cook time
+      if (!result.cookTime && /cook/i.test(text)) {
+        result.cookTime = parseDurationFromText(text);
+      }
+    });
+  });
+  
+  // Also check meta tags
+  if (!result.servings) {
+    const yieldMeta = $('meta[name*="yield"], meta[property*="yield"]').attr('content');
+    if (yieldMeta) {
+      result.servings = parseServingsFromText(yieldMeta);
+    }
+  }
+  
+  return result;
 }
 
