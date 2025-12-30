@@ -216,6 +216,21 @@
   padding-bottom: var(--spacing-xs);
 }
 
+.ingredientSection {
+  margin-bottom: var(--spacing-lg);
+}
+
+.ingredientSection:last-child {
+  margin-bottom: 0;
+}
+
+.ingredientSectionTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 var(--spacing-sm) 0;
+  color: var(--color-text-secondary);
+}
+
 .ingredientList {
   list-style: square;
   padding-left: var(--spacing-xl);
