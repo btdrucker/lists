@@ -6,4 +6,5 @@ export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
 export const useAppSelector = useSelector.withTypes<RootState>();
 
 export { useAutoHeight } from './hooks/useAutoHeight';
+export { useWakeLock } from './hooks/useWakeLock';
 

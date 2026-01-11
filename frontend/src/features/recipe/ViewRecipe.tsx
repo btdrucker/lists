@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAppSelector, useAppDispatch, useAutoHeight } from '../../common/hooks';
+import { useAppSelector, useAppDispatch, useAutoHeight, useWakeLock } from '../../common/hooks';
 import { updateRecipeInState } from '../../common/slices/recipes';
 import { updateRecipe } from '../../firebase/firestore';
 import IconButton from '../../common/IconButton';
@@ -16,7 +16,12 @@ const ViewRecipe = () => {
   
   const [notes, setNotes] = useState(recipe?.notes || '');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [isAnimatingIn, setIsAnimatingIn] = useState(false);
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const notesRef = useAutoHeight<HTMLTextAreaElement>(notes);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const { isSupported: wakeLockSupported, isActive: cookModeActive, toggle: toggleCookMode } = useWakeLock();
 
   // Update local notes when recipe changes
   useEffect(() => {
@@ -24,6 +29,20 @@ const ViewRecipe = () => {
       setNotes(recipe.notes || '');
     }
   }, [recipe]);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showMenu]);
 
   const saveNotes = async () => {
     if (!recipe || !id) return;
@@ -100,8 +119,60 @@ const ViewRecipe = () => {
   };
 
   const handleEditClick = async () => {
+    setShowMenu(false);
     await saveNotes();
     navigate(`/edit-recipe/${id}`);
+  };
+
+  const handleShareClick = async () => {
+    setShowMenu(false);
+    if (!recipe || !id) return;
+
+    const shareUrl = `${window.location.origin}/view-recipe/${id}`;
+    const shareData = {
+      title: recipe.title,
+      text: `Check out this recipe: ${recipe.title}`,
+      url: shareUrl,
+    };
+
+    try {
+      // Try Web Share API first (mobile)
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback to clipboard
+        await navigator.clipboard.writeText(shareUrl);
+        // Could show a toast notification here
+        alert('Recipe link copied to clipboard!');
+      }
+    } catch (error) {
+      // User cancelled or error occurred
+      if ((error as Error).name !== 'AbortError') {
+        console.error('Error sharing:', error);
+      }
+    }
+  };
+
+  const handleCookModeClick = async () => {
+    const wasActive = cookModeActive;
+    
+    if (wasActive) {
+      // Turning OFF - animate out first
+      setIsAnimatingOut(true);
+      setTimeout(async () => {
+        await toggleCookMode();
+        setIsAnimatingOut(false);
+        setShowMenu(false);
+      }, 300);
+    } else {
+      // Turning ON - animate in
+      setIsAnimatingIn(true);
+      await toggleCookMode();
+      setTimeout(() => {
+        setIsAnimatingIn(false);
+        setShowMenu(false);
+      }, 400);
+    }
   };
 
   if (!recipe) {
@@ -154,13 +225,37 @@ const ViewRecipe = () => {
         >
           <i className="fa-solid fa-angle-left"></i>
         </button>
-        <button
-          onClick={handleEditClick}
-          className={styles.floatingEditButton}
-          aria-label="Edit recipe"
-        >
-          <i className="fa-solid fa-pen"></i>
-        </button>
+        <div className={styles.menuContainer} ref={menuRef}>
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className={styles.floatingMenuButton}
+            aria-label="Recipe options"
+            aria-expanded={showMenu}
+          >
+            <i className="fa-solid fa-ellipsis-vertical"></i>
+          </button>
+          {showMenu && (
+            <div className={styles.contextMenu}>
+              <button onClick={handleShareClick} className={styles.menuItem}>
+                <i className="fa-solid fa-share-nodes"></i>
+                <span>Share</span>
+              </button>
+              {wakeLockSupported && (
+                <button onClick={handleCookModeClick} className={styles.menuItem}>
+                  <i className={`fa-solid fa-mobile-screen ${cookModeActive || isAnimatingOut ? styles.activeIcon : ''}`}></i>
+                  <span>Cook Mode</span>
+                  {(cookModeActive || isAnimatingOut) && (
+                    <i className={`fa-solid fa-check ${isAnimatingIn ? styles.checkmarkIn : ''} ${isAnimatingOut ? styles.checkmarkOut : ''}`}></i>
+                  )}
+                </button>
+              )}
+              <button onClick={handleEditClick} className={styles.menuItem}>
+                <i className="fa-solid fa-pen"></i>
+                <span>Edit</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className={styles.content}>
