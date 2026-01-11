@@ -1,0 +1,86 @@
+.prompt {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  max-width: 350px;
+  z-index: 1000;
+  animation: slideInRight 0.3s ease-out;
+  border-left: 4px solid #4caf50;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.content i {
+  font-size: 20px;
+  color: #4caf50;
+}
+
+.content span {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.updateButton,
+.dismissButton {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.updateButton {
+  background: #4caf50;
+  color: white;
+}
+
+.updateButton:hover {
+  background: #45a049;
+}
+
+.dismissButton {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.dismissButton:hover {
+  background: #e0e0e0;
+}
+
+@media (max-width: 480px) {
+  .prompt {
+    bottom: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+}

@@ -11,7 +11,8 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 // Allowed origins for CORS
 const allowedOrigins = [
-  'http://localhost:5173',
+  'http://localhost:5173', // Dev server
+  'http://localhost:4173', // Preview server
   'https://listster-8ffc9.web.app',
   'https://listster-8ffc9.firebaseapp.com',
   'https://listster-test.web.app',

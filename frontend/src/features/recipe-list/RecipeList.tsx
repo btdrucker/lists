@@ -6,6 +6,7 @@ import { clearAuth } from '../auth/slice';
 import { getAllRecipes, deleteRecipe } from '../../firebase/firestore';
 import { signOut } from '../../firebase/auth';
 import IconButton from '../../common/IconButton';
+import { InstallButton } from '../../common/components/InstallButton';
 import styles from './recipe-list.module.css';
 
 const RecipeList = () => {
@@ -109,6 +110,7 @@ const RecipeList = () => {
           >
             Add Recipe
           </IconButton>
+          <InstallButton />
           <IconButton
             onClick={handleSignOut}
             icon="fa-sign-out"

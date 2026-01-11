@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../common/hooks';
 import { addRecipe } from '../../common/slices/recipes';
 import { getIdToken } from '../../firebase/auth';
+import { useOnlineStatus } from '../../common/hooks/useOnlineStatus';
 import styles from './recipeStart.module.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -10,6 +11,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const RecipeStart = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const isOnline = useOnlineStatus();
   
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
@@ -29,6 +31,11 @@ const RecipeStart = () => {
   const handleScrape = async () => {
     if (!url.trim() || !isValidUrl(url.trim())) {
       setError('Please enter a valid URL');
+      return;
+    }
+
+    if (!isOnline) {
+      setError('Recipe scraping requires an internet connection');
       return;
     }
 
@@ -123,10 +130,11 @@ const RecipeStart = () => {
             />
             <button
               onClick={handleScrape}
-              disabled={isScraping || !url.trim() || !isValidUrl(url.trim())}
+              disabled={isScraping || !url.trim() || !isValidUrl(url.trim()) || !isOnline}
               className={styles.primaryButton}
+              title={!isOnline ? 'Scraping requires an internet connection' : ''}
             >
-              {isScraping ? 'Scraping...' : 'Scrape Recipe'}
+              {isScraping ? 'Scraping...' : isOnline ? 'Scrape Recipe' : 'Offline - Cannot Scrape'}
             </button>
           </div>
         </div>

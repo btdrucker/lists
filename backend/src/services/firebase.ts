@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 // Initialize Firebase Admin SDK
 const initializeFirebase = () => {
   if (admin.apps.length === 0) {
-    // Prefer environment variables (for deployments)
+    // Prefer environment variables (for deployments and local dev)
     if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
       admin.initializeApp({
         credential: admin.credential.cert({
@@ -21,13 +21,24 @@ const initializeFirebase = () => {
           clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
         }),
       });
+    } else if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
+      // Use service account JSON file path from env var
+      try {
+        const serviceAccount = JSON.parse(readFileSync(process.env.FIREBASE_SERVICE_ACCOUNT_PATH, 'utf8'));
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+        });
+      } catch (error) {
+        console.error(`Failed to initialize Firebase with service account at: ${process.env.FIREBASE_SERVICE_ACCOUNT_PATH}`);
+        throw error;
+      }
     } else {
-      // Fallback to service account JSON file (for local development)
-      const serviceAccountPath = join(__dirname, '../../listster-8ffc9-firebase-adminsdk-fbsvc-9a011b87e1.json');
-      const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-      });
+      throw new Error(
+        'Firebase Admin SDK initialization failed. Please set one of:\n' +
+        '  1. FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, and FIREBASE_CLIENT_EMAIL environment variables, OR\n' +
+        '  2. FIREBASE_SERVICE_ACCOUNT_PATH environment variable pointing to your service account JSON file\n' +
+        '\nSee backend/README.md for setup instructions.'
+      );
     }
   }
   return admin;

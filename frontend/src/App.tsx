@@ -11,6 +11,9 @@ import RecipeList from './features/recipe-list/RecipeList';
 import ViewRecipe from './features/recipe/ViewRecipe';
 import RecipeStart from './features/recipe/RecipeStart';
 import Recipe from './features/recipe/Recipe';
+import { InstallBanner } from './common/components/InstallBanner';
+import { OfflineIndicator } from './common/components/OfflineIndicator';
+import { UpdatePrompt } from './common/components/UpdatePrompt';
 
 function AppContent() {
   const dispatch = useAppDispatch();
@@ -67,6 +70,9 @@ function App() {
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
+        <OfflineIndicator />
+        <InstallBanner />
+        <UpdatePrompt />
         <AppContent />
       </PersistGate>
     </Provider>
