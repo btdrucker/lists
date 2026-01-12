@@ -1,26 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch, useAutoHeight } from '../../common/hooks';
-import { addRecipe, updateRecipeInState } from '../../common/slices/recipes';
+import { addRecipe, updateRecipeInState } from '../recipe-list/slice.ts';
 import { addRecipe as saveRecipe, updateRecipe } from '../../firebase/firestore';
-import IconButton from '../../common/IconButton';
-import type { Ingredient } from '../../types/index.ts';
+import IconButton from '../../common/components/IconButton.tsx';
+import type {Ingredient, Recipe} from '../../types';
 import styles from './recipe.module.css';
 
 // Instruction row component with auto-height textarea
-const InstructionRow = ({ 
-  index, 
-  value, 
-  onChange, 
-  onRemove 
-}: { 
-  index: number; 
-  value: string; 
-  onChange: (value: string) => void; 
+const InstructionRow = ({
+  index,
+  value,
+  onChange,
+  onRemove
+}: {
+  index: number;
+  value: string;
+  onChange: (value: string) => void;
   onRemove: () => void;
 }) => {
   const textareaRef = useAutoHeight<HTMLTextAreaElement>(value);
-  
+
   return (
     <div className={styles.instructionRow}>
       <span className={styles.stepNumber}>{index + 1}.</span>
@@ -38,21 +38,21 @@ const InstructionRow = ({
   );
 };
 
-const Recipe = () => {
+const EditRecipe = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const user = useAppSelector((state) => state.auth?.user);
   const recipes = useAppSelector((state) => state.recipes?.recipes || []);
-  
+
   const isNewRecipe = id === 'new';
-  const existingRecipe = !isNewRecipe && id ? recipes.find((r: any) => r.id === id) : null;
+  const existingRecipe = !isNewRecipe && id ? recipes.find((r: Recipe) => r.id === id) : null;
 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Recipe form state
+  // EditRecipe form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
@@ -60,7 +60,7 @@ const Recipe = () => {
     { amount: null, unit: null, name: '', originalText: '' },
   ]);
   const [instructions, setInstructions] = useState<string[]>(['']);
-  
+
   // Track original state for deep comparison
   const [originalState, setOriginalState] = useState<{
     title: string;
@@ -70,38 +70,38 @@ const Recipe = () => {
     instructions: string[];
   } | null>(null);
 
-  // Auto-height refs for textareas
+  // Auto-height refs for text areas
   const descriptionRef = useAutoHeight<HTMLTextAreaElement>(description);
   const notesRef = useAutoHeight<HTMLTextAreaElement>(notes);
 
   // Deep comparison to detect actual changes
   const hasActualChanges = (): boolean => {
     if (!originalState) return true; // New recipe always has changes
-    
+
     // Compare scalar fields (trimmed, since save trims them)
     if (title.trim() !== originalState.title) return true;
     if (description.trim() !== (originalState.description || '')) return true;
     if (notes.trim() !== (originalState.notes || '')) return true;
-    
+
     // Compare ingredients (filter out empty ones like save does)
     const currIngredients = ingredients.filter(i => i.name.trim());
     const origIngredients = originalState.ingredients.filter(i => i.name.trim());
     if (currIngredients.length !== origIngredients.length) return true;
-    
+
     for (let i = 0; i < currIngredients.length; i++) {
       if (currIngredients[i].name.trim() !== origIngredients[i].name.trim()) return true;
       if (currIngredients[i].originalText?.trim() !== origIngredients[i].originalText?.trim()) return true;
     }
-    
+
     // Compare instructions (filter out empty ones like save does)
     const currInstructions = instructions.filter(i => i.trim());
     const origInstructions = originalState.instructions.filter(i => i.trim());
     if (currInstructions.length !== origInstructions.length) return true;
-    
+
     for (let i = 0; i < currInstructions.length; i++) {
       if (currInstructions[i].trim() !== origInstructions[i].trim()) return true;
     }
-    
+
     return false; // No changes detected
   };
 
@@ -113,7 +113,7 @@ const Recipe = () => {
       // For new recipes, set original state to null (no saved state to compare against)
       setOriginalState(null);
     }
-  }, [id, location]);
+  }, [id, location, isNewRecipe]);
 
   // Load existing recipe when editing
   useEffect(() => {
@@ -122,14 +122,14 @@ const Recipe = () => {
         title: existingRecipe.title,
         description: existingRecipe.description || '',
         notes: existingRecipe.notes || '',
-        ingredients: existingRecipe.ingredients.length > 0 
-          ? existingRecipe.ingredients 
+        ingredients: existingRecipe.ingredients.length > 0
+          ? existingRecipe.ingredients
           : [{ amount: null, unit: null, name: '', originalText: '' }],
-        instructions: existingRecipe.instructions.length > 0 
-          ? existingRecipe.instructions 
+        instructions: existingRecipe.instructions.length > 0
+          ? existingRecipe.instructions
           : ['']
       };
-      
+
       setTitle(initialState.title);
       setDescription(initialState.description);
       setNotes(initialState.notes);
@@ -159,7 +159,7 @@ const Recipe = () => {
         ingredients: ingredients.filter((i) => i.name.trim()),
         instructions: instructions.filter((i) => i.trim()),
       };
-      
+
       // Only add optional fields if they're not empty
       if (description.trim()) {
         recipeData.description = description.trim();
@@ -167,7 +167,7 @@ const Recipe = () => {
       if (notes.trim()) {
         recipeData.notes = notes.trim();
       }
-      
+
       // Note: sourceUrl is NOT saved here - it's only set by the backend scrape endpoint
       // If updating a recipe with existing sourceUrl, preserve it
       if (!isNewRecipe && existingRecipe?.sourceUrl) {
@@ -177,10 +177,10 @@ const Recipe = () => {
       if (!isNewRecipe && id) {
         // Update existing recipe
         await updateRecipe(id, recipeData);
-        dispatch(updateRecipeInState({ 
-          ...existingRecipe, 
+        dispatch(updateRecipeInState({
+          ...existingRecipe,
           ...recipeData,
-          id 
+          id
         }));
         // Navigate to view the updated recipe
         navigate(`/recipe/${id}`);
@@ -230,7 +230,7 @@ const Recipe = () => {
       );
       if (!confirmed) return;
     }
-    
+
     // If updating an existing recipe, go back to view mode
     // If creating new recipe, go to recipe list
     if (!isNewRecipe && id) {
@@ -256,7 +256,7 @@ const Recipe = () => {
         </header>
         <div className={styles.form}>
           <div className={styles.notFound}>
-            Recipe not found
+            EditRecipe not found
           </div>
         </div>
       </div>
@@ -297,7 +297,7 @@ const Recipe = () => {
             onChange={(e) => {
               setTitle(e.target.value);
             }}
-            placeholder="Recipe title"
+            placeholder="EditRecipe title"
           />
         </div>
 
@@ -347,8 +347,8 @@ const Recipe = () => {
                 onChange={(e) => {
                   const value = e.target.value;
                   const updated = [...ingredients];
-                  updated[index] = { 
-                    ...updated[index], 
+                  updated[index] = {
+                    ...updated[index],
                     originalText: value,
                     name: value // Set name to the same value for manual entry
                   };
@@ -400,5 +400,4 @@ const Recipe = () => {
   );
 };
 
-export default Recipe;
-
+export default EditRecipe;

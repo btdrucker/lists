@@ -1,6 +1,6 @@
 # Deployment Guide - Test & Production
 
-This guide covers deploying your Recipe App to both **test** and **production** environments.
+This guide covers deploying your EditRecipe App to both **test** and **production** environments.
 
 ## 🎯 Overview
 
@@ -441,4 +441,3 @@ Consider setting up GitHub Actions to auto-deploy on push:
 - Push to `develop` → deploy to test
 
 This is beyond scope for now, but can be added later.
-

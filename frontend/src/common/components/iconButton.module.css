@@ -1,4 +1,4 @@
-@import './styles.css';
+@import '../styles.css';
 
 .iconButton {
   display: flex;
@@ -27,9 +27,8 @@
   .hideOnMobile {
     display: none;
   }
-  
+
   .iconButton {
     padding: var(--spacing-sm) var(--spacing-md);
   }
 }
-

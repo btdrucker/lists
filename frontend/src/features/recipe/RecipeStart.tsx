@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAppDispatch } from '../../common/hooks';
-import { addRecipe } from '../../common/slices/recipes';
+import { useAppDispatch, useOnlineStatus } from '../../common/hooks';
+import { addRecipe } from '../recipe-list/slice.ts';
 import { getIdToken } from '../../firebase/auth';
-import { useOnlineStatus } from '../../common/hooks/useOnlineStatus';
 import styles from './recipeStart.module.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -12,7 +11,7 @@ const RecipeStart = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const isOnline = useOnlineStatus();
-  
+
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [isScraping, setIsScraping] = useState(false);
@@ -35,7 +34,7 @@ const RecipeStart = () => {
     }
 
     if (!isOnline) {
-      setError('Recipe scraping requires an internet connection');
+      setError('EditRecipe scraping requires an internet connection');
       return;
     }
 
@@ -63,7 +62,7 @@ const RecipeStart = () => {
       if (data.success && data.recipe) {
         // Add scraped recipe to Redux state
         dispatch(addRecipe(data.recipe));
-        
+
         // Navigate to view the scraped recipe
         navigate(`/recipe/${data.recipe.id}`);
       } else {
@@ -100,7 +99,7 @@ const RecipeStart = () => {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>Add Recipe</h1>
+        <h1>Add EditRecipe</h1>
         <button onClick={handleCancel} className={styles.cancelButton}>
           Cancel
         </button>
@@ -122,7 +121,7 @@ const RecipeStart = () => {
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com/recipe"
               className={styles.input}
-              onKeyPress={(e) => {
+              onKeyUp={(e) => {
                 if (e.key === 'Enter' && url.trim() && isValidUrl(url.trim())) {
                   handleScrape();
                 }
@@ -134,7 +133,7 @@ const RecipeStart = () => {
               className={styles.primaryButton}
               title={!isOnline ? 'Scraping requires an internet connection' : ''}
             >
-              {isScraping ? 'Scraping...' : isOnline ? 'Scrape Recipe' : 'Offline - Cannot Scrape'}
+              {isScraping ? 'Scraping...' : isOnline ? 'Scrape EditRecipe' : 'Offline - Cannot Scrape'}
             </button>
           </div>
         </div>
@@ -154,9 +153,9 @@ const RecipeStart = () => {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Recipe title"
+              placeholder="EditRecipe title"
               className={styles.input}
-              onKeyPress={(e) => {
+              onKeyUp={(e) => {
                 if (e.key === 'Enter' && title.trim()) {
                   handleManualCreate();
                 }
@@ -177,4 +176,3 @@ const RecipeStart = () => {
 };
 
 export default RecipeStart;
-

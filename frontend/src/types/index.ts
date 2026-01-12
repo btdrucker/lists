@@ -1,15 +1,13 @@
 // Re-export shared types
-export type { 
-  Ingredient, 
-  RecipeContent, 
-  RecipeBase 
+export type {
+  Ingredient,
+  RecipeContent,
+  RecipeBase
 } from '../../../shared/types/index.js';
-import type { RecipeBase } from '../../../shared/types/index.js';
+import type { RecipeBase } from '../../../shared/types';
 
-// Frontend-specific Recipe type with ISO string dates (for Redux serialization)
-export interface Recipe extends RecipeBase<string> {
-  // All fields from RecipeBase, but createdAt/updatedAt are strings
-}
+// Frontend-specific EditRecipe type with ISO string dates (for Redux serialization)
+export type Recipe = RecipeBase<string>
 
 export interface SerializableUser {
   uid: string;
@@ -22,4 +20,3 @@ export interface AuthState {
   loading: boolean;
   error: string | null;
 }
-

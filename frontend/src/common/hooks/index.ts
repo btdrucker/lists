@@ -1,10 +1,11 @@
 import { useDispatch, useSelector } from 'react-redux';
-import type { RootState, AppDispatch } from './store';
+import type { RootState, AppDispatch } from '../store.ts';
 
 // Use throughout your app instead of plain `useDispatch` and `useSelector`
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
 export const useAppSelector = useSelector.withTypes<RootState>();
 
-export { useAutoHeight } from './hooks/useAutoHeight';
-export { useWakeLock } from './hooks/useWakeLock';
-
+export { useAutoHeight } from './useAutoHeight.ts';
+export { useOnlineStatus } from './useOnlineStatus.ts';
+export { usePWAInstall } from './usePWAInstall.ts';
+export { useWakeLock } from './useWakeLock.ts';

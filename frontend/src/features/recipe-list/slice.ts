@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { Recipe } from '../../types/index.ts';
+import type { Recipe } from '../../types';
 
 interface RecipesState {
   recipes: Recipe[];
@@ -55,4 +55,3 @@ export const {
 } = recipesSlice.actions;
 
 export default recipesSlice.reducer;
-

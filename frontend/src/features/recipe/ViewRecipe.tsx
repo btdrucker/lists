@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAppSelector, useAppDispatch, useAutoHeight, useWakeLock } from '../../common/hooks';
-import { updateRecipeInState } from '../../common/slices/recipes';
+import { updateRecipeInState } from '../recipe-list/slice.ts';
 import { updateRecipe } from '../../firebase/firestore';
-import IconButton from '../../common/IconButton';
+import IconButton from '../../common/components/IconButton.tsx';
 import styles from './viewRecipe.module.css';
 
 const ViewRecipe = () => {
@@ -11,9 +11,9 @@ const ViewRecipe = () => {
   const dispatch = useAppDispatch();
   const { id } = useParams<{ id: string }>();
   const recipes = useAppSelector((state) => state.recipes?.recipes || []);
-  
+
   const recipe = recipes.find((r: any) => r.id === id);
-  
+
   const [notes, setNotes] = useState(recipe?.notes || '');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -46,7 +46,7 @@ const ViewRecipe = () => {
 
   const saveNotes = async () => {
     if (!recipe || !id) return;
-    
+
     // Only save if notes have changed
     if (notes === (recipe.notes || '')) return;
 
@@ -87,7 +87,7 @@ const ViewRecipe = () => {
         } else {
           updates.notes = '';
         }
-        updateRecipe(id!, updates).catch(err => 
+        updateRecipe(id!, updates).catch(err =>
           console.error('Error saving notes on unmount:', err)
         );
       }
@@ -143,7 +143,7 @@ const ViewRecipe = () => {
         // Fallback to clipboard
         await navigator.clipboard.writeText(shareUrl);
         // Could show a toast notification here
-        alert('Recipe link copied to clipboard!');
+        alert('EditRecipe link copied to clipboard!');
       }
     } catch (error) {
       // User cancelled or error occurred
@@ -155,7 +155,7 @@ const ViewRecipe = () => {
 
   const handleCookModeClick = async () => {
     const wasActive = cookModeActive;
-    
+
     if (wasActive) {
       // Turning OFF - animate out first
       setIsAnimatingOut(true);
@@ -190,7 +190,7 @@ const ViewRecipe = () => {
         </header>
         <div className={styles.content}>
           <div className={styles.notFound}>
-            Recipe not found
+            EditRecipe not found
           </div>
         </div>
       </div>
@@ -216,7 +216,7 @@ const ViewRecipe = () => {
             <h1>{recipe.title}</h1>
           </div>
         )}
-        
+
         {/* Floating buttons over hero */}
         <button
           onClick={handleBackClick}
@@ -229,7 +229,7 @@ const ViewRecipe = () => {
           <button
             onClick={() => setShowMenu(!showMenu)}
             className={styles.floatingMenuButton}
-            aria-label="Recipe options"
+            aria-label="EditRecipe options"
             aria-expanded={showMenu}
           >
             <i className="fa-solid fa-ellipsis-vertical"></i>
@@ -338,4 +338,3 @@ const ViewRecipe = () => {
 };
 
 export default ViewRecipe;
-

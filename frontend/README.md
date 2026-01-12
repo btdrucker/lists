@@ -1,4 +1,4 @@
-# Recipe Frontend
+# EditRecipe Frontend
 
 React + Redux + TypeScript frontend for recipe management.
 
@@ -47,8 +47,8 @@ Frontend will run on http://localhost:5173
 ## Features
 
 - **Authentication**: Email/password login and signup
-- **Recipe List**: View all recipes with single Firestore read per session
-- **Add Recipe**: Two modes:
+- **EditRecipe List**: View all recipes with single Firestore read per session
+- **Add EditRecipe**: Two modes:
   - Manual entry with structured ingredients
   - URL scraping via backend API
 - **Redux State**: Optimized to minimize Firestore reads
@@ -60,7 +60,7 @@ Frontend will run on http://localhost:5173
 src/
 ├── features/
 │   ├── auth/              # Authentication screens
-│   ├── recipe-list/       # Recipe list view
+│   ├── recipe-list/       # EditRecipe list view
 │   └── add-recipe/        # Add/edit recipe form
 ├── firebase/
 │   ├── config.ts          # Firebase configuration
@@ -68,9 +68,9 @@ src/
 │   └── firestore.ts       # Firestore CRUD operations
 ├── common/
 │   ├── store.ts           # Redux store configuration
-│   ├── hooks.ts           # Typed Redux hooks
+│   ├── index.ts           # Typed Redux hooks
 │   └── slices/
-│       └── recipes.ts     # Recipes Redux slice
+│       └── slice.ts     # Recipes Redux slice
 ├── types/
 │   └── index.ts           # TypeScript interfaces
 ├── App.tsx                # Main app with routing

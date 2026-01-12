@@ -1,4 +1,4 @@
-# Recipe App Monorepo - Project Plan
+# EditRecipe App Monorepo - Project Plan
 
 **Project Location**: `/Users/benjamin.drucker/WebstormProjects/lists/`
 
@@ -9,7 +9,7 @@ Create a new monorepo with:
 - **Backend**: Fastify + TypeScript + Firebase Admin
 - **Auth**: Firebase Authentication
 - **Database**: Firestore
-- **Purpose**: Recipe scraping app with URL-based recipe extraction
+- **Purpose**: EditRecipe scraping app with URL-based recipe extraction
 
 ## Project Structure
 
@@ -50,7 +50,7 @@ flowchart LR
     FirebaseAuth[Firebase Auth]
     Backend[Backend API Fastify]
     Firestore[Firestore Database]
-    RecipeWebsite[Recipe Websites]
+    RecipeWebsite[EditRecipe Websites]
     
     User -->|interacts| Frontend
     Frontend -->|login/signup| FirebaseAuth
@@ -68,9 +68,9 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    Login[Auth Screen] -->|successful login| RecipeList[Recipe List Feature]
+    Login[Auth Screen] -->|successful login| RecipeList[EditRecipe List Feature]
     RecipeList -->|displays| Recipes[User's Recipes from Firestore]
-    RecipeList -->|"click Add button"| AddRecipe[Add Recipe Feature]
+    RecipeList -->|"click Add button"| AddRecipe[Add EditRecipe Feature]
     AddRecipe -->|option 1| ManualEntry[Manual Entry Future]
     AddRecipe -->|option 2| URLInput[URL Input]
     URLInput -->|submit| ShowProgress[Show Loading State]
@@ -87,9 +87,9 @@ flowchart TD
 ```
 User Login → Firebase Auth → Get ID Token
     ↓
-Recipe List (load from Firestore once) → Store in Redux
+EditRecipe List (load from Firestore once) → Store in Redux
     ↓
-Click "Add Recipe" → Navigate to Add Recipe Feature
+Click "Add EditRecipe" → Navigate to Add EditRecipe Feature
 ```
 
 **Path A: Manual Entry** (no backend):
@@ -98,7 +98,7 @@ User Fills Out Form Manually → Enter ingredients with structured data
     ↓
 Save → Update Redux + Write to Firestore directly
     ↓
-Navigate Back → Recipe List (shows new recipe instantly)
+Navigate Back → EditRecipe List (shows new recipe instantly)
 ```
 
 **Path B: URL Scraping** (with backend):
@@ -111,7 +111,7 @@ Frontend: Display in Editable Form (pre-filled from scrape)
     ↓
 User Edits → Save → Update Redux + Update Firestore
     ↓
-Navigate Back → Recipe List (shows new recipe instantly, no Firestore read)
+Navigate Back → EditRecipe List (shows new recipe instantly, no Firestore read)
 ```
 
 ### Cost Optimization Strategy
@@ -137,10 +137,10 @@ Navigate Back → Recipe List (shows new recipe instantly, no Firestore read)
 - Firebase authentication flow
 - Google sign-in support
 
-### 2. Recipe List Feature (`src/features/recipe-list/`)
+### 2. EditRecipe List Feature (`src/features/recipe-list/`)
 - Displays user's recipes from Redux state
 - Empty state message when no recipes
-- "Add Recipe" button → navigates to add-recipe
+- "Add EditRecipe" button → navigates to add-recipe
 - Delete button on each recipe card (with confirmation)
 - Click recipe card to edit
 - Sign out button in header
@@ -152,7 +152,7 @@ Navigate Back → Recipe List (shows new recipe instantly, no Firestore read)
 - `RecipeListHeader.tsx` - Header with add button
 - `RecipeListItem.tsx` - Individual recipe display
 
-### 3. Recipe Feature (`src/features/recipe/`) - Add/Edit
+### 3. EditRecipe Feature (`src/features/recipe/`) - Add/Edit
 - **Two input modes**:
   1. **Manual Entry**: Users can create recipes directly (without backend)
   2. **URL Scraping**: Input URL → backend scrapes → pre-fills form
@@ -185,10 +185,10 @@ Navigate Back → Recipe List (shows new recipe instantly, no Firestore read)
 
 ### Redux State Management
 
-**Central Recipes Slice** (`src/common/slices/recipes.ts`):
+**Central Recipes Slice** (`src/common/slices/slice.ts`):
 ```typescript
 interface RecipesState {
-  recipes: Recipe[];
+  recipes: EditRecipe[];
   loading: boolean;
   error: string | null;
 }
@@ -219,15 +219,15 @@ interface Ingredient {
   originalText: string;          // Original as written: "1/2 cup diced carrots"
 }
 
-interface Recipe {
+interface EditRecipe {
   id: string;                    // Document ID
   userId: string;                // Creator's Firebase Auth UID (for attribution)
-  title: string;                 // Recipe title
+  title: string;                 // EditRecipe title
   description?: string;          // Short description
   ingredients: Ingredient[];     // Structured ingredient list
   instructions: string[];        // Step-by-step instructions
   sourceUrl?: string;            // Original URL (if scraped)
-  imageUrl?: string;             // Recipe image (future)
+  imageUrl?: string;             // EditRecipe image (future)
   servings?: number;             // Number of servings (future)
   prepTime?: number;             // Prep time in minutes (future)
   cookTime?: number;             // Cook time in minutes (future)
@@ -467,23 +467,23 @@ For future queries like filtering/sorting, create in Firebase Console or `firest
 - **Ingredient Parsing**: `recipe-ingredient-parser-v3` or custom parser for structured ingredient data
 - **Database**: Firestore via Admin SDK
 
-### Recipe Schema Standards
+### EditRecipe Schema Standards
 
 **Key References**:
-- [Schema.org Recipe Specification](https://schema.org/Recipe) - Official structured data vocabulary for recipes
-- [Google Recipe Structured Data Guidelines](https://developers.google.com/search/docs/appearance/structured-data/recipe) - Best practices for recipe markup
+- [Schema.org EditRecipe Specification](https://schema.org/Recipe) - Official structured data vocabulary for recipes
+- [Google EditRecipe Structured Data Guidelines](https://developers.google.com/search/docs/appearance/structured-data/recipe) - Best practices for recipe markup
 
-**JSON-LD Recipe Format**:
+**JSON-LD EditRecipe Format**:
 Most modern recipe websites use JSON-LD (JavaScript Object Notation for Linked Data) embedded in `<script type="application/ld+json">` tags. The scraper prioritizes extracting data from JSON-LD when available.
 
 **Common Structured Data Patterns**:
 1. **Simple text ingredients**: `"1 yellow onion"` (most common)
 2. **PropertyValue objects**: `{ "@type": "PropertyValue", "value": 1, "name": "egg" }`
 3. **PropertyValue with units**: `{ "@type": "PropertyValue", "value": "3/4", "name": "sugar", "unitCode": "G21" }`
-4. **@graph wrapper**: WordPress sites often nest Recipe data inside a `@graph` array
+4. **@graph wrapper**: WordPress sites often nest EditRecipe data inside a `@graph` array
 
 **Implementation Notes**:
-- Our scraper checks for `@graph` structure and extracts Recipe objects from it
+- Our scraper checks for `@graph` structure and extracts EditRecipe objects from it
 - Falls back to HTML parsing when JSON-LD is unavailable or malformed
 - Preserves original ingredient text while attempting to parse structured data
 
@@ -511,8 +511,8 @@ Authorization: Bearer <firebase-id-token>
   "recipe": {
     "id": "generated-id",
     "userId": "user-uid",
-    "title": "Recipe Title",
-    "description": "Recipe description",
+    "title": "EditRecipe Title",
+    "description": "EditRecipe description",
     "isPublic": true,
     "ingredients": [
       {
@@ -665,12 +665,12 @@ export const firebaseConfig = {
 ## Future Enhancements
 
 - ✅ Manual recipe entry (without URL) - **COMPLETED**
-- ✅ Recipe editing (modify existing recipes) - **COMPLETED**
-- ✅ Recipe deletion - **COMPLETED**
+- ✅ EditRecipe editing (modify existing recipes) - **COMPLETED**
+- ✅ EditRecipe deletion - **COMPLETED**
 - ✅ Google sign-in - **COMPLETED**
 - Search and filtering
 - Categories and tags
-- Recipe images/photos
+- EditRecipe images/photos
 - Ingredient scaling calculator
 - Print-friendly view
 - Share recipes with other users
@@ -679,7 +679,7 @@ export const firebaseConfig = {
 - Nutrition information
 - Shopping list generation
 - Dark mode
-- Recipe import/export
+- EditRecipe import/export
 - Meal planning
 
 ## Questions/Decisions
@@ -697,4 +697,3 @@ export const firebaseConfig = {
 - Cost optimization prioritized (minimal Firestore reads)
 - Can deploy frontend and backend independently
 - Start with synchronous scraping, scale up if needed
-

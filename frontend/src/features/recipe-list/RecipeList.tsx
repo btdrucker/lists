@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../common/hooks';
-import { setRecipes, setLoading, removeRecipe } from '../../common/slices/recipes';
+import { setRecipes, setLoading, removeRecipe } from './slice.ts';
 import { clearAuth } from '../auth/slice';
 import { getAllRecipes, deleteRecipe } from '../../firebase/firestore';
 import { signOut } from '../../firebase/auth';
-import IconButton from '../../common/IconButton';
+import IconButton from '../../common/components/IconButton.tsx';
 import { InstallButton } from '../../common/components/InstallButton';
 import styles from './recipe-list.module.css';
 
@@ -24,7 +24,7 @@ const RecipeList = () => {
 
   const handleDelete = async (recipeId: string, recipeTitle: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click navigation
-    
+
     const confirmed = window.confirm(`Are you sure you want to delete "${recipeTitle}"?`);
     if (!confirmed) return;
 
@@ -42,30 +42,30 @@ const RecipeList = () => {
     if (!searchQuery.trim()) return true;
 
     const query = searchQuery.toLowerCase();
-    
+
     // Search in title
     if (recipe.title.toLowerCase().includes(query)) {
       return true;
     }
-    
+
     // Search in ingredient names
-    const matchesIngredient = recipe.ingredients.some((ingredient: any) => 
+    const matchesIngredient = recipe.ingredients.some((ingredient: any) =>
       ingredient.name.toLowerCase().includes(query)
     );
     if (matchesIngredient) {
       return true;
     }
-    
+
     // Search in tags (if they exist)
     if (recipe.tags && recipe.tags.length > 0) {
-      const matchesTag = recipe.tags.some((tag: string) => 
+      const matchesTag = recipe.tags.some((tag: string) =>
         tag.toLowerCase().includes(query)
       );
       if (matchesTag) {
         return true;
       }
     }
-    
+
     return false;
   });
 
@@ -154,8 +154,8 @@ const RecipeList = () => {
       ) : (
         <div className={styles.grid}>
           {filteredRecipes.map((recipe: any) => (
-            <div 
-              key={recipe.id} 
+            <div
+              key={recipe.id}
               className={styles.card}
               onClick={() => navigate(`/recipe/${recipe.id}`)}
             >
@@ -197,4 +197,3 @@ const RecipeList = () => {
 };
 
 export default RecipeList;
-

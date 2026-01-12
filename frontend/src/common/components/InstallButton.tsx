@@ -1,5 +1,5 @@
 import { usePWAInstall } from '../hooks/usePWAInstall';
-import IconButton from '../IconButton';
+import IconButton from './IconButton.tsx';
 
 export function InstallButton() {
   const { isInstallable, isInstalled, isMobile, installPrompt } = usePWAInstall();

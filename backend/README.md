@@ -1,4 +1,4 @@
-# Recipe Backend Service
+# EditRecipe Backend Service
 
 Fastify + TypeScript backend for recipe scraping.
 
@@ -65,8 +65,8 @@ Authorization: Bearer <firebase-id-token>
   "recipe": {
     "id": "generated-id",
     "userId": "user-uid",
-    "title": "Recipe Title",
-    "description": "Recipe description",
+    "title": "EditRecipe Title",
+    "description": "EditRecipe description",
     "ingredients": [...],
     "instructions": [...],
     "sourceUrl": "https://example.com/recipe",
@@ -85,7 +85,7 @@ src/
 ├── middleware/
 │   └── auth.ts           # Firebase Auth token verification
 ├── routes/
-│   └── scrape.ts         # Recipe scraping endpoint
+│   └── scrape.ts         # EditRecipe scraping endpoint
 ├── services/
 │   ├── scraper.ts        # Web scraping logic
 │   └── firestore.ts      # Firestore operations
@@ -98,4 +98,3 @@ src/
 - `npm run dev` - Start development server with hot-reload
 - `npm run build` - Build for production
 - `npm start` - Run production build
-

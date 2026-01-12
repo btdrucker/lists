@@ -2,7 +2,7 @@ import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { persistReducer, persistStore, createTransform } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 import authReducer from '../features/auth/slice';
-import recipesReducer from './slices/recipes';
+import recipesReducer from '../features/recipe-list/slice.ts';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -65,4 +65,3 @@ export const persistor = persistStore(store);
 // Infer the `RootState` and `AppDispatch` types from the store itself
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
-

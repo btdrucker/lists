@@ -1,4 +1,4 @@
-# Recipe Scraper Tests
+# EditRecipe Scraper Tests
 
 This directory contains tests for the recipe scraper functionality.
 
@@ -76,4 +76,3 @@ For specific site patterns and fixture details, see [`fixtures/README.md`](fixtu
 - [ ] Add snapshot testing for full recipe objects
 - [ ] Test error cases (malformed HTML, missing data)
 - [ ] Performance benchmarks
-

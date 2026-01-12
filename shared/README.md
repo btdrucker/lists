@@ -31,7 +31,7 @@ Backend-only type tracking which scraping method was used: `'WPRM' | 'DataAttrib
 ```typescript
 import type { RecipeBase, ExtractionMethod } from '../../../shared/types/index.js';
 
-export interface Recipe extends RecipeBase<Date> {
+export interface EditRecipe extends RecipeBase<Date> {
   extractionMethod?: ExtractionMethod;
 }
 ```
@@ -40,7 +40,7 @@ export interface Recipe extends RecipeBase<Date> {
 ```typescript
 import type { RecipeBase } from '../../../shared/types/index.js';
 
-export interface Recipe extends RecipeBase<string> {
+export interface EditRecipe extends RecipeBase<string> {
   // ISO string dates for Redux
 }
 ```
@@ -49,7 +49,7 @@ export interface Recipe extends RecipeBase<string> {
 
 To add a field that should be shared:
 1. Add to `RecipeContent` in `shared/types/index.ts`
-2. Field automatically available in both frontend and backend Recipe types
+2. Field automatically available in both frontend and backend EditRecipe types
 3. No duplicate definitions needed!
 
 ## Notes Field

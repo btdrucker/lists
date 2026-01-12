@@ -1,8 +1,8 @@
-# Family Recipe Sharing - Implementation Plan
+# Family EditRecipe Sharing - Implementation Plan
 
 ## Overview
 
-This document outlines the design for adding family/group-based recipe sharing to the Recipe app. This feature would allow users to organize into families or groups, where each family has their own shared collection of recipes that only members can access.
+This document outlines the design for adding family/group-based recipe sharing to the EditRecipe app. This feature would allow users to organize into families or groups, where each family has their own shared collection of recipes that only members can access.
 
 ## Firestore Schema Changes
 
@@ -13,7 +13,7 @@ This document outlines the design for adding family/group-based recipe sharing t
 ```typescript
 interface Family {
   id: string;                    // Auto-generated document ID
-  name: string;                  // "Smith Family", "Our Recipe Group", etc.
+  name: string;                  // "Smith Family", "Our EditRecipe Group", etc.
   createdBy: string;             // userId of the family creator
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -41,7 +41,7 @@ interface FamilyMember {
 #### `recipes` Collection - Add Family Field
 
 ```typescript
-interface Recipe {
+interface EditRecipe {
   // ... existing fields ...
   id: string;
   userId: string;                // Keep: original creator of recipe
@@ -113,7 +113,7 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid ||
         // User is in the recipe's family
         (resource.data.familyId != null && isFamilyMember(resource.data.familyId)) ||
-        // Recipe is marked public
+        // EditRecipe is marked public
         resource.data.isPublic == true
       );
       
@@ -242,7 +242,7 @@ async function migrateExistingRecipes() {
 - Options: "Personal Recipes", "Smith Family", "Friends Group", etc.
 - Remembers last selected family (localStorage or user profile)
 
-#### 3. Recipe Visibility Settings
+#### 3. EditRecipe Visibility Settings
 - When creating/editing recipe, choose:
   - **Personal** - Only you can see
   - **Family** - Select which family (if member of multiple)
@@ -275,7 +275,7 @@ interface FamiliesState {
 }
 
 interface RecipesState {
-  recipes: Recipe[];
+  recipes: EditRecipe[];
   filteredByFamily: string | null;  // Filter recipes by familyId
   loading: boolean;
   error: string | null;
@@ -310,7 +310,7 @@ If you want something simpler to start with:
 
 ### Minimal Schema
 ```typescript
-interface Recipe {
+interface EditRecipe {
   // ... existing fields ...
   sharedWith: string[];  // Array of userIds who can access this recipe
 }
@@ -327,7 +327,7 @@ match /recipes/{recipeId} {
 ```
 
 ### UI Features
-- "Share Recipe" button → enter email addresses
+- "Share EditRecipe" button → enter email addresses
 - Backend looks up users by email, adds their UID to `sharedWith` array
 - No concept of families, just direct recipe sharing
 
@@ -357,7 +357,7 @@ match /recipes/{recipeId} {
 ### Phase 4: Polish
 1. Notifications when added to family
 2. Activity feed (who added what recipe)
-3. Recipe favorites/bookmarks within families
+3. EditRecipe favorites/bookmarks within families
 4. Search within family recipes
 
 ## Considerations & Notes
@@ -366,7 +366,7 @@ match /recipes/{recipeId} {
 - **Member**: Can view family recipes, add new recipes to family
 - **Admin**: Everything members can do + invite/remove members, delete family, manage settings
 
-### Recipe Ownership
+### EditRecipe Ownership
 - Creator (`userId`) always retained even if recipe is in a family
 - Family admins can edit/delete any family recipe
 - Original creator maintains special privileges
@@ -375,7 +375,7 @@ match /recipes/{recipeId} {
 - User leaves family: Do their contributed recipes stay or go?
 - Family deletion: What happens to recipes? (Archive? Transfer to creator?)
 - User in multiple families: Clear UI for which family a recipe belongs to
-- Recipe moves between families: Track history? Notify members?
+- EditRecipe moves between families: Track history? Notify members?
 
 ### Privacy Considerations
 - Users must explicitly join families (no auto-adding)
@@ -386,9 +386,9 @@ match /recipes/{recipeId} {
 ## Future Enhancements
 
 - **Public recipe library**: Share recipes publicly, discover others' recipes
-- **Recipe collections**: Organize family recipes into meal plans, categories
+- **EditRecipe collections**: Organize family recipes into meal plans, categories
 - **Collaborative editing**: Multiple family members can edit recipe simultaneously
-- **Recipe comments/ratings**: Family members can leave feedback
+- **EditRecipe comments/ratings**: Family members can leave feedback
 - **Shopping lists**: Generate shared shopping lists from family recipes
 - **Calendar integration**: Plan family meals, assign recipes to dates
 
@@ -397,4 +397,3 @@ match /recipes/{recipeId} {
 **Status:** Planning phase - implementation pending
 
 **Last Updated:** December 27, 2025
-

@@ -1,4 +1,4 @@
-# Recipe App - Quick Start Guide
+# EditRecipe App - Quick Start Guide
 
 Your monorepo is ready! Follow these steps to get running.
 
@@ -137,7 +137,7 @@ lists/
 │   │   │   └── firestore.ts
 │   │   ├── common/
 │   │   │   ├── store.ts
-│   │   │   └── slices/recipes.ts
+│   │   │   └── slices/slice.ts
 │   │   └── App.tsx
 │   └── package.json
 │
@@ -148,8 +148,8 @@ lists/
 ## 🔑 Key Features
 
 - ✅ **Email/Password Authentication**
-- ✅ **Recipe Scraping** from URLs using backend
-- ✅ **Manual Recipe Entry** directly in frontend
+- ✅ **EditRecipe Scraping** from URLs using backend
+- ✅ **Manual EditRecipe Entry** directly in frontend
 - ✅ **Structured Ingredients** (amount, unit, name)
 - ✅ **Redux State Management** with persistence
 - ✅ **Firestore Cost Optimization** (single read per session)
@@ -167,7 +167,7 @@ lists/
 - Verify Email/Password auth is enabled in Firebase Console
 - Check browser console for errors
 
-**Recipe scraping fails**:
+**EditRecipe scraping fails**:
 - Backend must be running on localhost:3001
 - Some websites block scraping - try allrecipes.com or food.com
 - Check browser console and backend logs for errors
@@ -183,4 +183,3 @@ lists/
 - Make recipes private/public toggle
 
 Enjoy your recipe app! 🍳
-

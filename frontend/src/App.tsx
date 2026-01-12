@@ -10,7 +10,7 @@ import AuthScreen from './features/auth/AuthScreen';
 import RecipeList from './features/recipe-list/RecipeList';
 import ViewRecipe from './features/recipe/ViewRecipe';
 import RecipeStart from './features/recipe/RecipeStart';
-import Recipe from './features/recipe/Recipe';
+import EditRecipe from './features/recipe/EditRecipe.tsx';
 import { InstallBanner } from './common/components/InstallBanner';
 import { OfflineIndicator } from './common/components/OfflineIndicator';
 import { UpdatePrompt } from './common/components/UpdatePrompt';
@@ -30,10 +30,10 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
         height: '100vh',
         fontSize: '18px',
         color: '#666'
@@ -56,7 +56,7 @@ function AppContent() {
             <Route path="/recipe-list" element={<RecipeList />} />
             <Route path="/recipe/:id" element={<ViewRecipe />} />
             <Route path="/recipe-start" element={<RecipeStart />} />
-            <Route path="/edit-recipe/:id" element={<Recipe />} />
+            <Route path="/edit-recipe/:id" element={<EditRecipe />} />
             <Route path="/" element={<Navigate to="/recipe-list" replace />} />
             <Route path="*" element={<Navigate to="/recipe-list" replace />} />
           </>

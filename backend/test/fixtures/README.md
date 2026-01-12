@@ -1,4 +1,4 @@
-# Recipe HTML Test Fixtures
+# EditRecipe HTML Test Fixtures
 
 This directory contains saved HTML files from real recipe websites for testing the scraper.
 
@@ -30,7 +30,7 @@ Edit `../scraper.test.ts` and add a new fixture object:
 
 ```typescript
 {
-  name: 'Site Name - Recipe Name',
+  name: 'Site Name - EditRecipe Name',
   file: 'site-recipe.html',
   url: 'https://example.com/recipe',
   expectedMethod: 'WPRM' | 'DataAttributes' | 'JSON-LD' | 'HTML',
@@ -77,7 +77,7 @@ npm test
 
 ## Site Patterns & Extraction Methods
 
-### WPRM Plugin (WordPress Recipe Maker)
+### WPRM Plugin (WordPress EditRecipe Maker)
 **Sites**: Budget Bytes, many WordPress food blogs  
 **Selectors**: `.wprm-recipe`, `.wprm-recipe-ingredient-group`  
 **Structure**: Fully structured with separate spans for amount/unit/name/notes  
@@ -91,7 +91,7 @@ npm test
 
 ### JSON-LD
 **Sites**: NYT Cooking, Bon Appétit, most modern recipe sites  
-**Format**: `<script type="application/ld+json">` with Recipe schema  
+**Format**: `<script type="application/ld+json">` with EditRecipe schema  
 **Structure**: Usually plain text, requires text parsing for amount/unit/name  
 **Sections**: Usually not present in JSON-LD  
 **Note**: May be wrapped in `@graph` array (WordPress pattern)
@@ -110,4 +110,3 @@ Each fixture should be tested to verify:
 - ✅ Sections detected where present (optional field)
 - ✅ Instructions extracted and cleaned
 - ✅ Metadata present: title, description, image, servings, prep/cook times
-

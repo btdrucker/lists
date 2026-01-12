@@ -1,4 +1,4 @@
-# Recipe Scraping App
+# EditRecipe Scraping App
 
 A monorepo containing a React/Redux frontend and Fastify backend for scraping and managing recipes.
 
@@ -60,11 +60,11 @@ Frontend runs on http://localhost:5173
 ## Features
 
 - **Authentication**: Firebase Auth with email/password
-- **Recipe List**: View all recipes (public, any user can read)
-- **Add Recipe**: Two modes:
+- **EditRecipe List**: View all recipes (public, any user can read)
+- **Add EditRecipe**: Two modes:
   - Manual entry with structured ingredient input
   - URL scraping to extract recipe data from websites
-- **Edit Recipe**: Modify title, description, ingredients, instructions
+- **Edit EditRecipe**: Modify title, description, ingredients, instructions
 - **Cost Optimization**: Single Firestore read per session, Redux state management
 
 ## Architecture
@@ -87,4 +87,3 @@ Frontend and backend can be deployed separately:
 ## License
 
 Private project
-
