@@ -1,15 +1,9 @@
 import * as cheerio from 'cheerio';
-import { Ingredient } from '../types/index.js';
+import { Ingredient, RecipeContent, ExtractionMethod } from '../types/index.js';
 
-interface ScrapedRecipe {
-  title: string;
-  description?: string;
-  ingredients: Ingredient[];
-  instructions: string[];
-  imageUrl?: string;
-  servings?: number;
-  prepTime?: number;
-  cookTime?: number;
+// ScrapedRecipe extends RecipeContent with extraction metadata
+interface ScrapedRecipe extends RecipeContent {
+  extractionMethod?: ExtractionMethod;
 }
 
 // Unit synonyms: normalized unit → array of variations
@@ -224,6 +218,7 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
       console.log('✓ WPRM extraction successful');
       logRecipeSample(wprmRecipe);
       console.log('\n✅ Using WPRM extraction');
+      wprmRecipe.extractionMethod = 'WPRM';
       return wprmRecipe;
     }
     console.log('✗ WPRM not detected');
@@ -235,6 +230,7 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
       console.log('✓ Data attribute extraction successful');
       logRecipeSample(dataAttrRecipe);
       console.log('\n✅ Using data attribute extraction');
+      dataAttrRecipe.extractionMethod = 'DataAttributes';
       return dataAttrRecipe;
     }
     console.log('✗ Data attributes not found');
@@ -246,6 +242,7 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
       console.log('✓ JSON-LD extraction successful');
       logRecipeSample(jsonLdRecipe);
       console.log('\n✅ Using JSON-LD extraction (with text parsing)');
+      jsonLdRecipe.extractionMethod = 'JSON-LD';
       return jsonLdRecipe;
     }
     console.log('✗ JSON-LD not found');
@@ -256,6 +253,7 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
     console.log('✓ HTML extraction complete');
     logRecipeSample(htmlRecipe);
     console.log('\n✅ Using HTML extraction (with text parsing)');
+    htmlRecipe.extractionMethod = 'HTML';
     
     console.log('\n========================================\n');
     return htmlRecipe;

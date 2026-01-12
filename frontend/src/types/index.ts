@@ -1,30 +1,14 @@
-export interface Ingredient {
-  amount: number | null;
-  amountMax?: number | null;
-  unit: string | null;
-  name: string;
-  section?: string;
-  optional?: boolean;
-  originalText: string;
-}
+// Re-export shared types
+export type { 
+  Ingredient, 
+  RecipeContent, 
+  RecipeBase 
+} from '../../../shared/types/index.js';
+import type { RecipeBase } from '../../../shared/types/index.js';
 
-export interface Recipe {
-  id: string;
-  userId: string;
-  title: string;
-  description?: string;
-  notes?: string;
-  ingredients: Ingredient[];
-  instructions: string[];
-  sourceUrl?: string;
-  imageUrl?: string;
-  servings?: number;
-  prepTime?: number;
-  cookTime?: number;
-  tags?: string[];
-  isPublic: boolean;
-  createdAt: string;  // ISO string for Redux serialization
-  updatedAt: string;  // ISO string for Redux serialization
+// Frontend-specific Recipe type with ISO string dates (for Redux serialization)
+export interface Recipe extends RecipeBase<string> {
+  // All fields from RecipeBase, but createdAt/updatedAt are strings
 }
 
 export interface SerializableUser {

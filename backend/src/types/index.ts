@@ -1,29 +1,15 @@
-export interface Ingredient {
-  amount: number | null;
-  amountMax?: number | null;
-  unit: string | null;
-  name: string;
-  section?: string;
-  optional?: boolean;
-  originalText: string;
-}
+// Re-export shared types
+export type { 
+  Ingredient, 
+  RecipeContent, 
+  RecipeBase,
+  ExtractionMethod 
+} from '../../../shared/types/index.js';
+import type { RecipeBase, ExtractionMethod } from '../../../shared/types/index.js';
 
-export interface Recipe {
-  id: string;
-  userId: string;
-  title: string;
-  description?: string;
-  ingredients: Ingredient[];
-  instructions: string[];
-  sourceUrl?: string;
-  imageUrl?: string;
-  servings?: number;
-  prepTime?: number;
-  cookTime?: number;
-  tags?: string[];
-  isPublic: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+// Backend-specific Recipe type with Date objects and extraction metadata
+export interface Recipe extends RecipeBase<Date> {
+  extractionMethod?: ExtractionMethod;
 }
 
 export interface ScrapeRequest {
