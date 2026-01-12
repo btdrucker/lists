@@ -422,6 +422,8 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
   // Extract image
   const imageUrlText = 
     $('meta[property="og:image"]').attr('content') ||
+    $('img[class*="recipe"]').first().attr('data-lazy-src') ||
+    $('img[class*="recipe"]').first().attr('data-src') ||
     $('img[class*="recipe"]').first().attr('src');
 
   const recipe: ScrapedRecipe = {
@@ -661,7 +663,11 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
     recipe.description = description;
   }
 
-  const imageUrl = $('meta[property="og:image"]').attr('content') || $('img[class*="recipe"]').first().attr('src');
+  const imageUrl = 
+    $('meta[property="og:image"]').attr('content') ||
+    $('img[class*="recipe"]').first().attr('data-lazy-src') ||
+    $('img[class*="recipe"]').first().attr('data-src') ||
+    $('img[class*="recipe"]').first().attr('src');
   if (imageUrl) {
     recipe.imageUrl = imageUrl;
   }
@@ -860,7 +866,10 @@ function extractFromWPRM($: cheerio.CheerioAPI): ScrapedRecipe | null {
     recipe.description = description;
   }
 
-  const imageUrl = wprmContainer.find('.wprm-recipe-image img').attr('src');
+  const imageUrl = 
+    wprmContainer.find('.wprm-recipe-image img').attr('data-lazy-src') ||
+    wprmContainer.find('.wprm-recipe-image img').attr('data-src') ||
+    wprmContainer.find('.wprm-recipe-image img').attr('src');
   if (imageUrl) {
     recipe.imageUrl = imageUrl;
   }

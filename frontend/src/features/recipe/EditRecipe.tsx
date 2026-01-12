@@ -61,6 +61,7 @@ const EditRecipe = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
   const [servings, setServings] = useState('');
   const [prepTime, setPrepTime] = useState('');
   const [cookTime, setCookTime] = useState('');
@@ -74,6 +75,7 @@ const EditRecipe = () => {
     title: string;
     description: string;
     notes: string;
+    imageUrl: string;
     servings: string;
     prepTime: string;
     cookTime: string;
@@ -93,6 +95,7 @@ const EditRecipe = () => {
     if (title.trim() !== originalState.title) return true;
     if (description.trim() !== (originalState.description || '')) return true;
     if (notes.trim() !== (originalState.notes || '')) return true;
+    if (imageUrl.trim() !== (originalState.imageUrl || '')) return true;
     if (servings.trim() !== originalState.servings) return true;
     if (prepTime.trim() !== originalState.prepTime) return true;
     if (cookTime.trim() !== originalState.cookTime) return true;
@@ -136,6 +139,7 @@ const EditRecipe = () => {
         title: existingRecipe.title,
         description: existingRecipe.description || '',
         notes: existingRecipe.notes || '',
+        imageUrl: existingRecipe.imageUrl || '',
         servings: existingRecipe.servings?.toString() || '',
         prepTime: existingRecipe.prepTime?.toString() || '',
         cookTime: existingRecipe.cookTime?.toString() || '',
@@ -150,6 +154,7 @@ const EditRecipe = () => {
       setTitle(initialState.title);
       setDescription(initialState.description);
       setNotes(initialState.notes);
+      setImageUrl(initialState.imageUrl);
       setServings(initialState.servings);
       setPrepTime(initialState.prepTime);
       setCookTime(initialState.cookTime);
@@ -186,6 +191,9 @@ const EditRecipe = () => {
       }
       if (notes.trim()) {
         recipeData.notes = notes.trim();
+      }
+      if (imageUrl.trim()) {
+        recipeData.imageUrl = imageUrl.trim();
       }
       if (servings.trim()) {
         const servingsNum = parseInt(servings.trim(), 10);
@@ -243,7 +251,7 @@ const EditRecipe = () => {
     if (!existingRecipe?.sourceUrl || !id) return;
 
     const confirmRescrape = window.confirm(
-      'This will re-scrape the recipe from the source URL and replace all data except Notes. Continue?'
+      'This will re-scrape the recipe from the source URL and load fresh data (preserving Notes). You can review the changes before saving. Continue?'
     );
     if (!confirmRescrape) return;
 
@@ -286,6 +294,7 @@ const EditRecipe = () => {
         // Preserve current notes, update everything else from scraped data
         setTitle(scrapedRecipe.title || '');
         setDescription(scrapedRecipe.description || '');
+        setImageUrl(scrapedRecipe.imageUrl || '');
         setServings(scrapedRecipe.servings?.toString() || '');
         setPrepTime(scrapedRecipe.prepTime?.toString() || '');
         setCookTime(scrapedRecipe.cookTime?.toString() || '');
@@ -300,41 +309,9 @@ const EditRecipe = () => {
             : ['']
         );
 
-        // Update in Firestore (preserving notes)
-        const updates: any = {
-          title: scrapedRecipe.title,
-          ingredients: scrapedRecipe.ingredients,
-          instructions: scrapedRecipe.instructions,
-          sourceUrl: existingRecipe.sourceUrl,
-        };
-
-        if (scrapedRecipe.imageUrl) {
-          updates.imageUrl = scrapedRecipe.imageUrl;
-        }
-        if (scrapedRecipe.description) {
-          updates.description = scrapedRecipe.description;
-        }
-        if (scrapedRecipe.servings) {
-          updates.servings = scrapedRecipe.servings;
-        }
-        if (scrapedRecipe.prepTime) {
-          updates.prepTime = scrapedRecipe.prepTime;
-        }
-        if (scrapedRecipe.cookTime) {
-          updates.cookTime = scrapedRecipe.cookTime;
-        }
-        if (notes.trim()) {
-          updates.notes = notes.trim();
-        }
-
-        await updateRecipe(id, updates);
-        dispatch(updateRecipeInState({
-          ...existingRecipe,
-          ...updates,
-          id
-        }));
-
-        alert('Recipe re-scraped successfully!');
+        // Don't save to Firestore yet - let the user review and save manually
+        // The form fields are now different from originalState, so save button will be enabled
+        alert('Recipe re-scraped successfully! Review the changes and click Save to update.');
       } else {
         setError(data.error || 'Failed to re-scrape recipe');
       }
