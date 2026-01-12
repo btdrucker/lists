@@ -1,19 +1,29 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAppSelector, useAppDispatch, useAutoHeight, useWakeLock } from '../../common/hooks';
-import { updateRecipeInState } from '../recipe-list/slice.ts';
+import { updateRecipeInState } from '../recipe-list/slice';
 import { updateRecipe } from '../../firebase/firestore';
-import IconButton from '../../common/components/IconButton.tsx';
+import IconButton from '../../common/components/IconButton';
 import styles from './viewRecipe.module.css';
+
+// Helper function to extract domain from URL
+const extractDomain = (url: string): string => {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname;
+  } catch {
+    return url;
+  }
+};
 
 const ViewRecipe = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { id } = useParams<{ id: string }>();
   const recipes = useAppSelector((state) => state.recipes?.recipes || []);
-
+  
   const recipe = recipes.find((r: any) => r.id === id);
-
+  
   const [notes, setNotes] = useState(recipe?.notes || '');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -46,7 +56,7 @@ const ViewRecipe = () => {
 
   const saveNotes = async () => {
     if (!recipe || !id) return;
-
+    
     // Only save if notes have changed
     if (notes === (recipe.notes || '')) return;
 
@@ -87,7 +97,7 @@ const ViewRecipe = () => {
         } else {
           updates.notes = '';
         }
-        updateRecipe(id!, updates).catch(err =>
+        updateRecipe(id!, updates).catch(err => 
           console.error('Error saving notes on unmount:', err)
         );
       }
@@ -143,7 +153,7 @@ const ViewRecipe = () => {
         // Fallback to clipboard
         await navigator.clipboard.writeText(shareUrl);
         // Could show a toast notification here
-        alert('EditRecipe link copied to clipboard!');
+        alert('Recipe link copied to clipboard!');
       }
     } catch (error) {
       // User cancelled or error occurred
@@ -155,7 +165,7 @@ const ViewRecipe = () => {
 
   const handleCookModeClick = async () => {
     const wasActive = cookModeActive;
-
+    
     if (wasActive) {
       // Turning OFF - animate out first
       setIsAnimatingOut(true);
@@ -190,7 +200,7 @@ const ViewRecipe = () => {
         </header>
         <div className={styles.content}>
           <div className={styles.notFound}>
-            EditRecipe not found
+            Recipe not found
           </div>
         </div>
       </div>
@@ -216,7 +226,7 @@ const ViewRecipe = () => {
             <h1>{recipe.title}</h1>
           </div>
         )}
-
+        
         {/* Floating buttons over hero */}
         <button
           onClick={handleBackClick}
@@ -229,7 +239,7 @@ const ViewRecipe = () => {
           <button
             onClick={() => setShowMenu(!showMenu)}
             className={styles.floatingMenuButton}
-            aria-label="EditRecipe options"
+            aria-label="Recipe options"
             aria-expanded={showMenu}
           >
             <i className="fa-solid fa-ellipsis-vertical"></i>
@@ -263,7 +273,7 @@ const ViewRecipe = () => {
           <div className={styles.sourceUrl}>
             <label>Source:</label>
             <a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer">
-              {recipe.sourceUrl}
+              {extractDomain(recipe.sourceUrl)}
             </a>
           </div>
         )}
@@ -272,6 +282,26 @@ const ViewRecipe = () => {
           <div className={styles.description}>
             {recipe.description}
           </div>
+        )}
+
+        {(recipe.servings || recipe.prepTime || recipe.cookTime) && (
+          <section className={styles.meta}>
+            {recipe.servings && (
+              <div className={styles.metaServings}>
+                <strong><span className={styles.metaLabelFull}>Servings:</span><span className={styles.metaLabelShort}>Servings:</span></strong> {recipe.servings}
+              </div>
+            )}
+            {recipe.prepTime && (
+              <div className={styles.metaPrepTime}>
+                <strong><span className={styles.metaLabelFull}>Prep time:</span><span className={styles.metaLabelShort}>Prep:</span></strong> {recipe.prepTime} min
+              </div>
+            )}
+            {recipe.cookTime && (
+              <div className={styles.metaCookTime}>
+                <strong><span className={styles.metaLabelFull}>Cook time:</span><span className={styles.metaLabelShort}>Cook:</span></strong> {recipe.cookTime} min
+              </div>
+            )}
+          </section>
         )}
 
         <section className={styles.notesSection}>
@@ -324,17 +354,10 @@ const ViewRecipe = () => {
             ))}
           </ol>
         </section>
-
-        {(recipe.servings || recipe.prepTime || recipe.cookTime) && (
-          <section className={styles.meta}>
-            {recipe.servings && <div><strong>Servings:</strong> {recipe.servings}</div>}
-            {recipe.prepTime && <div><strong>Prep time:</strong> {recipe.prepTime} min</div>}
-            {recipe.cookTime && <div><strong>Cook time:</strong> {recipe.cookTime} min</div>}
-          </section>
-        )}
       </div>
     </div>
   );
 };
 
 export default ViewRecipe;
+

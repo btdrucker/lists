@@ -2,10 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch, useAutoHeight } from '../../common/hooks';
 import { addRecipe, updateRecipeInState } from '../recipe-list/slice.ts';
-import { addRecipe as saveRecipe, updateRecipe } from '../../firebase/firestore';
+import { addRecipe as saveRecipe, updateRecipe, deleteRecipe } from '../../firebase/firestore';
+import { getIdToken } from '../../firebase/auth';
 import IconButton from '../../common/components/IconButton.tsx';
 import type {Ingredient, Recipe} from '../../types';
 import styles from './recipe.module.css';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const IS_DEV = import.meta.env.DEV;
 
 // Instruction row component with auto-height textarea
 const InstructionRow = ({
@@ -50,12 +54,16 @@ const EditRecipe = () => {
   const existingRecipe = !isNewRecipe && id ? recipes.find((r: Recipe) => r.id === id) : null;
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isRescraping, setIsRescraping] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // EditRecipe form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
+  const [servings, setServings] = useState('');
+  const [prepTime, setPrepTime] = useState('');
+  const [cookTime, setCookTime] = useState('');
   const [ingredients, setIngredients] = useState<Ingredient[]>([
     { amount: null, unit: null, name: '', originalText: '' },
   ]);
@@ -66,6 +74,9 @@ const EditRecipe = () => {
     title: string;
     description: string;
     notes: string;
+    servings: string;
+    prepTime: string;
+    cookTime: string;
     ingredients: Ingredient[];
     instructions: string[];
   } | null>(null);
@@ -82,6 +93,9 @@ const EditRecipe = () => {
     if (title.trim() !== originalState.title) return true;
     if (description.trim() !== (originalState.description || '')) return true;
     if (notes.trim() !== (originalState.notes || '')) return true;
+    if (servings.trim() !== originalState.servings) return true;
+    if (prepTime.trim() !== originalState.prepTime) return true;
+    if (cookTime.trim() !== originalState.cookTime) return true;
 
     // Compare ingredients (filter out empty ones like save does)
     const currIngredients = ingredients.filter(i => i.name.trim());
@@ -122,6 +136,9 @@ const EditRecipe = () => {
         title: existingRecipe.title,
         description: existingRecipe.description || '',
         notes: existingRecipe.notes || '',
+        servings: existingRecipe.servings?.toString() || '',
+        prepTime: existingRecipe.prepTime?.toString() || '',
+        cookTime: existingRecipe.cookTime?.toString() || '',
         ingredients: existingRecipe.ingredients.length > 0
           ? existingRecipe.ingredients
           : [{ amount: null, unit: null, name: '', originalText: '' }],
@@ -133,6 +150,9 @@ const EditRecipe = () => {
       setTitle(initialState.title);
       setDescription(initialState.description);
       setNotes(initialState.notes);
+      setServings(initialState.servings);
+      setPrepTime(initialState.prepTime);
+      setCookTime(initialState.cookTime);
       setIngredients(initialState.ingredients);
       setInstructions(initialState.instructions);
       setOriginalState(initialState); // Store original for comparison
@@ -167,6 +187,24 @@ const EditRecipe = () => {
       if (notes.trim()) {
         recipeData.notes = notes.trim();
       }
+      if (servings.trim()) {
+        const servingsNum = parseInt(servings.trim(), 10);
+        if (!isNaN(servingsNum) && servingsNum > 0) {
+          recipeData.servings = servingsNum;
+        }
+      }
+      if (prepTime.trim()) {
+        const prepTimeNum = parseInt(prepTime.trim(), 10);
+        if (!isNaN(prepTimeNum) && prepTimeNum > 0) {
+          recipeData.prepTime = prepTimeNum;
+        }
+      }
+      if (cookTime.trim()) {
+        const cookTimeNum = parseInt(cookTime.trim(), 10);
+        if (!isNaN(cookTimeNum) && cookTimeNum > 0) {
+          recipeData.cookTime = cookTimeNum;
+        }
+      }
 
       // Note: sourceUrl is NOT saved here - it's only set by the backend scrape endpoint
       // If updating a recipe with existing sourceUrl, preserve it
@@ -198,6 +236,113 @@ const EditRecipe = () => {
       console.error('Save error:', err);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleRescrape = async () => {
+    if (!existingRecipe?.sourceUrl || !id) return;
+
+    const confirmRescrape = window.confirm(
+      'This will re-scrape the recipe from the source URL and replace all data except Notes. Continue?'
+    );
+    if (!confirmRescrape) return;
+
+    setIsRescraping(true);
+    setError(null);
+
+    try {
+      const token = await getIdToken();
+      if (!token) {
+        setError('Not authenticated');
+        return;
+      }
+
+      // Bypass cache by adding cache: 'no-store' and a timestamp query param
+      const response = await fetch(`${API_URL}/scrape?t=${Date.now()}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ url: existingRecipe.sourceUrl }),
+        cache: 'no-store',
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.recipe) {
+        const scrapedRecipe = data.recipe;
+        
+        // Delete the duplicate recipe created by the scrape endpoint
+        // (we only want to update the existing recipe, not create a new one)
+        if (scrapedRecipe.id && scrapedRecipe.id !== id) {
+          try {
+            await deleteRecipe(scrapedRecipe.id);
+          } catch (err) {
+            console.error('Failed to delete duplicate recipe:', err);
+          }
+        }
+        
+        // Preserve current notes, update everything else from scraped data
+        setTitle(scrapedRecipe.title || '');
+        setDescription(scrapedRecipe.description || '');
+        setServings(scrapedRecipe.servings?.toString() || '');
+        setPrepTime(scrapedRecipe.prepTime?.toString() || '');
+        setCookTime(scrapedRecipe.cookTime?.toString() || '');
+        setIngredients(
+          scrapedRecipe.ingredients.length > 0
+            ? scrapedRecipe.ingredients
+            : [{ amount: null, unit: null, name: '', originalText: '' }]
+        );
+        setInstructions(
+          scrapedRecipe.instructions.length > 0
+            ? scrapedRecipe.instructions
+            : ['']
+        );
+
+        // Update in Firestore (preserving notes)
+        const updates: any = {
+          title: scrapedRecipe.title,
+          ingredients: scrapedRecipe.ingredients,
+          instructions: scrapedRecipe.instructions,
+          sourceUrl: existingRecipe.sourceUrl,
+        };
+
+        if (scrapedRecipe.imageUrl) {
+          updates.imageUrl = scrapedRecipe.imageUrl;
+        }
+        if (scrapedRecipe.description) {
+          updates.description = scrapedRecipe.description;
+        }
+        if (scrapedRecipe.servings) {
+          updates.servings = scrapedRecipe.servings;
+        }
+        if (scrapedRecipe.prepTime) {
+          updates.prepTime = scrapedRecipe.prepTime;
+        }
+        if (scrapedRecipe.cookTime) {
+          updates.cookTime = scrapedRecipe.cookTime;
+        }
+        if (notes.trim()) {
+          updates.notes = notes.trim();
+        }
+
+        await updateRecipe(id, updates);
+        dispatch(updateRecipeInState({
+          ...existingRecipe,
+          ...updates,
+          id
+        }));
+
+        alert('Recipe re-scraped successfully!');
+      } else {
+        setError(data.error || 'Failed to re-scrape recipe');
+      }
+    } catch (err) {
+      setError('Failed to re-scrape recipe');
+      console.error('Re-scrape error:', err);
+    } finally {
+      setIsRescraping(false);
     }
   };
 
@@ -305,10 +450,22 @@ const EditRecipe = () => {
         {existingRecipe?.sourceUrl && (
           <div className={styles.field}>
             <label>Source URL</label>
-            <div className={styles.immutableUrl}>
-              <a href={existingRecipe.sourceUrl} target="_blank" rel="noopener noreferrer">
-                {existingRecipe.sourceUrl}
-              </a>
+            <div className={styles.sourceUrlContainer}>
+              <div className={styles.immutableUrl}>
+                <a href={existingRecipe.sourceUrl} target="_blank" rel="noopener noreferrer">
+                  {existingRecipe.sourceUrl}
+                </a>
+              </div>
+              {IS_DEV && (
+                <button
+                  onClick={handleRescrape}
+                  disabled={isRescraping}
+                  className={styles.rescrapeButton}
+                  title="Re-scrape recipe from source"
+                >
+                  <i className="fa-solid fa-rotate-right"></i>
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -323,6 +480,39 @@ const EditRecipe = () => {
             }}
             placeholder="Brief description"
           />
+        </div>
+
+        <div className={styles.metaFields}>
+          <div className={styles.metaField}>
+            <label>Servings</label>
+            <input
+              type="number"
+              min="1"
+              value={servings}
+              onChange={(e) => setServings(e.target.value)}
+              placeholder=""
+            />
+          </div>
+          <div className={styles.metaField}>
+            <label>Prep time (min)</label>
+            <input
+              type="number"
+              min="0"
+              value={prepTime}
+              onChange={(e) => setPrepTime(e.target.value)}
+              placeholder=""
+            />
+          </div>
+          <div className={styles.metaField}>
+            <label>Cook time (min)</label>
+            <input
+              type="number"
+              min="0"
+              value={cookTime}
+              onChange={(e) => setCookTime(e.target.value)}
+              placeholder=""
+            />
+          </div>
         </div>
 
         <div className={styles.field}>
@@ -393,6 +583,7 @@ const EditRecipe = () => {
           disabled={isSaving || !hasActualChanges()}
           className={styles.saveButton}
         >
+          <i className="fa-solid fa-floppy-disk"></i>
           {isSaving ? 'Saving...' : 'Save'}
         </button>
       </div>

@@ -307,6 +307,10 @@
   margin-bottom: var(--spacing-xl);
 }
 
+.section:last-child {
+  margin-bottom: 0;
+}
+
 .section h2 {
   font-size: 20px;
   margin: 0 0 var(--spacing-md) 0;
@@ -364,6 +368,7 @@
   background: var(--color-bg-light);
   border-radius: var(--radius-sm);
   font-size: 14px;
+  margin-bottom: var(--spacing-xl);
 }
 
 .meta div {
@@ -372,6 +377,14 @@
 
 .meta strong {
   color: var(--color-text-primary);
+}
+
+.metaLabelShort {
+  display: none;
+}
+
+.metaLabelFull {
+  display: inline;
 }
 
 /* Mobile responsive */
@@ -401,8 +414,15 @@
   }
 
   .meta {
-    flex-direction: column;
-    gap: var(--spacing-xs);
+    gap: var(--spacing-sm);
+  }
+  
+  .metaLabelFull {
+    display: none;
+  }
+  
+  .metaLabelShort {
+    display: inline;
   }
 }
 

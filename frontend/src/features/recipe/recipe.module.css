@@ -166,7 +166,58 @@
   overflow: hidden;
 }
 
+.metaFields {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.metaField {
+  flex: 1;
+}
+
+.metaField label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.metaField input {
+  width: 100%;
+  padding: 10px var(--spacing-sm);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  font-family: inherit;
+}
+
+/* Mobile: servings full width, prep/cook times share a line */
+@media (max-width: 640px) {
+  .metaFields {
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+  
+  .metaField:first-child {
+    flex-basis: 100%;
+  }
+  
+  .metaField:nth-child(2),
+  .metaField:nth-child(3) {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.sourceUrlContainer {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
 .immutableUrl {
+  flex: 1;
   padding: 10px var(--spacing-sm);
   background: var(--color-bg-light);
   border: 1px solid #e5e5e5;
@@ -183,6 +234,51 @@
 
 .immutableUrl a:hover {
   text-decoration: underline;
+}
+
+.rescrapeButton {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: var(--color-bg-lighter);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.rescrapeButton:hover:not(:disabled) {
+  background: var(--color-bg-light);
+  border-color: var(--color-border-medium);
+  color: var(--color-primary);
+}
+
+.rescrapeButton:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.rescrapeButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.rescrapeButton:disabled i {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .section {
@@ -296,6 +392,10 @@
   border: none;
   cursor: pointer;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
 }
 
 .form .saveButton:hover:not(:disabled) {

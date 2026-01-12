@@ -67,7 +67,7 @@ for (const [normalized, synonyms] of Object.entries(UNIT_SYNONYMS)) {
 /**
  * Normalize Unicode fractions to ASCII format using NFKD normalization
  * E.g., "¼" → "1/4", "½" → "1/2"
- *
+ * 
  * NFKD decomposition turns "¼" into "1⁄4" (using the special fraction slash U+2044)
  * We then replace the special Unicode fraction slash with an ASCII forward slash
  */
@@ -86,7 +86,7 @@ function normalizeFractions(input: string): string {
 /**
  * Parse a single amount string (no ranges)
  * Handles Unicode fractions (e.g., "½" → "1/2") and mixed fractions (e.g., "1 1/2")
- *
+ * 
  * @param amountStr - A single amount string (should not contain ranges)
  * @param parseFunc - The parsing function to use (parseFraction for text, parseFloat for decimals)
  * @returns Parsed number or null
@@ -97,7 +97,7 @@ function parseSingleAmount(
 ): number | null {
   // Normalize Unicode fractions (e.g., "½" → "1/2")
   const normalized = normalizeFractions(amountStr);
-
+  
   // Check for mixed fractions like "1 1/2" (only when using parseFraction)
   if (parseFunc === parseFraction) {
     const mixedMatch = normalized.match(/^(\d+)\s+(\d+\/\d+)$/);
@@ -107,7 +107,7 @@ function parseSingleAmount(
       return frac !== null ? whole + frac : whole;
     }
   }
-
+  
   // Parse the normalized string
   return parseFunc(normalized);
 }
@@ -116,14 +116,14 @@ function parseSingleAmount(
  * Detect if an amount string contains a range and split it
  * E.g., "1-2" → { isRange: true, min: "1", max: "2" }
  * E.g., "½" → { isRange: false, value: "½" }
- *
+ * 
  * @param amountStr - The amount string to check
  * @returns Object indicating if it's a range and the value(s)
  */
-function splitAmountRange(amountStr: string):
+function splitAmountRange(amountStr: string): 
   | { isRange: false; value: string }
   | { isRange: true; min: string; max: string } {
-
+  
   // Check if there's a range (before normalizing, to avoid confusion with fractions like "1/2")
   if (amountStr.includes('-')) {
     // Handle ranges like "1-2" or "½-1" or "1 1/2 - 2 1/2"
@@ -136,7 +136,7 @@ function splitAmountRange(amountStr: string):
       };
     }
   }
-
+  
   // No range - single value
   return {
     isRange: false,
@@ -147,7 +147,7 @@ function splitAmountRange(amountStr: string):
 /**
  * Parse an amount string that may contain ranges (e.g., "1-2", "½-1") or mixed fractions (e.g., "1 1/2")
  * Each part of a range gets full parsing/normalization treatment
- *
+ * 
  * @param amountStr - The amount string to parse (may contain Unicode fractions and/or ranges)
  * @param parseFunc - The parsing function to use (parseFraction for text, parseFloat for decimals)
  * @returns Object with amount and optional amountMax
@@ -157,7 +157,7 @@ function parseAmountWithRange(
   parseFunc: (str: string) => number | null = parseFraction
 ): { amount: number | null; amountMax?: number | null } {
   const split = splitAmountRange(amountStr);
-
+  
   if (split.isRange) {
     // Parse each side of the range with full normalization and mixed fraction handling
     return {
@@ -200,9 +200,9 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
 
     // Detect recipe plugins/formats
     console.log('\n=== RECIPE PLUGIN DETECTION ===');
-    console.log('WPRM (WP EditRecipe Maker):', !!$('.wprm-recipe').length);
+    console.log('WPRM (WP Recipe Maker):', !!$('.wprm-recipe').length);
     console.log('Tasty Recipes:', !!$('.tasty-recipes').length);
-    console.log('WP EditRecipe Card:', !!$('.wp-block-recipe-card').length);
+    console.log('WP Recipe Card:', !!$('.wp-block-recipe-card').length);
     console.log('Mediavine Create:', !!$('.mv-create-card').length);
     console.log('EasyRecipe:', !!$('.easyrecipe').length);
 
@@ -254,7 +254,7 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
     logRecipeSample(htmlRecipe);
     console.log('\n✅ Using HTML extraction (with text parsing)');
     htmlRecipe.extractionMethod = 'HTML';
-
+    
     console.log('\n========================================\n');
     return htmlRecipe;
   } catch (error) {
@@ -291,13 +291,13 @@ export async function scrapeRecipe(url: string): Promise<ScrapedRecipe> {
 function extractFromJsonLd($: cheerio.CheerioAPI): ScrapedRecipe | null {
   try {
     const scriptTags = $('script[type="application/ld+json"]');
-
+    
     for (let i = 0; i < scriptTags.length; i++) {
       const scriptContent = $(scriptTags[i]).html();
       if (!scriptContent) continue;
 
       const jsonData = JSON.parse(scriptContent);
-
+      
       // Handle @graph structure (common in WordPress sites)
       let recipes = Array.isArray(jsonData) ? jsonData : [jsonData];
       if (jsonData['@graph']) {
@@ -307,7 +307,7 @@ function extractFromJsonLd($: cheerio.CheerioAPI): ScrapedRecipe | null {
       for (const data of recipes) {
         const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
         const isRecipe = typeArray.includes('Recipe');
-
+        
         if (isRecipe) {
           // Debug: Check JSON-LD ingredient format
           console.log('\n=== JSON-LD INGREDIENT FORMAT ===');
@@ -317,40 +317,40 @@ function extractFromJsonLd($: cheerio.CheerioAPI): ScrapedRecipe | null {
             console.log('Is PropertyValue:', firstIng?.['@type'] === 'PropertyValue');
             console.log('Sample raw ingredient:', JSON.stringify(firstIng, null, 2));
           }
-
+          
           const recipe: ScrapedRecipe = {
-            title: data.name || 'Untitled EditRecipe',
+            title: data.name || 'Untitled Recipe',
             ingredients: parseIngredientList(data.recipeIngredient || []),
             instructions: parseInstructions(data.recipeInstructions || []),
           };
-
+          
           // Only add optional fields if they have values
           if (data.description) {
             recipe.description = data.description;
           }
-
+          
           const imageUrl = getImageUrl(data.image);
           if (imageUrl) {
             recipe.imageUrl = imageUrl;
           }
-
+          
           if (data.recipeYield) {
             const servings = parseInt(String(data.recipeYield));
             if (!isNaN(servings)) {
               recipe.servings = servings;
             }
           }
-
+          
           const prepTime = parseDuration(data.prepTime);
           if (prepTime) {
             recipe.prepTime = prepTime;
           }
-
+          
           const cookTime = parseDuration(data.cookTime);
           if (cookTime) {
             recipe.cookTime = cookTime;
           }
-
+          
           return recipe;
         }
       }
@@ -376,13 +376,13 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
   } else {
     console.log('No ingredient elements found');
   }
-
+  
   // Try to extract title
-  const title =
+  const title = 
     $('h1[class*="recipe"]').first().text().trim() ||
     $('h1').first().text().trim() ||
     $('title').text().trim() ||
-    'Untitled EditRecipe';
+    'Untitled Recipe';
 
   // Try to extract description
   const descriptionText =
@@ -420,7 +420,7 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
   }
 
   // Extract image
-  const imageUrlText =
+  const imageUrlText = 
     $('meta[property="og:image"]').attr('content') ||
     $('img[class*="recipe"]').first().attr('src');
 
@@ -429,16 +429,16 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
     ingredients: parseIngredientList(ingredients),
     instructions: instructions.length > 0 ? instructions : ['No instructions found. Please add manually.'],
   };
-
+  
   // Only add optional fields if they have values
   if (descriptionText) {
     recipe.description = descriptionText;
   }
-
+  
   if (imageUrlText) {
     recipe.imageUrl = imageUrlText;
   }
-
+  
   // Try to extract servings, prepTime, cookTime from generic HTML patterns
   console.log('\n--- Extracting metadata from HTML (generic extraction) ---');
   const metadata = extractMetadataFromHTML($);
@@ -454,34 +454,34 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
     recipe.cookTime = metadata.cookTime;
     console.log('  ✓ Found cook time in HTML:', metadata.cookTime, 'minutes');
   }
-
+  
   // Try to get servings, prepTime, cookTime from JSON-LD if not found yet
   if (!recipe.servings || !recipe.prepTime || !recipe.cookTime) {
     console.log('\n--- Supplementary data from JSON-LD (HTML extraction) ---');
   try {
     const scriptTags = $('script[type="application/ld+json"]');
     console.log(`Found ${scriptTags.length} JSON-LD script tags`);
-
+    
     for (let i = 0; i < scriptTags.length; i++) {
       const scriptContent = $(scriptTags[i]).html();
       if (!scriptContent) continue;
-
+      
       const jsonData = JSON.parse(scriptContent);
       let recipes = Array.isArray(jsonData) ? jsonData : [jsonData];
       if (jsonData['@graph']) {
         recipes = jsonData['@graph'];
       }
-
+      
       for (const data of recipes) {
         const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
         const isRecipe = typeArray.includes('Recipe');
-
+        
         if (isRecipe) {
-          console.log('Found EditRecipe in JSON-LD');
+          console.log('Found Recipe in JSON-LD');
           console.log('  recipeYield:', data.recipeYield);
           console.log('  prepTime:', data.prepTime);
           console.log('  cookTime:', data.cookTime);
-
+          
           if (data.recipeYield && !recipe.servings) {
             const servings = parseInt(String(data.recipeYield));
             if (!isNaN(servings)) {
@@ -489,7 +489,7 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
               console.log('  ✓ Extracted servings:', servings);
             }
           }
-
+          
           if (data.prepTime && !recipe.prepTime) {
             const prepTime = parseDuration(data.prepTime);
             if (prepTime) {
@@ -497,7 +497,7 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
               console.log('  ✓ Extracted prepTime:', prepTime, 'minutes');
             }
           }
-
+          
           if (data.cookTime && !recipe.cookTime) {
             const cookTime = parseDuration(data.cookTime);
             if (cookTime) {
@@ -505,7 +505,7 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
               console.log('  ✓ Extracted cookTime:', cookTime, 'minutes');
             }
           }
-
+          
           break;
         }
       }
@@ -514,7 +514,7 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
     console.log('Error extracting supplementary data from JSON-LD:', error);
   }
   }
-
+  
   return recipe;
 }
 
@@ -526,11 +526,11 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
   }
 
   // Extract title
-  const title =
+  const title = 
     $('h1[class*="recipe"]').first().text().trim() ||
     $('h1').first().text().trim() ||
     $('title').text().trim() ||
-    'Untitled EditRecipe';
+    'Untitled Recipe';
 
   // Extract ingredients with data attributes (with section support)
   const ingredients: Ingredient[] = [];
@@ -538,12 +538,12 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
 
   // Build a map of sections by looking for headings before ingredient lists
   const sectionMap = new Map<any, string>();
-
+  
   // AllRecipes uses specific class for ingredient section headings
   $('.mm-recipes-structured-ingredients__list-heading').each((_, header) => {
     const $header = $(header);
     const headerText = $header.text().trim();
-
+    
     // The next sibling should be the ul.mm-recipes-structured-ingredients__list
     const $list = $header.next('ul.mm-recipes-structured-ingredients__list');
     if ($list.length) {
@@ -552,19 +552,19 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
       });
     }
   });
-
+  
   // Generic fallback for other sites using h2/h3/h4/strong
   $('h2, h3, h4, strong').each((_, header) => {
     const $header = $(header);
     const headerText = $header.text().trim();
-
+    
     // Look for ingredients after this header
     let $next = $header.next();
     let foundIngredients = false;
-
+    
     // Check next few siblings for ingredients
     for (let i = 0; i < 5 && $next.length; i++) {
-      const hasIngredients = $next.find('[data-ingredient-name]').length > 0 ||
+      const hasIngredients = $next.find('[data-ingredient-name]').length > 0 || 
                             $next.is('[data-ingredient-name]');
       if (hasIngredients) {
         foundIngredients = true;
@@ -688,18 +688,18 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
   try {
     const scriptTags = $('script[type="application/ld+json"]');
     console.log(`Found ${scriptTags.length} JSON-LD script tags`);
-
+    
     for (let i = 0; i < scriptTags.length; i++) {
       const scriptContent = $(scriptTags[i]).html();
       if (!scriptContent) {
         console.log(`  Script ${i}: empty`);
         continue;
       }
-
+      
       const jsonData = JSON.parse(scriptContent);
       console.log(`  Script ${i} @type:`, jsonData['@type']);
       console.log(`  Script ${i} has @graph:`, !!jsonData['@graph']);
-
+      
       let recipes = Array.isArray(jsonData) ? jsonData : [jsonData];
       if (jsonData['@graph']) {
         recipes = jsonData['@graph'];
@@ -708,17 +708,17 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
           console.log(`    Item ${idx} @type:`, item['@type']);
         });
       }
-
+      
       for (const data of recipes) {
         const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
         const isRecipe = typeArray.includes('Recipe');
-
+        
         if (isRecipe) {
-          console.log('✓ Found EditRecipe in JSON-LD');
+          console.log('✓ Found Recipe in JSON-LD');
           console.log('  recipeYield:', data.recipeYield);
           console.log('  prepTime:', data.prepTime);
           console.log('  cookTime:', data.cookTime);
-
+          
           if (data.recipeYield && !recipe.servings) {
             const servings = parseInt(String(data.recipeYield));
             if (!isNaN(servings)) {
@@ -726,7 +726,7 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
               console.log('  ✓ Extracted servings:', servings);
             }
           }
-
+          
           if (data.prepTime && !recipe.prepTime) {
             const prepTime = parseDuration(data.prepTime);
             if (prepTime) {
@@ -734,7 +734,7 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
               console.log('  ✓ Extracted prepTime:', prepTime, 'minutes');
             }
           }
-
+          
           if (data.cookTime && !recipe.cookTime) {
             const cookTime = parseDuration(data.cookTime);
             if (cookTime) {
@@ -742,7 +742,7 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
               console.log('  ✓ Extracted cookTime:', cookTime, 'minutes');
             }
           }
-
+          
           break;
         }
       }
@@ -781,7 +781,7 @@ function parseWPRMIngredient($: cheerio.CheerioAPI, elem: any, section?: string)
   // Parse amount (handle fractions, decimals, ranges)
   let parsedAmount: number | null = null;
   let parsedAmountMax: number | null = null;
-
+  
   if (amount) {
     // Use parseFloat for WPRM (which provides clean decimal numbers)
     const parsed = parseAmountWithRange(amount, (str) => parseFloat(str) || null);
@@ -807,20 +807,20 @@ function extractFromWPRM($: cheerio.CheerioAPI): ScrapedRecipe | null {
   }
 
   // Extract title
-  const title = wprmContainer.find('.wprm-recipe-name').text().trim() || 'Untitled EditRecipe';
+  const title = wprmContainer.find('.wprm-recipe-name').text().trim() || 'Untitled Recipe';
 
   // Extract ingredients with WPRM structure (with section support)
   const ingredients: Ingredient[] = [];
-
+  
   // Check if there are ingredient groups
   const ingredientGroups = wprmContainer.find('.wprm-recipe-ingredient-group');
-
+  
   if (ingredientGroups.length > 0) {
     // Has groups/sections
     ingredientGroups.each((_, group) => {
       const $group = $(group);
       const section = $group.find('.wprm-recipe-ingredient-group-name').text().trim() || undefined;
-
+      
       $group.find('.wprm-recipe-ingredient').each((_, elem) => {
         const ingredient = parseWPRMIngredient($, elem, section);
         if (ingredient) {
@@ -896,27 +896,27 @@ function extractFromWPRM($: cheerio.CheerioAPI): ScrapedRecipe | null {
     try {
       const scriptTags = $('script[type="application/ld+json"]');
       console.log(`Found ${scriptTags.length} JSON-LD script tags`);
-
+      
       for (let i = 0; i < scriptTags.length; i++) {
         const scriptContent = $(scriptTags[i]).html();
         if (!scriptContent) continue;
-
+        
         const jsonData = JSON.parse(scriptContent);
         let recipes = Array.isArray(jsonData) ? jsonData : [jsonData];
         if (jsonData['@graph']) {
           recipes = jsonData['@graph'];
         }
-
+        
         for (const data of recipes) {
           const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
           const isRecipe = typeArray.includes('Recipe');
-
+          
           if (isRecipe) {
-            console.log('Found EditRecipe in JSON-LD');
+            console.log('Found Recipe in JSON-LD');
             console.log('  recipeYield:', data.recipeYield);
             console.log('  prepTime:', data.prepTime);
             console.log('  cookTime:', data.cookTime);
-
+            
             if (data.recipeYield && !recipe.servings) {
               const servings = parseInt(String(data.recipeYield));
               if (!isNaN(servings)) {
@@ -924,7 +924,7 @@ function extractFromWPRM($: cheerio.CheerioAPI): ScrapedRecipe | null {
                 console.log('  ✓ Extracted servings:', servings);
               }
             }
-
+            
             if (data.prepTime && !recipe.prepTime) {
               const prepTime = parseDuration(data.prepTime);
               if (prepTime) {
@@ -932,7 +932,7 @@ function extractFromWPRM($: cheerio.CheerioAPI): ScrapedRecipe | null {
                 console.log('  ✓ Extracted prepTime:', prepTime, 'minutes');
               }
             }
-
+            
             if (data.cookTime && !recipe.cookTime) {
               const cookTime = parseDuration(data.cookTime);
               if (cookTime) {
@@ -940,7 +940,7 @@ function extractFromWPRM($: cheerio.CheerioAPI): ScrapedRecipe | null {
                 console.log('  ✓ Extracted cookTime:', cookTime, 'minutes');
               }
             }
-
+            
             break;
           }
         }
@@ -960,11 +960,11 @@ function parseIngredientList(ingredients: any[]): Ingredient[] {
       const value = item.value ? String(item.value) : '';
       const name = item.name || '';
       const unitCode = item.unitCode || '';
-
+      
       // Build text representation
       const parts = [value, unitCode, name].filter(p => p);
       const text = parts.join(' ');
-
+      
       return {
         amount: value ? parseFraction(String(value)) : null,
         unit: unitCode || null,
@@ -972,7 +972,7 @@ function parseIngredientList(ingredients: any[]): Ingredient[] {
         originalText: text,
       };
     }
-
+    
     // Handle plain text format
     return parseIngredient(String(item));
   });
@@ -980,14 +980,14 @@ function parseIngredientList(ingredients: any[]): Ingredient[] {
 
 function cleanListItemText(text: string): string {
   let cleaned = text.trim();
-
+  
   // Remove list markers and bullets from the front, but preserve ingredient amounts
   // Only strip numbers if followed by punctuation (e.g., "1.", "2)", "1-")
   // This preserves ingredient amounts like "1 yellow onion"
-
+  
   // Strip numbered list markers: "1.", "2)", "3-", etc.
   cleaned = cleaned.replace(/^\d+[\.\)\-:]\s*/, '');
-
+  
   // Strip bullets, checkboxes, and other Unicode symbols
   // \u2022-\u2026 - bullets (•, ‣, ◦, …, etc.)
   // \u2610-\u2612 - checkboxes (☐, ☑, ☒)
@@ -996,16 +996,16 @@ function cleanListItemText(text: string): string {
   // \u25CB-\u25CF - circles (○, ●)
   // \u25E6 - white bullet (◦)
   cleaned = cleaned.replace(/^[\u2022-\u2026\u2610-\u2612\u2713-\u2714\u25AA-\u25AB\u25CB-\u25CF\u25E6]+\s*/, '');
-
+  
   // Strip other common list markers (-, *, +, etc.) only if at the start
   cleaned = cleaned.replace(/^[\-\*\+]\s+/, '');
-
+  
   return cleaned.trim();
 }
 
 function parseFraction(str: string): number | null {
   if (!str) return null;
-
+  
   // Handle fractions like "1/2"
   if (str.includes('/')) {
     const [num, denom] = str.split('/').map(s => parseFloat(s.trim()));
@@ -1013,7 +1013,7 @@ function parseFraction(str: string): number | null {
       return num / denom;
     }
   }
-
+  
   // Handle decimals and whole numbers
   const parsed = parseFloat(str);
   return isNaN(parsed) ? null : parsed;
@@ -1032,7 +1032,7 @@ function normalizeUnit(unit: string | null): string | null {
 function parseIngredientText(text: string): Ingredient {
   const cleaned = cleanListItemText(text);
   const normalized = normalizeFractions(cleaned);
-
+  
   // Try to parse: [amount] [unit] [name]
   // Regex explanation:
   // - (\d+(?:[\/\.\-]\d+)?(?:\s*-\s*\d+(?:[\/\.\-]\d+)?)?) - amount with optional fraction/decimal/range
@@ -1040,10 +1040,10 @@ function parseIngredientText(text: string): Ingredient {
   // - ([\w\s\.]+?) - unit (optional, non-greedy)
   // - \s+ - whitespace
   // - (.+) - everything else is the name
-
+  
   // First, try to match amount at the start
   const amountMatch = normalized.match(/^(\d+(?:\s+\d+\/\d+|\.\d+|\/\d+)?(?:\s*-\s*\d+(?:\s+\d+\/\d+|\.\d+|\/\d+)?)?)\s+(.+)$/);
-
+  
   if (!amountMatch) {
     // No amount found, return as-is
     return {
@@ -1053,19 +1053,19 @@ function parseIngredientText(text: string): Ingredient {
       originalText: cleaned,
     };
   }
-
+  
   const amountStr = amountMatch[1];
   const rest = amountMatch[2];
-
+  
   // Parse amount (handle ranges like "1-2" and mixed fractions like "1 1/2")
   const parsed = parseAmountWithRange(amountStr);
   let amount = parsed.amount;
   let amountMax = parsed.amountMax || null;
-
+  
   // Try to find a unit at the start of the rest
   let unit: string | null = null;
   let name = rest;
-
+  
   for (const possibleUnit of COMMON_UNITS) {
     const unitRegex = new RegExp(`^(${possibleUnit})\\b`, 'i');
     const unitMatch = rest.match(unitRegex);
@@ -1077,7 +1077,7 @@ function parseIngredientText(text: string): Ingredient {
       break;
     }
   }
-
+  
   return {
     amount,
     amountMax: amountMax || undefined,
@@ -1127,7 +1127,7 @@ function getImageUrl(image: any): string | undefined {
 
 function parseDuration(duration?: string): number | undefined {
   if (!duration) return undefined;
-
+  
   // Parse ISO 8601 duration (e.g., "PT30M", "PT1H30M")
   const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
   if (match) {
@@ -1135,7 +1135,7 @@ function parseDuration(duration?: string): number | undefined {
     const minutes = parseInt(match[2] || '0');
     return hours * 60 + minutes;
   }
-
+  
   return undefined;
 }
 
@@ -1145,22 +1145,22 @@ function parseDuration(duration?: string): number | undefined {
  */
 function parseDurationFromText(text: string): number | undefined {
   if (!text) return undefined;
-
+  
   const normalized = text.toLowerCase();
   let totalMinutes = 0;
-
+  
   // Match hours: "1 hour", "2 hrs", "1 h"
   const hourMatch = normalized.match(/(\d+)\s*(?:hour|hours|hr|hrs|h)\b/);
   if (hourMatch) {
     totalMinutes += parseInt(hourMatch[1]) * 60;
   }
-
+  
   // Match minutes: "30 minutes", "45 mins", "15 min", "20 m"
   const minMatch = normalized.match(/(\d+)\s*(?:minute|minutes|mins|min|m)\b/);
   if (minMatch) {
     totalMinutes += parseInt(minMatch[1]);
   }
-
+  
   return totalMinutes > 0 ? totalMinutes : undefined;
 }
 
@@ -1170,9 +1170,9 @@ function parseDurationFromText(text: string): number | undefined {
  */
 function parseServingsFromText(text: string): number | undefined {
   if (!text) return undefined;
-
+  
   const normalized = text.toLowerCase();
-
+  
   // Try patterns: "serves 4", "yield: 6", "makes 8", "4 servings"
   const patterns = [
     /serves?\s*:?\s*(\d+)/,
@@ -1180,7 +1180,7 @@ function parseServingsFromText(text: string): number | undefined {
     /makes?\s*:?\s*(\d+)/,
     /(\d+)\s*servings?/,
   ];
-
+  
   for (const pattern of patterns) {
     const match = normalized.match(pattern);
     if (match) {
@@ -1190,7 +1190,7 @@ function parseServingsFromText(text: string): number | undefined {
       }
     }
   }
-
+  
   return undefined;
 }
 
@@ -1204,7 +1204,7 @@ function extractMetadataFromHTML($: cheerio.CheerioAPI): {
   cookTime?: number;
 } {
   const result: { servings?: number; prepTime?: number; cookTime?: number } = {};
-
+  
   // Common selectors for recipe metadata
   const metaSelectors = [
     '[class*="recipe-meta"]',
@@ -1217,29 +1217,29 @@ function extractMetadataFromHTML($: cheerio.CheerioAPI): {
     '.prep-time',
     '.cook-time',
   ];
-
+  
   // Search through common metadata areas
   metaSelectors.forEach(selector => {
     $(selector).each((_, elem) => {
       const text = $(elem).text();
-
+      
       // Try to extract servings
       if (!result.servings) {
         result.servings = parseServingsFromText(text);
       }
-
+      
       // Try to extract prep time
       if (!result.prepTime && /prep/i.test(text)) {
         result.prepTime = parseDurationFromText(text);
       }
-
+      
       // Try to extract cook time
       if (!result.cookTime && /cook/i.test(text)) {
         result.cookTime = parseDurationFromText(text);
       }
     });
   });
-
+  
   // Also check meta tags
   if (!result.servings) {
     const yieldMeta = $('meta[name*="yield"], meta[property*="yield"]').attr('content');
@@ -1247,6 +1247,7 @@ function extractMetadataFromHTML($: cheerio.CheerioAPI): {
       result.servings = parseServingsFromText(yieldMeta);
     }
   }
-
+  
   return result;
 }
+
