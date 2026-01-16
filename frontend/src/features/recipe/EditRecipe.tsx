@@ -1,37 +1,85 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch, useAutoHeight } from '../../common/hooks';
 import { addRecipe, updateRecipeInState } from '../recipe-list/slice.ts';
 import { addRecipe as saveRecipe, updateRecipe, deleteRecipe } from '../../firebase/firestore';
 import { getIdToken } from '../../firebase/auth';
 import IconButton from '../../common/components/IconButton.tsx';
-import type {Ingredient, Recipe} from '../../types';
+import { UnitValue } from '../../types';
+import type { Ingredient, Recipe } from '../../types';
 import styles from './recipe.module.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const IS_DEV = import.meta.env.DEV;
+const UNIT_LABELS: Record<UnitValue, string> = {
+  [UnitValue.CUP]: 'cup',
+  [UnitValue.TABLESPOON]: 'tablespoon',
+  [UnitValue.TEASPOON]: 'teaspoon',
+  [UnitValue.FLUID_OUNCE]: 'fluid ounce',
+  [UnitValue.MILLILITER]: 'milliliter',
+  [UnitValue.LITER]: 'liter',
+  [UnitValue.PINT]: 'pint',
+  [UnitValue.QUART]: 'quart',
+  [UnitValue.GALLON]: 'gallon',
+  [UnitValue.POUND]: 'pound',
+  [UnitValue.OUNCE]: 'ounce',
+  [UnitValue.GRAM]: 'gram',
+  [UnitValue.KILOGRAM]: 'kilogram',
+  [UnitValue.PIECE]: 'piece',
+  [UnitValue.WHOLE]: 'whole',
+  [UnitValue.CLOVE]: 'clove',
+  [UnitValue.SLICE]: 'slice',
+  [UnitValue.CAN]: 'can',
+  [UnitValue.PACKAGE]: 'package',
+  [UnitValue.JAR]: 'jar',
+  [UnitValue.BUNCH]: 'bunch',
+  [UnitValue.HEAD]: 'head',
+  [UnitValue.STALK]: 'stalk',
+  [UnitValue.SPRIG]: 'sprig',
+  [UnitValue.LEAF]: 'leaf',
+  [UnitValue.PINCH]: 'pinch',
+  [UnitValue.DASH]: 'dash',
+  [UnitValue.HANDFUL]: 'handful',
+  [UnitValue.TO_TASTE]: 'to taste',
+};
+
+const UNIT_OPTIONS = Object.values(UnitValue).map((value) => ({
+  value,
+  label: UNIT_LABELS[value],
+}));
+
+const UNIT_VALUE_SET = new Set(Object.values(UnitValue));
 
 // Instruction row component with auto-height textarea
 const InstructionRow = ({
   index,
   value,
   onChange,
-  onRemove
+  onRemove,
+  onKeyDown,
+  registerRef
 }: {
   index: number;
   value: string;
   onChange: (value: string) => void;
   onRemove: () => void;
+  onKeyDown?: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  registerRef?: (element: HTMLTextAreaElement | null) => void;
 }) => {
   const textareaRef = useAutoHeight<HTMLTextAreaElement>(value);
+  const setTextareaRef = (element: HTMLTextAreaElement | null) => {
+    textareaRef.current = element;
+    if (registerRef) registerRef(element);
+  };
 
   return (
     <div className={styles.instructionRow}>
       <span className={styles.stepNumber}>{index + 1}.</span>
       <textarea
-        ref={textareaRef}
+        ref={setTextareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={onKeyDown}
         placeholder="Describe this step"
         className={styles.instructionInput}
       />
@@ -52,6 +100,7 @@ const EditRecipe = () => {
 
   const isNewRecipe = id === 'new';
   const existingRecipe = !isNewRecipe && id ? recipes.find((r: Recipe) => r.id === id) : null;
+  const isScrapedRecipe = Boolean(existingRecipe?.sourceUrl);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isRescraping, setIsRescraping] = useState(false);
@@ -72,6 +121,10 @@ const EditRecipe = () => {
     { amount: null, unit: null, name: '', originalText: '' },
   ]);
   const [instructions, setInstructions] = useState<string[]>(['']);
+  const [focusIngredientIndex, setFocusIngredientIndex] = useState<number | null>(null);
+  const [focusInstructionIndex, setFocusInstructionIndex] = useState<number | null>(null);
+  const ingredientAmountRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const instructionInputRefs = useRef<Array<HTMLTextAreaElement | null>>([]);
 
   // Track original state for deep comparison
   const [originalState, setOriginalState] = useState<{
@@ -115,6 +168,9 @@ const EditRecipe = () => {
 
     for (let i = 0; i < currIngredients.length; i++) {
       if (currIngredients[i].name.trim() !== origIngredients[i].name.trim()) return true;
+      if ((currIngredients[i].amount ?? null) !== (origIngredients[i].amount ?? null)) return true;
+      if ((currIngredients[i].amountMax ?? null) !== (origIngredients[i].amountMax ?? null)) return true;
+      if ((currIngredients[i].unit || '') !== (origIngredients[i].unit || '')) return true;
       if (currIngredients[i].originalText?.trim() !== origIngredients[i].originalText?.trim()) return true;
     }
 
@@ -369,11 +425,30 @@ const EditRecipe = () => {
   };
 
   const addIngredient = () => {
-    setIngredients([...ingredients, { amount: null, unit: null, name: '', originalText: '' }]);
+    setIngredients((prev) => {
+      const next = [...prev, { amount: null, unit: null, name: '', originalText: '' }];
+      setFocusIngredientIndex(prev.length);
+      return next;
+    });
   };
 
   const removeIngredient = (index: number) => {
     setIngredients(ingredients.filter((_, i) => i !== index));
+  };
+
+  useEffect(() => {
+    if (focusIngredientIndex === null) return;
+    const input = ingredientAmountRefs.current[focusIngredientIndex];
+    if (input) {
+      input.focus();
+    }
+    setFocusIngredientIndex(null);
+  }, [focusIngredientIndex, ingredients.length]);
+
+  const updateIngredient = (index: number, updates: Partial<Ingredient>) => {
+    const updated = [...ingredients];
+    updated[index] = { ...updated[index], ...updates };
+    setIngredients(updated);
   };
 
   const updateInstruction = (index: number, value: string) => {
@@ -383,12 +458,25 @@ const EditRecipe = () => {
   };
 
   const addInstruction = () => {
-    setInstructions([...instructions, '']);
+    setInstructions((prev) => {
+      const next = [...prev, ''];
+      setFocusInstructionIndex(prev.length);
+      return next;
+    });
   };
 
   const removeInstruction = (index: number) => {
     setInstructions(instructions.filter((_, i) => i !== index));
   };
+
+  useEffect(() => {
+    if (focusInstructionIndex === null) return;
+    const input = instructionInputRefs.current[focusInstructionIndex];
+    if (input) {
+      input.focus();
+    }
+    setFocusInstructionIndex(null);
+  }, [focusInstructionIndex, instructions.length]);
 
   const handleCancel = () => {
     if (hasActualChanges()) {
@@ -464,7 +552,7 @@ const EditRecipe = () => {
             onChange={(e) => {
               setTitle(e.target.value);
             }}
-            placeholder="EditRecipe title"
+            placeholder="Recipe title"
           />
         </div>
 
@@ -654,32 +742,79 @@ const EditRecipe = () => {
 
         <div className={styles.section}>
           <h3>Ingredients *</h3>
-          {ingredients.map((ingredient, index) => (
-            <div key={index} className={styles.ingredientRow}>
-              <input
-                type="text"
-                value={ingredient.originalText}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  const updated = [...ingredients];
-                  updated[index] = {
-                    ...updated[index],
-                    originalText: value,
-                    name: value // Set name to the same value for manual entry
-                  };
-                  setIngredients(updated);
-                }}
-                placeholder="e.g., 2 cups flour"
-                className={styles.ingredientInput}
-              />
-              <button
-                onClick={() => removeIngredient(index)}
-                className={styles.removeButton}
-              >
-                ×
-              </button>
-            </div>
-          ))}
+          {ingredients.map((ingredient, index) => {
+            const unitOptions = ingredient.unit
+              && !UNIT_VALUE_SET.has(ingredient.unit as UnitValue)
+              ? [{ value: ingredient.unit, label: String(ingredient.unit) }, ...UNIT_OPTIONS]
+              : UNIT_OPTIONS;
+
+            return (
+              <div key={index} className={styles.ingredientRow}>
+                <div className={styles.ingredientGroup}>
+                  <div className={styles.ingredientGroupRow}>
+                    <input
+                      type="number"
+                      step="any"
+                      ref={(el) => {
+                        ingredientAmountRefs.current[index] = el;
+                      }}
+                      value={ingredient.amount ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const parsed = value === '' ? null : parseFloat(value);
+                        updateIngredient(index, {
+                          amount: parsed !== null && Number.isNaN(parsed) ? null : parsed,
+                        });
+                      }}
+                      placeholder="Amt"
+                      className={styles.ingredientAmountInput}
+                    />
+                  <select
+                    value={ingredient.unit || ''}
+                    onChange={(e) => updateIngredient(index, { unit: (e.target.value || null) as UnitValue | null })}
+                    className={`${styles.ingredientUnitSelect} ${ingredient.unit ? '' : styles.ingredientUnitPlaceholder}`}
+                  >
+                    <option value="">--</option>
+                      {unitOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={ingredient.name}
+                      onChange={(e) => updateIngredient(index, { name: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && index === ingredients.length - 1) {
+                          e.preventDefault();
+                          addIngredient();
+                        }
+                      }}
+                      placeholder="Ingredient"
+                      className={styles.ingredientNameInput}
+                    />
+                  </div>
+                  {isScrapedRecipe && (
+                    <input
+                      type="text"
+                      value={ingredient.originalText || ''}
+                      onChange={(e) => updateIngredient(index, { originalText: e.target.value })}
+                      placeholder="Original text"
+                      className={styles.ingredientOriginalInput}
+                    />
+                  )}
+                </div>
+                <button
+                  onClick={() => removeIngredient(index)}
+                  className={styles.removeButton}
+                  type="button"
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
           <button onClick={addIngredient} className={styles.addButton}>
             + Add Ingredient
           </button>
@@ -696,6 +831,15 @@ const EditRecipe = () => {
                 updateInstruction(index, value);
               }}
               onRemove={() => removeInstruction(index)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && index === instructions.length - 1) {
+                  event.preventDefault();
+                  addInstruction();
+                }
+              }}
+              registerRef={(element) => {
+                instructionInputRefs.current[index] = element;
+              }}
             />
           ))}
           <button onClick={addInstruction} className={styles.addButton}>

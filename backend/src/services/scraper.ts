@@ -1,68 +1,55 @@
 import * as cheerio from 'cheerio';
-import { Ingredient, RecipeContent, ExtractionMethod } from '../types/index.js';
+import { Ingredient, RecipeContent, ExtractionMethod, UnitValue } from '../types/index.js';
 
 // ScrapedRecipe extends RecipeContent with extraction metadata
 interface ScrapedRecipe extends RecipeContent {
   extractionMethod?: ExtractionMethod;
 }
 
-// Unit synonyms: normalized unit → array of variations
-// The key is the canonical/normalized form, values are ONLY the synonyms (not including the key)
-// Empty array means no synonyms exist
-// This enables unit normalization for shopping list aggregation:
-//   e.g., "1 lb carrots" + "2 pounds carrots" → both use "pound" unit
-const UNIT_SYNONYMS: Record<string, string[]> = {
+// Unit aliases: enum unit → list of alias patterns seen in HTML
+// Values are regex patterns (without anchors); matching is case-insensitive.
+const UNIT_ALIAS_PATTERNS: Record<UnitValue, string[]> = {
   // Volume
-  'cup': ['cups', 'c'],
-  'tablespoon': ['tablespoons', 'tbsp', 'tbs', 'T'],
-  'teaspoon': ['teaspoons', 'tsp', 't'],
-  'fluid ounce': ['fluid ounces', 'fl oz', 'fl. oz.'],
-  'milliliter': ['milliliters', 'ml', 'mL'],
-  'liter': ['liters', 'l', 'L'],
-  'pint': ['pints', 'pt'],
-  'quart': ['quarts', 'qt'],
-  'gallon': ['gallons', 'gal'],
+  [UnitValue.CUP]: ['cups?','c'],
+  [UnitValue.TABLESPOON]: ['tablespoons?', 'Tbsp\\.?', 'tbsp\\.?', 'tbs\\.?', 'T', 'TB'],
+  [UnitValue.TEASPOON]: ['teaspoons?', 'tsp\\.?', 't'],
+  [UnitValue.FLUID_OUNCE]: ['fluid ounces?', 'fl\\.?\\s*oz\\.?'],
+  [UnitValue.MILLILITER]: ['milliliters?', 'ml', 'mL'],
+  [UnitValue.LITER]: ['liters?', 'l', 'L'],
+  [UnitValue.PINT]: ['pints?', 'pt'],
+  [UnitValue.QUART]: ['quarts?', 'qt'],
+  [UnitValue.GALLON]: ['gallons?', 'gal'],
   // Weight
-  'pound': ['pounds', 'lb', 'lbs'],
-  'ounce': ['ounces', 'oz'],
-  'gram': ['grams', 'g'],
-  'kilogram': ['kilograms', 'kg'],
+  [UnitValue.POUND]: ['pounds?', 'lb', 'lbs'],
+  [UnitValue.OUNCE]: ['ounces?', 'oz'],
+  [UnitValue.GRAM]: ['grams?', 'g'],
+  [UnitValue.KILOGRAM]: ['kilograms?', 'kg'],
   // Count/Pieces
-  'piece': ['pieces', 'pc'],
-  'whole': ['wholes'],
-  'clove': ['cloves'],
-  'slice': ['slices'],
-  'can': ['cans'],
-  'package': ['packages', 'pkg'],
-  'jar': ['jars'],
-  'bunch': ['bunches'],
-  'head': ['heads'],
-  'stalk': ['stalks'],
-  'sprig': ['sprigs'],
-  'leaf': ['leaves'],
+  [UnitValue.PIECE]: ['pieces?', 'pc'],
+  [UnitValue.WHOLE]: ['wholes?'],
+  [UnitValue.CLOVE]: ['cloves?'],
+  [UnitValue.SLICE]: ['slices?'],
+  [UnitValue.CAN]: ['cans?'],
+  [UnitValue.PACKAGE]: ['packages?', 'pkg'],
+  [UnitValue.JAR]: ['jars?'],
+  [UnitValue.BUNCH]: ['bunches?'],
+  [UnitValue.HEAD]: ['heads?'],
+  [UnitValue.STALK]: ['stalks?'],
+  [UnitValue.SPRIG]: ['sprigs?'],
+  [UnitValue.LEAF]: ['leaves?'],
   // Special
-  'pinch': ['pinches'],
-  'dash': ['dashes'],
-  'handful': ['handfuls'],
-  'to taste': [],
+  [UnitValue.PINCH]: ['pinches?'],
+  [UnitValue.DASH]: ['dashes?'],
+  [UnitValue.HANDFUL]: ['handfuls?'],
+  [UnitValue.TO_TASTE]: ['to\\s*taste'],
 };
 
-// Flatten to list for matching, and build reverse lookup map
-// Include both canonical forms and their synonyms
-const COMMON_UNITS = [
-  ...Object.keys(UNIT_SYNONYMS),
-  ...Object.values(UNIT_SYNONYMS).flat()
-];
-
-const UNIT_NORMALIZATION_MAP: Record<string, string> = {};
-for (const [normalized, synonyms] of Object.entries(UNIT_SYNONYMS)) {
-  // Map canonical form to itself
-  UNIT_NORMALIZATION_MAP[normalized.toLowerCase()] = normalized;
-  // Map each synonym to the canonical form
-  for (const synonym of synonyms) {
-    UNIT_NORMALIZATION_MAP[synonym.toLowerCase()] = normalized;
-  }
-}
+const UNIT_ALIAS_MATCHERS = Object.entries(UNIT_ALIAS_PATTERNS).flatMap(
+  ([unit, patterns]) => patterns.map((pattern) => ({
+    unit: unit as UnitValue,
+    regex: new RegExp(`^(${pattern})\\b`, 'i'),
+  }))
+);
 
 /**
  * Normalize Unicode fractions to ASCII format using NFKD normalization
@@ -834,10 +821,12 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
       const parts = [quantity, unit, name].filter(p => p);
       const originalText = parts.join(' ');
 
+      const normalizedUnit = normalizeUnitText(unit);
+
       ingredients.push({
         amount: parsedAmount,
         amountMax: parsedAmountMax || undefined,
-        unit: unit || null,
+        unit: normalizedUnit,
         name: name,
         section: section,
         originalText: originalText,
@@ -1085,7 +1074,7 @@ function parseWPRMIngredient($: cheerio.CheerioAPI, elem: any, section?: string)
   return {
     amount: parsedAmount,
     amountMax: parsedAmountMax,
-    unit: unit || null,
+    unit: normalizeUnitText(unit),
     name: name || originalText,
     section: section,
     originalText: originalText,
@@ -1326,7 +1315,7 @@ function parseIngredientList(ingredients: any[]): Ingredient[] {
       
       return {
         amount: value ? parseFraction(String(value)) : null,
-        unit: unitCode || null,
+        unit: normalizeUnitText(unitCode),
         name: name || text,
         originalText: text,
       };
@@ -1383,9 +1372,31 @@ function parseFraction(str: string): number | null {
  * E.g., "lbs" → "pound", "tbsp" → "tablespoon"
  * Useful for aggregating ingredients with different unit spellings
  */
-function normalizeUnit(unit: string | null): string | null {
+function normalizeUnitText(unit: string | null): UnitValue | null {
   if (!unit) return null;
-  return UNIT_NORMALIZATION_MAP[unit.toLowerCase()] || unit;
+  const trimmed = unit.trim();
+  if (!trimmed) return null;
+
+  for (const [unitValue, patterns] of Object.entries(UNIT_ALIAS_PATTERNS)) {
+    for (const pattern of patterns) {
+      const regex = new RegExp(`^(${pattern})$`, 'i');
+      if (regex.test(trimmed)) {
+        return unitValue as UnitValue;
+      }
+    }
+  }
+
+  return null;
+}
+
+function matchUnitFromStart(text: string): { unit: UnitValue; match: string } | null {
+  for (const matcher of UNIT_ALIAS_MATCHERS) {
+    const match = text.match(matcher.regex);
+    if (match) {
+      return { unit: matcher.unit, match: match[0] };
+    }
+  }
+  return null;
 }
 
 function parseIngredientText(text: string): Ingredient {
@@ -1422,19 +1433,13 @@ function parseIngredientText(text: string): Ingredient {
   let amountMax = parsed.amountMax || null;
   
   // Try to find a unit at the start of the rest
-  let unit: string | null = null;
+  let unit: UnitValue | null = null;
   let name = rest;
-  
-  for (const possibleUnit of COMMON_UNITS) {
-    const unitRegex = new RegExp(`^(${possibleUnit})\\b`, 'i');
-    const unitMatch = rest.match(unitRegex);
-    if (unitMatch) {
-      const matchedUnit = unitMatch[1];
-      // Normalize the unit (e.g., "lb" → "pound", "tbsp" → "tablespoon")
-      unit = UNIT_NORMALIZATION_MAP[matchedUnit.toLowerCase()] || matchedUnit;
-      name = rest.substring(matchedUnit.length).trim();
-      break;
-    }
+
+  const unitMatch = matchUnitFromStart(rest);
+  if (unitMatch) {
+    unit = unitMatch.unit;
+    name = rest.substring(unitMatch.match.length).trim();
   }
   
   return {

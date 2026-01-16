@@ -29,6 +29,7 @@
   --color-delete-hover: #c82333;
   
   /* Spacing */
+  --spacing-xxs: 4px;
   --spacing-xs: 8px;
   --spacing-sm: 12px;
   --spacing-md: 16px;

@@ -3,8 +3,9 @@ export type {
   Ingredient,
   RecipeContent,
   RecipeBase,
-  ExtractionMethod
+  ExtractionMethod,
 } from '../../../shared/types/index.js';
+export { UnitValue } from '../../../shared/types/index.js';
 import type { RecipeBase, ExtractionMethod } from '../../../shared/types/index.js';
 
 // Backend-specific EditRecipe type with Date objects and extraction metadata

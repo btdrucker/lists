@@ -291,12 +291,62 @@
   color: var(--color-text-primary);
 }
 
-.ingredientRow,
+.ingredientRow {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
+  align-items: flex-start;
+}
+
 .instructionRow {
   display: flex;
   gap: var(--spacing-xs);
   margin-bottom: var(--spacing-xs);
   align-items: flex-start;
+}
+
+.ingredientGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+  flex: 1;
+}
+
+.ingredientGroupRow {
+  display: flex;
+  gap: var(--spacing-xxs);
+}
+
+.ingredientAmountInput,
+.ingredientUnitSelect,
+.ingredientNameInput,
+.ingredientOriginalInput {
+  padding: 10px var(--spacing-sm);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+}
+
+.ingredientAmountInput {
+  width: 90px;
+  text-align: right;
+}
+
+.ingredientUnitSelect {
+  min-width: 140px;
+  background: white;
+}
+
+.ingredientUnitPlaceholder {
+  color: var(--color-text-secondary);
+}
+
+.ingredientNameInput {
+  flex: 1;
+}
+
+.ingredientOriginalInput {
+  width: 100%;
 }
 
 .ingredientInput {

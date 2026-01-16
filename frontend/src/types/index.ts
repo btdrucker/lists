@@ -4,6 +4,7 @@ export type {
   RecipeContent,
   RecipeBase
 } from '../../../shared/types/index.js';
+export { UnitValue } from '../../../shared/types/index.js';
 import type { RecipeBase } from '../../../shared/types';
 
 // Frontend-specific EditRecipe type with ISO string dates (for Redux serialization)

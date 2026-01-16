@@ -1,12 +1,50 @@
 export interface Ingredient {
   amount: number | null;
   amountMax?: number | null;
-  unit: string | null;
+  unit: UnitValue | null;
   name: string;
   section?: string;
   optional?: boolean;
   originalText: string;
 }
+
+export const UnitValue = {
+  // Volume
+  CUP: 'CUP',
+  TABLESPOON: 'TABLESPOON',
+  TEASPOON: 'TEASPOON',
+  FLUID_OUNCE: 'FLUID_OUNCE',
+  MILLILITER: 'MILLILITER',
+  LITER: 'LITER',
+  PINT: 'PINT',
+  QUART: 'QUART',
+  GALLON: 'GALLON',
+  // Weight
+  POUND: 'POUND',
+  OUNCE: 'OUNCE',
+  GRAM: 'GRAM',
+  KILOGRAM: 'KILOGRAM',
+  // Count/Pieces
+  PIECE: 'PIECE',
+  WHOLE: 'WHOLE',
+  CLOVE: 'CLOVE',
+  SLICE: 'SLICE',
+  CAN: 'CAN',
+  PACKAGE: 'PACKAGE',
+  JAR: 'JAR',
+  BUNCH: 'BUNCH',
+  HEAD: 'HEAD',
+  STALK: 'STALK',
+  SPRIG: 'SPRIG',
+  LEAF: 'LEAF',
+  // Special
+  PINCH: 'PINCH',
+  DASH: 'DASH',
+  HANDFUL: 'HANDFUL',
+  TO_TASTE: 'TO_TASTE',
+} as const;
+
+export type UnitValue = typeof UnitValue[keyof typeof UnitValue];
 
 // Shared recipe content (what you get from scraping or user input)
 export interface RecipeContent {
