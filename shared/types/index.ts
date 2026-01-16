@@ -19,7 +19,9 @@ export interface RecipeContent {
   servings?: number;
   prepTime?: number;
   cookTime?: number;
-  tags?: string[];
+  category?: string[];   // e.g., ["Dinner", "Main"]
+  cuisine?: string[];    // e.g., ["American", "Italian"]
+  keywords?: string[];   // e.g., ["vegetarian", "quick", "comfort-food"]
 }
 
 // Generic recipe with flexible date type

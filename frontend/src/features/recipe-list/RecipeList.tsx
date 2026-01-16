@@ -56,12 +56,32 @@ const RecipeList = () => {
       return true;
     }
 
-    // Search in tags (if they exist)
-    if (recipe.tags && recipe.tags.length > 0) {
-      const matchesTag = recipe.tags.some((tag: string) =>
-        tag.toLowerCase().includes(query)
+    // Search in category
+    if (recipe.category && recipe.category.length > 0) {
+      const matchesCategory = recipe.category.some((cat: string) =>
+        cat.toLowerCase().includes(query)
       );
-      if (matchesTag) {
+      if (matchesCategory) {
+        return true;
+      }
+    }
+
+    // Search in cuisine
+    if (recipe.cuisine && recipe.cuisine.length > 0) {
+      const matchesCuisine = recipe.cuisine.some((cui: string) =>
+        cui.toLowerCase().includes(query)
+      );
+      if (matchesCuisine) {
+        return true;
+      }
+    }
+
+    // Search in keywords
+    if (recipe.keywords && recipe.keywords.length > 0) {
+      const matchesKeyword = recipe.keywords.some((keyword: string) =>
+        keyword.toLowerCase().includes(query)
+      );
+      if (matchesKeyword) {
         return true;
       }
     }
@@ -127,7 +147,7 @@ const RecipeList = () => {
           type="search"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search recipes, ingredients, or tags..."
+          placeholder="Search recipes, ingredients, category, cuisine, or keywords..."
           className={styles.searchInput}
         />
         {searchQuery.trim() && (
@@ -153,7 +173,11 @@ const RecipeList = () => {
         </div>
       ) : (
         <div className={styles.grid}>
-          {filteredRecipes.map((recipe: any) => (
+          {filteredRecipes.map((recipe: any) => {
+            const category = recipe.category || [];
+            const cuisine = recipe.cuisine || [];
+            const keywords = recipe.keywords || [];
+            return (
             <div
               key={recipe.id}
               className={styles.card}
@@ -183,9 +207,32 @@ const RecipeList = () => {
                   <span>•</span>
                   <span>{recipe.instructions.length} steps</span>
                 </div>
+                {/* Metadata badges */}
+                <div className={styles.badges}>
+                    {category.map((cat: string, idx: number) => (
+                      <span key={`cat-${idx}`} className={`${styles.badge} ${styles.badgeCategory}`}>
+                        {cat}
+                      </span>
+                    ))}
+                    {cuisine.map((cui: string, idx: number) => (
+                      <span key={`cui-${idx}`} className={`${styles.badge} ${styles.badgeCuisine}`}>
+                        {cui}
+                      </span>
+                    ))}
+                    {keywords.slice(0, 3).map((keyword: string, idx: number) => (
+                      <span key={`kw-${idx}`} className={`${styles.badge} ${styles.badgeKeyword}`}>
+                        {keyword}
+                      </span>
+                    ))}
+                    {keywords.length > 3 && (
+                      <span className={`${styles.badge} ${styles.badgeKeyword}`}>
+                        +{keywords.length - 3} more
+                      </span>
+                    )}
+                </div>
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
 

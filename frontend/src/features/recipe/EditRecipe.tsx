@@ -65,6 +65,9 @@ const EditRecipe = () => {
   const [servings, setServings] = useState('');
   const [prepTime, setPrepTime] = useState('');
   const [cookTime, setCookTime] = useState('');
+  const [category, setCategory] = useState<string[]>([]);
+  const [cuisine, setCuisine] = useState<string[]>([]);
+  const [keywords, setKeywords] = useState<string[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([
     { amount: null, unit: null, name: '', originalText: '' },
   ]);
@@ -79,6 +82,9 @@ const EditRecipe = () => {
     servings: string;
     prepTime: string;
     cookTime: string;
+    category: string[];
+    cuisine: string[];
+    keywords: string[];
     ingredients: Ingredient[];
     instructions: string[];
   } | null>(null);
@@ -89,18 +95,20 @@ const EditRecipe = () => {
 
   // Deep comparison to detect actual changes
   const hasActualChanges = (): boolean => {
+    if (hasChangesExcludingNotes()) return true;
+    return notes.trim() !== (originalState?.notes || '');
+  };
+
+  const hasChangesExcludingNotes = (): boolean => {
     if (!originalState) return true; // New recipe always has changes
 
-    // Compare scalar fields (trimmed, since save trims them)
     if (title.trim() !== originalState.title) return true;
     if (description.trim() !== (originalState.description || '')) return true;
-    if (notes.trim() !== (originalState.notes || '')) return true;
     if (imageUrl.trim() !== (originalState.imageUrl || '')) return true;
     if (servings.trim() !== originalState.servings) return true;
     if (prepTime.trim() !== originalState.prepTime) return true;
     if (cookTime.trim() !== originalState.cookTime) return true;
 
-    // Compare ingredients (filter out empty ones like save does)
     const currIngredients = ingredients.filter(i => i.name.trim());
     const origIngredients = originalState.ingredients.filter(i => i.name.trim());
     if (currIngredients.length !== origIngredients.length) return true;
@@ -110,7 +118,6 @@ const EditRecipe = () => {
       if (currIngredients[i].originalText?.trim() !== origIngredients[i].originalText?.trim()) return true;
     }
 
-    // Compare instructions (filter out empty ones like save does)
     const currInstructions = instructions.filter(i => i.trim());
     const origInstructions = originalState.instructions.filter(i => i.trim());
     if (currInstructions.length !== origInstructions.length) return true;
@@ -119,7 +126,22 @@ const EditRecipe = () => {
       if (currInstructions[i].trim() !== origInstructions[i].trim()) return true;
     }
 
-    return false; // No changes detected
+    const currCategory = category.filter(c => c.trim());
+    const origCategory = originalState.category.filter(c => c.trim());
+    if (currCategory.length !== origCategory.length) return true;
+    if (currCategory.some((c, i) => c !== origCategory[i])) return true;
+
+    const currCuisine = cuisine.filter(c => c.trim());
+    const origCuisine = originalState.cuisine.filter(c => c.trim());
+    if (currCuisine.length !== origCuisine.length) return true;
+    if (currCuisine.some((c, i) => c !== origCuisine[i])) return true;
+
+    const currKeywords = keywords.filter(k => k.trim());
+    const origKeywords = originalState.keywords.filter(k => k.trim());
+    if (currKeywords.length !== origKeywords.length) return true;
+    if (currKeywords.some((k, i) => k !== origKeywords[i])) return true;
+
+    return false;
   };
 
   // Load initial title from navigation state (for manual create flow)
@@ -143,6 +165,9 @@ const EditRecipe = () => {
         servings: existingRecipe.servings?.toString() || '',
         prepTime: existingRecipe.prepTime?.toString() || '',
         cookTime: existingRecipe.cookTime?.toString() || '',
+        category: existingRecipe.category || [],
+        cuisine: existingRecipe.cuisine || [],
+        keywords: existingRecipe.keywords || [],
         ingredients: existingRecipe.ingredients.length > 0
           ? existingRecipe.ingredients
           : [{ amount: null, unit: null, name: '', originalText: '' }],
@@ -158,6 +183,9 @@ const EditRecipe = () => {
       setServings(initialState.servings);
       setPrepTime(initialState.prepTime);
       setCookTime(initialState.cookTime);
+      setCategory(initialState.category);
+      setCuisine(initialState.cuisine);
+      setKeywords(initialState.keywords);
       setIngredients(initialState.ingredients);
       setInstructions(initialState.instructions);
       setOriginalState(initialState); // Store original for comparison
@@ -213,6 +241,20 @@ const EditRecipe = () => {
           recipeData.cookTime = cookTimeNum;
         }
       }
+      
+      // Add metadata arrays (filter out empty strings)
+      const filteredCategory = category.filter(c => c.trim());
+      if (filteredCategory.length > 0) {
+        recipeData.category = filteredCategory;
+      }
+      const filteredCuisine = cuisine.filter(c => c.trim());
+      if (filteredCuisine.length > 0) {
+        recipeData.cuisine = filteredCuisine;
+      }
+      const filteredKeywords = keywords.filter(k => k.trim());
+      if (filteredKeywords.length > 0) {
+        recipeData.keywords = filteredKeywords;
+      }
 
       // Note: sourceUrl is NOT saved here - it's only set by the backend scrape endpoint
       // If updating a recipe with existing sourceUrl, preserve it
@@ -250,9 +292,10 @@ const EditRecipe = () => {
   const handleRescrape = async () => {
     if (!existingRecipe?.sourceUrl || !id) return;
 
-    const confirmRescrape = window.confirm(
-      'This will re-scrape the recipe from the source URL and load fresh data (preserving Notes). You can review the changes before saving. Continue?'
-    );
+    const confirmMessage = hasChangesExcludingNotes()
+      ? 'You have unsaved changes (excluding Notes) that will be lost. This will re-scrape the recipe from the source URL and load fresh data (preserving Notes). Continue?'
+      : 'This will re-scrape the recipe from the source URL and load fresh data (preserving Notes). You can review the changes before saving. Continue?';
+    const confirmRescrape = window.confirm(confirmMessage);
     if (!confirmRescrape) return;
 
     setIsRescraping(true);
@@ -298,6 +341,9 @@ const EditRecipe = () => {
         setServings(scrapedRecipe.servings?.toString() || '');
         setPrepTime(scrapedRecipe.prepTime?.toString() || '');
         setCookTime(scrapedRecipe.cookTime?.toString() || '');
+        setCategory(scrapedRecipe.category || []);
+        setCuisine(scrapedRecipe.cuisine || []);
+        setKeywords(scrapedRecipe.keywords || []);
         setIngredients(
           scrapedRecipe.ingredients.length > 0
             ? scrapedRecipe.ingredients
@@ -311,7 +357,6 @@ const EditRecipe = () => {
 
         // Don't save to Firestore yet - let the user review and save manually
         // The form fields are now different from originalState, so save button will be enabled
-        alert('Recipe re-scraped successfully! Review the changes and click Save to update.');
       } else {
         setError(data.error || 'Failed to re-scrape recipe');
       }
@@ -502,6 +547,109 @@ const EditRecipe = () => {
             }}
             placeholder="Personal notes, modifications, tips..."
           />
+        </div>
+
+        {/* Metadata fields */}
+        <div className={styles.section}>
+          <h3>Category</h3>
+          <div className={styles.tagsList}>
+            {category.map((cat, index) => (
+              <div key={index} className={styles.tag}>
+                <span>{cat}</span>
+                <button
+                  onClick={() => setCategory(category.filter((_, i) => i !== index))}
+                  className={styles.tagRemove}
+                  type="button"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className={styles.tagInput}>
+            <input
+              type="text"
+              placeholder="Add category (e.g., Dinner, Dessert, Appetizer)"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const value = e.currentTarget.value.trim();
+                  if (value && !category.includes(value)) {
+                    setCategory([...category, value]);
+                    e.currentTarget.value = '';
+                  }
+                }
+              }}
+            />
+          </div>
+        </div>
+
+        <div className={styles.section}>
+          <h3>Cuisine</h3>
+          <div className={styles.tagsList}>
+            {cuisine.map((cui, index) => (
+              <div key={index} className={styles.tag}>
+                <span>{cui}</span>
+                <button
+                  onClick={() => setCuisine(cuisine.filter((_, i) => i !== index))}
+                  className={styles.tagRemove}
+                  type="button"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className={styles.tagInput}>
+            <input
+              type="text"
+              placeholder="Add cuisine (e.g., Italian, Mexican, Chinese)"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const value = e.currentTarget.value.trim();
+                  if (value && !cuisine.includes(value)) {
+                    setCuisine([...cuisine, value]);
+                    e.currentTarget.value = '';
+                  }
+                }
+              }}
+            />
+          </div>
+        </div>
+
+        <div className={styles.section}>
+          <h3>Keywords</h3>
+          <div className={styles.tagsList}>
+            {keywords.map((keyword, index) => (
+              <div key={index} className={styles.tag}>
+                <span>{keyword}</span>
+                <button
+                  onClick={() => setKeywords(keywords.filter((_, i) => i !== index))}
+                  className={styles.tagRemove}
+                  type="button"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className={styles.tagInput}>
+            <input
+              type="text"
+              placeholder="Add keyword (e.g., vegetarian, quick, comfort-food)"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const value = e.currentTarget.value.trim();
+                  if (value && !keywords.includes(value)) {
+                    setKeywords([...keywords, value]);
+                    e.currentTarget.value = '';
+                  }
+                }
+              }}
+            />
+          </div>
         </div>
 
         <div className={styles.section}>

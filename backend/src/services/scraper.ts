@@ -173,6 +173,132 @@ function parseAmountWithRange(
 }
 
 /**
+ * Meal-type keywords that should be extracted from keywords and moved to category
+ * Case-insensitive matching, but use these exact capitalizations when adding to category
+ */
+const CATEGORY_KEYWORDS = [
+  'Appetizer',
+  'Breakfast',
+  'Brunch',
+  'Dessert',
+  'Dinner',
+  'Drink',
+  'Entree',
+  'Lunch',
+  'Main',
+  'Main course',
+  'Sauce',
+  'Side',
+  'Side dish',
+  'Snack',
+  'Starter',
+];
+
+/**
+ * Cuisine keywords that should be extracted from keywords and moved to cuisine
+ * Case-insensitive matching, but use these exact capitalizations when adding to cuisine
+ */
+const CUISINE_KEYWORDS = [
+  'American',
+  // More can be added later: Italian, Mexican, Chinese, Japanese, Indian, etc.
+];
+
+/**
+ * Normalize metadata by extracting meal-type and cuisine terms from keywords
+ * and moving them to their respective arrays
+ */
+function normalizeMetadata(
+  rawCategory: string[] = [],
+  rawCuisine: string[] = [],
+  rawKeywords: string[] = []
+): {
+  category: string[];
+  cuisine: string[];
+  keywords: string[];
+} {
+  const categorySet = new Set<string>(rawCategory);
+  const cuisineSet = new Set<string>(rawCuisine);
+  const remainingKeywords: string[] = [];
+
+  // Create lowercase lookup maps for case-insensitive matching
+  const categoryLookup = new Map<string, string>();
+  CATEGORY_KEYWORDS.forEach(cat => {
+    categoryLookup.set(cat.toLowerCase(), cat);
+  });
+
+  const cuisineLookup = new Map<string, string>();
+  CUISINE_KEYWORDS.forEach(cui => {
+    cuisineLookup.set(cui.toLowerCase(), cui);
+  });
+
+  // Process each keyword
+  for (const keyword of rawKeywords) {
+    const trimmed = keyword.trim();
+    if (!trimmed) continue;
+
+    const lowerKeyword = trimmed.toLowerCase();
+
+    // Check if it's a category keyword
+    const categoryMatch = categoryLookup.get(lowerKeyword);
+    if (categoryMatch) {
+      categorySet.add(categoryMatch);
+      continue;
+    }
+
+    // Check if it's a cuisine keyword
+    const cuisineMatch = cuisineLookup.get(lowerKeyword);
+    if (cuisineMatch) {
+      cuisineSet.add(cuisineMatch);
+      continue;
+    }
+
+    // Not a special keyword, keep it
+    remainingKeywords.push(trimmed);
+  }
+
+  return {
+    category: Array.from(categorySet),
+    cuisine: Array.from(cuisineSet),
+    keywords: remainingKeywords,
+  };
+}
+
+/**
+ * Parse keywords from various formats (string or array)
+ */
+function parseKeywords(keywords: any): string[] {
+  if (!keywords) return [];
+  
+  if (typeof keywords === 'string') {
+    // Split on commas and trim
+    return keywords.split(',').map(k => k.trim()).filter(k => k);
+  }
+  
+  if (Array.isArray(keywords)) {
+    return keywords.map(k => String(k).trim()).filter(k => k);
+  }
+  
+  return [];
+}
+
+/**
+ * Parse category/cuisine values from string or array formats
+ */
+function parseStringArray(value: any): string[] {
+  if (!value) return [];
+
+  if (Array.isArray(value)) {
+    return value.map(item => String(item).trim()).filter(item => item);
+  }
+
+  if (typeof value === 'string') {
+    return value.split(',').map(item => item.trim()).filter(item => item);
+  }
+
+  return [String(value).trim()].filter(item => item);
+}
+
+/**
  * Helper to log recipe sample data
  * Always shows all fields, indicating when values are missing
  */
@@ -183,6 +309,9 @@ function logRecipeSample(recipe: ScrapedRecipe): void {
   console.log('Servings:', recipe.servings ?? 'N/A');
   console.log('Prep Time:', recipe.prepTime ? `${recipe.prepTime} min` : 'N/A');
   console.log('Cook Time:', recipe.cookTime ? `${recipe.cookTime} min` : 'N/A');
+  console.log('Category:', recipe.category?.join(', ') || 'N/A');
+  console.log('Cuisine:', recipe.cuisine?.join(', ') || 'N/A');
+  console.log('Keywords:', recipe.keywords?.length ? recipe.keywords.slice(0, 5).join(', ') + (recipe.keywords.length > 5 ? '...' : '') : 'N/A');
   console.log('Ingredients count:', recipe.ingredients.length);
   console.log('Sample ingredients:');
   recipe.ingredients.slice(0, 3).forEach((ing, i) => {
@@ -351,6 +480,23 @@ function extractFromJsonLd($: cheerio.CheerioAPI): ScrapedRecipe | null {
             recipe.cookTime = cookTime;
           }
           
+          // Extract and normalize metadata (category, cuisine, keywords)
+          const rawCategory = parseStringArray(data.recipeCategory);
+          const rawCuisine = parseStringArray(data.recipeCuisine);
+          const rawKeywords = parseKeywords(data.keywords);
+          
+          const normalized = normalizeMetadata(rawCategory, rawCuisine, rawKeywords);
+          
+          if (normalized.category.length > 0) {
+            recipe.category = normalized.category;
+          }
+          if (normalized.cuisine.length > 0) {
+            recipe.cuisine = normalized.cuisine;
+          }
+          if (normalized.keywords.length > 0) {
+            recipe.keywords = normalized.keywords;
+          }
+          
           return recipe;
         }
       }
@@ -515,6 +661,84 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
   } catch (error) {
     console.log('Error extracting supplementary data from JSON-LD:', error);
   }
+  }
+  
+  // Extract metadata from HTML meta tags and JSON-LD
+  console.log('\n--- Extracting metadata (category, cuisine, keywords) ---');
+  let rawCategory: string[] = [];
+  let rawCuisine: string[] = [];
+  let rawKeywords: string[] = [];
+  
+  // Try meta tags first
+  const metaKeywords = $('meta[name="keywords"]').attr('content');
+  if (metaKeywords) {
+    rawKeywords = parseKeywords(metaKeywords);
+    console.log('  Found keywords in meta tag:', rawKeywords.length);
+  }
+  
+  const metaSection = $('meta[name="article:section"]').attr('content');
+  if (metaSection) {
+    rawCategory.push(metaSection);
+    console.log('  Found category in meta tag:', metaSection);
+  }
+  
+  // Try to get from JSON-LD if available
+  try {
+    const scriptTags = $('script[type="application/ld+json"]');
+    for (let i = 0; i < scriptTags.length; i++) {
+      const scriptContent = $(scriptTags[i]).html();
+      if (!scriptContent) continue;
+      
+      const jsonData = JSON.parse(scriptContent);
+      let recipes = Array.isArray(jsonData) ? jsonData : [jsonData];
+      if (jsonData['@graph']) {
+        recipes = jsonData['@graph'];
+      }
+      
+      for (const data of recipes) {
+        const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
+        const isRecipe = typeArray.includes('Recipe');
+        
+        if (isRecipe) {
+          if (data.recipeCategory) {
+            const parsedCategory = parseStringArray(data.recipeCategory);
+            if (parsedCategory.length > 0) {
+              rawCategory = [...rawCategory, ...parsedCategory];
+              console.log('  Found category in JSON-LD:', parsedCategory);
+            }
+          }
+          if (data.recipeCuisine) {
+            const parsedCuisine = parseStringArray(data.recipeCuisine);
+            if (parsedCuisine.length > 0) {
+              rawCuisine = [...rawCuisine, ...parsedCuisine];
+              console.log('  Found cuisine in JSON-LD:', parsedCuisine);
+            }
+          }
+          if (data.keywords && rawKeywords.length === 0) {
+            rawKeywords = parseKeywords(data.keywords);
+            console.log('  Found keywords in JSON-LD:', rawKeywords.length);
+          }
+          break;
+        }
+      }
+    }
+  } catch (error) {
+    console.log('  Error extracting metadata from JSON-LD:', error);
+  }
+  
+  // Normalize metadata
+  const normalized = normalizeMetadata(rawCategory, rawCuisine, rawKeywords);
+  if (normalized.category.length > 0) {
+    recipe.category = normalized.category;
+    console.log('  ✓ Category:', normalized.category.join(', '));
+  }
+  if (normalized.cuisine.length > 0) {
+    recipe.cuisine = normalized.cuisine;
+    console.log('  ✓ Cuisine:', normalized.cuisine.join(', '));
+  }
+  if (normalized.keywords.length > 0) {
+    recipe.keywords = normalized.keywords;
+    console.log('  ✓ Keywords:', normalized.keywords.slice(0, 5).join(', ') + (normalized.keywords.length > 5 ? '...' : ''));
   }
   
   return recipe;
@@ -763,6 +987,69 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
   console.log('Prep time:', recipe.prepTime ? `${recipe.prepTime} minutes` : 'not set');
   console.log('Cook time:', recipe.cookTime ? `${recipe.cookTime} minutes` : 'not set');
 
+  // Extract and normalize metadata (category, cuisine, keywords)
+  console.log('\n--- Extracting metadata (category, cuisine, keywords) ---');
+  let rawCategory: string[] = [];
+  let rawCuisine: string[] = [];
+  let rawKeywords: string[] = [];
+  
+  // Try to get from JSON-LD
+  try {
+    const scriptTags = $('script[type="application/ld+json"]');
+    for (let i = 0; i < scriptTags.length; i++) {
+      const scriptContent = $(scriptTags[i]).html();
+      if (!scriptContent) continue;
+      
+      const jsonData = JSON.parse(scriptContent);
+      let recipes = Array.isArray(jsonData) ? jsonData : [jsonData];
+      if (jsonData['@graph']) {
+        recipes = jsonData['@graph'];
+      }
+      
+      for (const data of recipes) {
+        const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
+        const isRecipe = typeArray.includes('Recipe');
+        
+        if (isRecipe) {
+          if (data.recipeCategory) {
+            rawCategory = parseStringArray(data.recipeCategory);
+            if (rawCategory.length > 0) {
+              console.log('  Found category in JSON-LD:', rawCategory);
+            }
+          }
+          if (data.recipeCuisine) {
+            rawCuisine = parseStringArray(data.recipeCuisine);
+            if (rawCuisine.length > 0) {
+              console.log('  Found cuisine in JSON-LD:', rawCuisine);
+            }
+          }
+          if (data.keywords) {
+            rawKeywords = parseKeywords(data.keywords);
+            console.log('  Found keywords in JSON-LD:', rawKeywords.length);
+          }
+          break;
+        }
+      }
+    }
+  } catch (error) {
+    console.log('  Error extracting metadata from JSON-LD:', error);
+  }
+  
+  // Normalize metadata
+  const normalized = normalizeMetadata(rawCategory, rawCuisine, rawKeywords);
+  if (normalized.category.length > 0) {
+    recipe.category = normalized.category;
+    console.log('  ✓ Category:', normalized.category.join(', '));
+  }
+  if (normalized.cuisine.length > 0) {
+    recipe.cuisine = normalized.cuisine;
+    console.log('  ✓ Cuisine:', normalized.cuisine.join(', '));
+  }
+  if (normalized.keywords.length > 0) {
+    recipe.keywords = normalized.keywords;
+    console.log('  ✓ Keywords:', normalized.keywords.slice(0, 5).join(', ') + (normalized.keywords.length > 5 ? '...' : ''));
+  }
+
   return recipe;
 }
 
@@ -957,6 +1244,69 @@ function extractFromWPRM($: cheerio.CheerioAPI): ScrapedRecipe | null {
     } catch (error) {
       console.log('Error extracting supplementary data from JSON-LD:', error);
     }
+  }
+
+  // Extract and normalize metadata (category, cuisine, keywords)
+  // WPRM sites typically have this in JSON-LD, not in WPRM HTML
+  console.log('\n--- Extracting metadata (category, cuisine, keywords) ---');
+  let rawCategory: string[] = [];
+  let rawCuisine: string[] = [];
+  let rawKeywords: string[] = [];
+  
+  try {
+    const scriptTags = $('script[type="application/ld+json"]');
+    for (let i = 0; i < scriptTags.length; i++) {
+      const scriptContent = $(scriptTags[i]).html();
+      if (!scriptContent) continue;
+      
+      const jsonData = JSON.parse(scriptContent);
+      let recipes = Array.isArray(jsonData) ? jsonData : [jsonData];
+      if (jsonData['@graph']) {
+        recipes = jsonData['@graph'];
+      }
+      
+      for (const data of recipes) {
+        const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
+        const isRecipe = typeArray.includes('Recipe');
+        
+        if (isRecipe) {
+          if (data.recipeCategory) {
+            rawCategory = parseStringArray(data.recipeCategory);
+            if (rawCategory.length > 0) {
+              console.log('  Found category in JSON-LD:', rawCategory);
+            }
+          }
+          if (data.recipeCuisine) {
+            rawCuisine = parseStringArray(data.recipeCuisine);
+            if (rawCuisine.length > 0) {
+              console.log('  Found cuisine in JSON-LD:', rawCuisine);
+            }
+          }
+          if (data.keywords) {
+            rawKeywords = parseKeywords(data.keywords);
+            console.log('  Found keywords in JSON-LD:', rawKeywords.length);
+          }
+          break;
+        }
+      }
+    }
+  } catch (error) {
+    console.log('  Error extracting metadata from JSON-LD:', error);
+  }
+  
+  // Normalize metadata
+  const normalized = normalizeMetadata(rawCategory, rawCuisine, rawKeywords);
+  if (normalized.category.length > 0) {
+    recipe.category = normalized.category;
+    console.log('  ✓ Category:', normalized.category.join(', '));
+  }
+  if (normalized.cuisine.length > 0) {
+    recipe.cuisine = normalized.cuisine;
+    console.log('  ✓ Cuisine:', normalized.cuisine.join(', '));
+  }
+  if (normalized.keywords.length > 0) {
+    recipe.keywords = normalized.keywords;
+    console.log('  ✓ Keywords:', normalized.keywords.slice(0, 5).join(', ') + (normalized.keywords.length > 5 ? '...' : ''));
   }
 
   return recipe;

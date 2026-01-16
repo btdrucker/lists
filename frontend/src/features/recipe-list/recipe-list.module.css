@@ -184,6 +184,38 @@
   color: var(--color-text-tertiary);
 }
 
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: var(--spacing-sm);
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.badgeCategory {
+  background: var(--color-primary);
+  color: white;
+}
+
+.badgeCuisine {
+  background: #10b981;
+  color: white;
+}
+
+.badgeKeyword {
+  background: var(--color-bg-light);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-light);
+}
+
+
 .footer {
   text-align: center;
   padding: var(--spacing-lg);

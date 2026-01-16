@@ -33,6 +33,10 @@ const ViewRecipe = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const { isSupported: wakeLockSupported, isActive: cookModeActive, toggle: toggleCookMode } = useWakeLock();
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [id]);
+
   // Update local notes when recipe changes
   useEffect(() => {
     if (recipe) {
@@ -207,6 +211,11 @@ const ViewRecipe = () => {
     );
   }
 
+  const category = recipe.category || [];
+  const cuisine = recipe.cuisine || [];
+  const keywords = recipe.keywords || [];
+  const hasMetadata = category.length + cuisine.length + keywords.length > 0;
+
   return (
     <div className={styles.container}>
       {/* Hero section with image, title overlay, and floating buttons */}
@@ -271,7 +280,7 @@ const ViewRecipe = () => {
       <div className={styles.content}>
         {recipe.sourceUrl && (
           <div className={styles.sourceUrl}>
-            <label>Source:</label>
+            From{' '}
             <a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer">
               {extractDomain(recipe.sourceUrl)}
             </a>
@@ -281,6 +290,31 @@ const ViewRecipe = () => {
         {recipe.description && (
           <div className={styles.description}>
             {recipe.description}
+          </div>
+        )}
+
+        {hasMetadata && (
+          <div className={styles.badges}>
+            {category.map((item: string, index: number) => (
+              <span key={`category-${index}`} className={`${styles.badge} ${styles.badgeCategory}`}>
+                {item}
+              </span>
+            ))}
+            {cuisine.map((item: string, index: number) => (
+              <span key={`cuisine-${index}`} className={`${styles.badge} ${styles.badgeCuisine}`}>
+                {item}
+              </span>
+            ))}
+            {keywords.slice(0, 3).map((item: string, index: number) => (
+              <span key={`keyword-${index}`} className={`${styles.badge} ${styles.badgeKeyword}`}>
+                {item}
+              </span>
+            ))}
+            {keywords.length > 3 && (
+              <span className={`${styles.badge} ${styles.badgeKeyword}`}>
+                +{keywords.length - 3} more
+              </span>
+            )}
           </div>
         )}
 

@@ -56,6 +56,15 @@ export async function scrapeRoutes(fastify: FastifyInstance) {
         if (scrapedRecipe.servings !== undefined) recipeData.servings = scrapedRecipe.servings;
         if (scrapedRecipe.prepTime !== undefined) recipeData.prepTime = scrapedRecipe.prepTime;
         if (scrapedRecipe.cookTime !== undefined) recipeData.cookTime = scrapedRecipe.cookTime;
+        if (scrapedRecipe.category && scrapedRecipe.category.length > 0) {
+          recipeData.category = scrapedRecipe.category;
+        }
+        if (scrapedRecipe.cuisine && scrapedRecipe.cuisine.length > 0) {
+          recipeData.cuisine = scrapedRecipe.cuisine;
+        }
+        if (scrapedRecipe.keywords && scrapedRecipe.keywords.length > 0) {
+          recipeData.keywords = scrapedRecipe.keywords;
+        }
 
         // Save to Firestore
         const recipe = await saveRecipe(recipeData);

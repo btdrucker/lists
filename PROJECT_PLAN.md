@@ -145,6 +145,7 @@ Navigate Back → EditRecipe List (shows new recipe instantly, no Firestore read
 - Click recipe card to edit
 - Sign out button in header
 - Reactively updates when Redux state changes
+- Display metadata on recipe cards (category, cuisine, keywords)
 - **Mobile Features**: Always-visible delete buttons, touch-friendly card sizes
 
 **Components**:
@@ -231,7 +232,9 @@ interface EditRecipe {
   servings?: number;             // Number of servings (future)
   prepTime?: number;             // Prep time in minutes (future)
   cookTime?: number;             // Cook time in minutes (future)
-  tags?: string[];               // Categories/tags (future)
+  category?: string[];           // Recipe categories (normalized)
+  cuisine?: string[];            // Recipe cuisines (normalized)
+  keywords?: string[];           // Free-form keywords after normalization
   isPublic: boolean;             // Whether recipe is visible to all users (default: true)
   createdAt: Timestamp;          // When recipe was created
   updatedAt: Timestamp;          // Last modification time
@@ -540,8 +543,10 @@ Authorization: Bearer <firebase-id-token>
    - Use library like `recipe-ingredient-parser-v3` or custom parser
    - Extract amount, unit, name from text
    - Keep original text for reference
-6. Save to Firestore: `recipes/{recipeId}` with userId field
-7. Return structured recipe data to frontend
+6. Extract metadata (category, cuisine, keywords) from JSON-LD/meta tags
+7. Normalize keywords by moving known category/cuisine terms into their arrays
+8. Save to Firestore: `recipes/{recipeId}` with userId field
+9. Return structured recipe data to frontend
 
 ### File Structure
 
