@@ -20,17 +20,17 @@ const UNIT_ALIAS_PATTERNS: Record<UnitValue, string[]> = {
   [UnitValue.QUART]: ['quarts?', 'qt'],
   [UnitValue.GALLON]: ['gallons?', 'gal'],
   // Weight
-  [UnitValue.POUND]: ['pounds?', 'lb', 'lbs'],
-  [UnitValue.OUNCE]: ['ounces?', 'oz'],
+  [UnitValue.POUND]: ['pounds?', 'lbs?'],
+  [UnitValue.OUNCE]: ['ounces?', 'oz.?'],
   [UnitValue.GRAM]: ['grams?', 'g'],
-  [UnitValue.KILOGRAM]: ['kilograms?', 'kg'],
+  [UnitValue.KILOGRAM]: ['kilograms?', 'kgs?'],
   // Count/Pieces
-  [UnitValue.PIECE]: ['pieces?', 'pc'],
+  [UnitValue.PIECE]: ['pieces?', 'pcs?'],
   [UnitValue.WHOLE]: ['wholes?'],
   [UnitValue.CLOVE]: ['cloves?'],
   [UnitValue.SLICE]: ['slices?'],
   [UnitValue.CAN]: ['cans?'],
-  [UnitValue.PACKAGE]: ['packages?', 'pkg'],
+  [UnitValue.PACKAGE]: ['packages?', 'pkgs?'],
   [UnitValue.JAR]: ['jars?'],
   [UnitValue.BUNCH]: ['bunches?'],
   [UnitValue.HEAD]: ['heads?'],
@@ -187,7 +187,23 @@ const CATEGORY_KEYWORDS = [
  */
 const CUISINE_KEYWORDS = [
   'American',
-  // More can be added later: Italian, Mexican, Chinese, Japanese, Indian, etc.
+  'Thai',
+  'Mexican',
+  'Chinese',
+  'Indian',
+  'Israeli',
+  'Italian',
+  'Japanese',
+  'Mediterranean',
+  'French',
+  'Spanish',
+  'Greek',
+  'Turkish',
+  'African',
+  'Middle Eastern',
+  'Latin American',
+  'Caribbean',
+  // Add more as needed.
 ];
 
 /**

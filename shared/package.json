@@ -2,6 +2,7 @@
   "name": "@lists/shared",
   "version": "1.0.0",
   "description": "Shared types for Lists app",
+  "type": "module",
   "main": "types/index.ts",
   "types": "types/index.ts",
   "exports": {
