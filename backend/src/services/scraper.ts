@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import { Ingredient, RecipeContent, ExtractionMethod, UnitValue } from '../types/index.js';
+import { fetchAiIngredientNormalization } from './ai.js';
 
 // ScrapedRecipe extends RecipeContent with extraction metadata
 interface ScrapedRecipe extends RecipeContent {
@@ -10,27 +11,28 @@ interface ScrapedRecipe extends RecipeContent {
 // Values are regex patterns (without anchors); matching is case-insensitive.
 const UNIT_ALIAS_PATTERNS: Record<UnitValue, string[]> = {
   // Volume
-  [UnitValue.CUP]: ['cups?','c'],
+  [UnitValue.CUP]: ['cups?','c\\.?'],
   [UnitValue.TABLESPOON]: ['tablespoons?', 'Tbsp\\.?', 'tbsp\\.?', 'tbs\\.?', 'T', 'TB'],
   [UnitValue.TEASPOON]: ['teaspoons?', 'tsp\\.?', 't'],
   [UnitValue.FLUID_OUNCE]: ['fluid ounces?', 'fl\\.?\\s*oz\\.?'],
-  [UnitValue.MILLILITER]: ['milliliters?', 'ml', 'mL'],
-  [UnitValue.LITER]: ['liters?', 'l', 'L'],
-  [UnitValue.PINT]: ['pints?', 'pt'],
-  [UnitValue.QUART]: ['quarts?', 'qt'],
-  [UnitValue.GALLON]: ['gallons?', 'gal'],
+  [UnitValue.MILLILITER]: ['milliliters?', 'ml\\.?', 'mL\\.?'],
+  [UnitValue.LITER]: ['liters?', 'l\\.?', 'L\\.?'],
+  [UnitValue.PINT]: ['pints?', 'pt\\.?'],
+  [UnitValue.QUART]: ['quarts?', 'qt\\.?'],
+  [UnitValue.GALLON]: ['gallons?', 'gal\\.?'],
   // Weight
-  [UnitValue.POUND]: ['pounds?', 'lbs?'],
+  [UnitValue.POUND]: ['pounds?', 'lbs?\\.?'],
   [UnitValue.OUNCE]: ['ounces?', 'oz.?'],
-  [UnitValue.GRAM]: ['grams?', 'g'],
-  [UnitValue.KILOGRAM]: ['kilograms?', 'kgs?'],
+  [UnitValue.GRAM]: ['grams?', 'g\\.?'],
+  [UnitValue.KILOGRAM]: ['kilograms?', 'kgs?\\.?'],
   // Count/Pieces
-  [UnitValue.PIECE]: ['pieces?', 'pcs?'],
-  [UnitValue.WHOLE]: ['wholes?'],
+  [UnitValue.EACH]: ['each'],
   [UnitValue.CLOVE]: ['cloves?'],
   [UnitValue.SLICE]: ['slices?'],
   [UnitValue.CAN]: ['cans?'],
-  [UnitValue.PACKAGE]: ['packages?', 'pkgs?'],
+  [UnitValue.BAG]: ['bags?'],
+  [UnitValue.BOX]: ['boxes?'],
+  [UnitValue.PACKAGE]: ['packages?', 'pkgs?\\.?'],
   [UnitValue.JAR]: ['jars?'],
   [UnitValue.BUNCH]: ['bunches?'],
   [UnitValue.HEAD]: ['heads?'],
@@ -47,7 +49,7 @@ const UNIT_ALIAS_PATTERNS: Record<UnitValue, string[]> = {
 const UNIT_ALIAS_MATCHERS = Object.entries(UNIT_ALIAS_PATTERNS).flatMap(
   ([unit, patterns]) => patterns.map((pattern) => ({
     unit: unit as UnitValue,
-    regex: new RegExp(`^(${pattern})\\b`, 'i'),
+    regex: new RegExp(`^(${pattern})(?=\\s|$|[),;:])`, 'i'),
   }))
 );
 
@@ -59,9 +61,12 @@ const UNIT_ALIAS_MATCHERS = Object.entries(UNIT_ALIAS_PATTERNS).flatMap(
  * We then replace the special Unicode fraction slash with an ASCII forward slash
  */
 function normalizeFractions(input: string): string {
+  // Insert a space between whole number and Unicode fraction (e.g., "1½" -> "1 ½")
+  const separated = input.replace(/(\d)([¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞])/g, '$1 $2');
+
   // 1. Decompose characters using NFKD normalization
   // This turns "¼" into "1⁄4" (using the special fraction slash U+2044)
-  const decomposed = input.normalize("NFKD");
+  const decomposed = separated.normalize("NFKD");
 
   // 2. Replace the special Unicode fraction slash (U+2044) with an ASCII forward slash (U+002F)
   // The fraction slash character is different from a standard forward slash
@@ -187,6 +192,7 @@ const CATEGORY_KEYWORDS = [
  */
 const CUISINE_KEYWORDS = [
   'American',
+  'British',
   'Thai',
   'Mexican',
   'Chinese',
@@ -301,6 +307,11 @@ function parseStringArray(value: any): string[] {
   return [String(value).trim()].filter(item => item);
 }
 
+function isJsonLdRecipeType(typeValue: unknown): boolean {
+  const typeArray = Array.isArray(typeValue) ? typeValue : [typeValue];
+  return typeArray.includes('Recipe') || typeArray.includes('EditRecipe');
+}
+
 /**
  * Helper to log recipe sample data
  * Always shows all fields, indicating when values are missing
@@ -320,7 +331,58 @@ function logRecipeSample(recipe: ScrapedRecipe): void {
   recipe.ingredients.slice(0, 3).forEach((ing, i) => {
     console.log(`  [${i}]`, JSON.stringify(ing, null, 2));
   });
+  if (process.env.DEBUG_INGREDIENT_PARSING === 'true') {
+    console.log('All ingredients (with confidence):');
+    recipe.ingredients.forEach((ing, i) => {
+      console.log(`  [${i}]`, JSON.stringify({
+        amount: ing.amount,
+        amountMax: ing.amountMax,
+        unit: ing.unit,
+        name: ing.name,
+        section: ing.section,
+        originalText: ing.originalText,
+        parseConfidence: ing.parseConfidence,
+        aiAmount: ing.aiAmount,
+        aiUnit: ing.aiUnit,
+        aiName: ing.aiName,
+      }, null, 2));
+    });
+  }
   console.log('Instructions count:', recipe.instructions.length);
+}
+
+async function normalizeIngredientsWithAI(recipe: ScrapedRecipe): Promise<ScrapedRecipe> {
+  if (!recipe.ingredients.length) return recipe;
+
+  const ingredientTexts = recipe.ingredients.map((ing) => ing.originalText || ing.name);
+  const aiResults = await fetchAiIngredientNormalization(
+    ingredientTexts,
+    Object.values(UnitValue)
+  );
+  if (!aiResults) return recipe;
+
+  const enriched = recipe.ingredients.map((ing, idx) => {
+    const ai = aiResults[idx] || {};
+    const aiAmount =
+      typeof ai.amount === 'number'
+        ? ai.amount
+        : typeof ai.amount === 'string'
+          ? parseSingleAmount(ai.amount)
+          : null;
+    const aiUnit = ai.unit ? normalizeUnitText(String(ai.unit)) : null;
+    const aiName = ai.name ? String(ai.name).trim() : null;
+    return {
+      ...ing,
+      aiAmount,
+      aiUnit,
+      aiName,
+    };
+  });
+
+  return {
+    ...recipe,
+    ingredients: enriched,
+  };
 }
 
 /**
@@ -348,10 +410,11 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
     const wprmRecipe = extractFromWPRM($);
     if (wprmRecipe) {
       console.log('✓ WPRM extraction successful');
-      logRecipeSample(wprmRecipe);
+      const normalized = await normalizeIngredientsWithAI(wprmRecipe);
+      logRecipeSample(normalized);
       console.log('\n✅ Using WPRM extraction');
-      wprmRecipe.extractionMethod = 'WPRM';
-      return wprmRecipe;
+      normalized.extractionMethod = 'WPRM';
+      return normalized;
     }
     console.log('✗ WPRM not detected');
 
@@ -360,10 +423,11 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
     const dataAttrRecipe = extractFromDataAttributes($);
     if (dataAttrRecipe && dataAttrRecipe.ingredients.length > 0) {
       console.log('✓ Data attribute extraction successful');
-      logRecipeSample(dataAttrRecipe);
+      const normalized = await normalizeIngredientsWithAI(dataAttrRecipe);
+      logRecipeSample(normalized);
       console.log('\n✅ Using data attribute extraction');
-      dataAttrRecipe.extractionMethod = 'DataAttributes';
-      return dataAttrRecipe;
+      normalized.extractionMethod = 'DataAttributes';
+      return normalized;
     }
     console.log('✗ Data attributes not found');
 
@@ -372,10 +436,11 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
     const jsonLdRecipe = extractFromJsonLd($);
     if (jsonLdRecipe) {
       console.log('✓ JSON-LD extraction successful');
-      logRecipeSample(jsonLdRecipe);
+      const normalized = await normalizeIngredientsWithAI(jsonLdRecipe);
+      logRecipeSample(normalized);
       console.log('\n✅ Using JSON-LD extraction (with text parsing)');
-      jsonLdRecipe.extractionMethod = 'JSON-LD';
-      return jsonLdRecipe;
+      normalized.extractionMethod = 'JSON-LD';
+      return normalized;
     }
     console.log('✗ JSON-LD not found');
 
@@ -383,12 +448,13 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
     console.log('\n--- Falling back to generic HTML extraction ---');
     const htmlRecipe = extractFromHtml($, url);
     console.log('✓ HTML extraction complete');
-    logRecipeSample(htmlRecipe);
+    const normalized = await normalizeIngredientsWithAI(htmlRecipe);
+    logRecipeSample(normalized);
     console.log('\n✅ Using HTML extraction (with text parsing)');
-    htmlRecipe.extractionMethod = 'HTML';
+    normalized.extractionMethod = 'HTML';
     
     console.log('\n========================================\n');
-    return htmlRecipe;
+    return normalized;
   } catch (error) {
     console.error('Scraping error:', error);
     throw new Error(`Failed to scrape recipe: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -437,8 +503,7 @@ function extractFromJsonLd($: cheerio.CheerioAPI): ScrapedRecipe | null {
       }
 
       for (const data of recipes) {
-        const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
-        const isRecipe = typeArray.includes('Recipe');
+        const isRecipe = isJsonLdRecipeType(data['@type']);
         
         if (isRecipe) {
           // Debug: Check JSON-LD ingredient format
@@ -624,8 +689,7 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
       }
       
       for (const data of recipes) {
-        const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
-        const isRecipe = typeArray.includes('Recipe');
+        const isRecipe = isJsonLdRecipeType(data['@type']);
         
         if (isRecipe) {
           console.log('Found Recipe in JSON-LD');
@@ -699,8 +763,7 @@ function extractFromHtml($: cheerio.CheerioAPI, url: string): ScrapedRecipe {
       }
       
       for (const data of recipes) {
-        const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
-        const isRecipe = typeArray.includes('Recipe');
+        const isRecipe = isJsonLdRecipeType(data['@type']);
         
         if (isRecipe) {
           if (data.recipeCategory) {
@@ -820,6 +883,7 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
     const quantity = $parent.find('[data-ingredient-quantity]').first().text().trim();
     const unit = $parent.find('[data-ingredient-unit]').first().text().trim();
     const name = $elem.text().trim();
+    const nameSpanCount = $parent.find('[data-ingredient-name]').length;
     const section = sectionMap.get(elem);
 
     if (name) {
@@ -839,6 +903,13 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
 
       const normalizedUnit = normalizeUnitText(unit);
 
+      const baseConfidence = scoreIngredientParse({
+        hasAmount: parsedAmount !== null,
+        hasUnit: normalizedUnit !== null,
+        normalizedBySize: false,
+        hadAmountMatch: !!quantity,
+        hasName: !!name,
+      });
       ingredients.push({
         amount: parsedAmount,
         amountMax: parsedAmountMax || undefined,
@@ -846,6 +917,10 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
         name: name,
         section: section,
         originalText: originalText,
+        parseConfidence: applyConfidencePenalties(baseConfidence, {
+          hasMultipleNames: nameSpanCount > 1,
+          hasFromClause: /\bfrom\b/i.test(originalText),
+        }),
       });
     }
   });
@@ -945,8 +1020,7 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
       }
       
       for (const data of recipes) {
-        const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
-        const isRecipe = typeArray.includes('Recipe');
+        const isRecipe = isJsonLdRecipeType(data['@type']);
         
         if (isRecipe) {
           console.log('✓ Found Recipe in JSON-LD');
@@ -1012,8 +1086,7 @@ function extractFromDataAttributes($: cheerio.CheerioAPI): ScrapedRecipe | null 
       }
       
       for (const data of recipes) {
-        const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
-        const isRecipe = typeArray.includes('Recipe');
+        const isRecipe = isJsonLdRecipeType(data['@type']);
         
         if (isRecipe) {
           if (data.recipeCategory) {
@@ -1209,8 +1282,7 @@ function extractFromWPRM($: cheerio.CheerioAPI): ScrapedRecipe | null {
         }
         
         for (const data of recipes) {
-          const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
-          const isRecipe = typeArray.includes('Recipe');
+          const isRecipe = isJsonLdRecipeType(data['@type']);
           
           if (isRecipe) {
             console.log('Found Recipe in JSON-LD');
@@ -1271,8 +1343,7 @@ function extractFromWPRM($: cheerio.CheerioAPI): ScrapedRecipe | null {
       }
       
       for (const data of recipes) {
-        const typeArray = Array.isArray(data['@type']) ? data['@type'] : [data['@type']];
-        const isRecipe = typeArray.includes('Recipe');
+        const isRecipe = isJsonLdRecipeType(data['@type']);
         
         if (isRecipe) {
           if (data.recipeCategory) {
@@ -1329,11 +1400,25 @@ function parseIngredientList(ingredients: any[]): Ingredient[] {
       const parts = [value, unitCode, name].filter(p => p);
       const text = parts.join(' ');
       
+      const amount = value ? parseFraction(String(value)) : null;
+      const unit = normalizeUnitText(unitCode);
+      const nameValue = name || text;
+      const baseConfidence = scoreIngredientParse({
+        hasAmount: amount !== null,
+        hasUnit: unit !== null,
+        normalizedBySize: false,
+        hadAmountMatch: amount !== null,
+        hasName: !!nameValue,
+      });
       return {
-        amount: value ? parseFraction(String(value)) : null,
-        unit: normalizeUnitText(unitCode),
-        name: name || text,
+        amount,
+        unit,
+        name: nameValue,
         originalText: text,
+        parseConfidence: applyConfidencePenalties(baseConfidence, {
+          hasMultipleNames: false,
+          hasFromClause: /\bfrom\b/i.test(text),
+        }),
       };
     }
     
@@ -1383,6 +1468,56 @@ function parseFraction(str: string): number | null {
   return isNaN(parsed) ? null : parsed;
 }
 
+function scoreIngredientParse(params: {
+  hasAmount: boolean;
+  hasUnit: boolean;
+  normalizedBySize: boolean;
+  hadAmountMatch: boolean;
+  hasName: boolean;
+}): number {
+  let score: number;
+  if (params.normalizedBySize) {
+    score = 0.9;
+  } else if (params.hasAmount && params.hasUnit) {
+    score = 0.85;
+  } else if (params.hasAmount) {
+    score = 0.6;
+  } else if (params.hasUnit) {
+    score = 0.4;
+  } else {
+    score = 0.25;
+  }
+
+  if (!params.hadAmountMatch) {
+    score = Math.min(score, 0.35);
+  }
+  if (!params.hasName) {
+    score = Math.min(score, 0.2);
+  }
+  return Math.max(0, Math.min(1, score));
+}
+
+function applyConfidencePenalties(
+  score: number,
+  flags: { hasMultipleNames: boolean; hasFromClause: boolean }
+): number {
+  let adjusted = score;
+  if (flags.hasMultipleNames) {
+    adjusted = Math.min(adjusted, 0.4);
+  }
+  if (flags.hasFromClause) {
+    adjusted = Math.min(adjusted, 0.5);
+  }
+  return adjusted;
+}
+
+const DEBUG_INGREDIENT_PARSING = process.env.DEBUG_INGREDIENT_PARSING === 'true';
+
+function logIngredientParse(label: string, data: Record<string, unknown>): void {
+  if (!DEBUG_INGREDIENT_PARSING) return;
+  console.log(`[ingredient-parse] ${label}:`, JSON.stringify(data));
+}
+
 /**
  * Normalize a unit string to its canonical form
  * E.g., "lbs" → "pound", "tbsp" → "tablespoon"
@@ -1415,9 +1550,76 @@ function matchUnitFromStart(text: string): { unit: UnitValue; match: string } | 
   return null;
 }
 
+// Matches a size spec after an initial count (e.g., "15 oz", "8.8-oz", "(12 ounce)"):
+// 1) size amount (supports fractions/mixed/decimals), 2) size unit words (e.g., "oz", "fl oz"),
+// 3) remainder (ingredient name, optional container word).
+const SIZE_SPEC_REGEX = /^\(?(\d+(?:\s+\d+\/\d+|\/\d+|\.\d+)?)(?:\s*-\s*|\s*)([a-zA-Z]+\.?(?:\s*[a-zA-Z]+\.?)?)\)?\s*(.*)$/;
+const CONTAINER_WORD_PATTERNS = [
+  'can(s)?',
+  'package(s)?',
+  'pkg(s)?',
+  'jar(s)?',
+  'bag(s)?',
+  'bottle(s)?',
+  'box(es)?',
+  'slice(s)?',
+  'tin(s)?',
+];
+
+// Normalize "count + size + unit" patterns (e.g., "2 8.8-oz packages beets")
+// into total amount + unit, stripping container words from the name.
+function extractSizedAmount(
+  count: number,
+  rest: string
+): { amount: number; unit: UnitValue; name: string } | null {
+  const trimmed = rest.trim();
+  const sizeMatch = trimmed.match(SIZE_SPEC_REGEX);
+  if (!sizeMatch) return null;
+
+  const sizeAmountStr = sizeMatch[1];
+  let sizeUnitText = sizeMatch[2].replace(/\s+/g, ' ').trim();
+  let remainder = (sizeMatch[3] || '').trim();
+
+  const sizeAmount = parseSingleAmount(sizeAmountStr);
+  let sizeUnit = normalizeUnitText(sizeUnitText);
+  if (!sizeUnit && sizeUnitText.includes(' ')) {
+    const tokens = sizeUnitText.split(' ');
+    for (let i = 1; i <= tokens.length; i++) {
+      const candidate = tokens.slice(0, i).join(' ');
+      const candidateUnit = normalizeUnitText(candidate);
+      if (candidateUnit) {
+        sizeUnit = candidateUnit;
+        const leftover = tokens.slice(i).join(' ').trim();
+        remainder = `${leftover} ${remainder}`.trim();
+        sizeUnitText = candidate;
+        break;
+      }
+    }
+  }
+  if (sizeAmount === null || !sizeUnit) return null;
+
+  if (remainder) {
+    const containerRegex = new RegExp(`^(${CONTAINER_WORD_PATTERNS.join('|')})\\b\\.?\\s*`, 'i');
+    remainder = remainder.replace(containerRegex, '');
+    remainder = remainder.replace(/^of\b\s*/i, '');
+    remainder = remainder.replace(/^[\s,.-]+/, '').trim();
+  }
+
+  if (!remainder) return null;
+
+  return {
+    amount: count * sizeAmount,
+    unit: sizeUnit,
+    name: remainder,
+  };
+}
+
 function parseIngredientText(text: string): Ingredient {
   const cleaned = cleanListItemText(text);
   const normalized = normalizeFractions(cleaned);
+  const hasFromClause = /\bfrom\b/i.test(cleaned);
+
+  logIngredientParse('input', { text, cleaned, normalized });
   
   // Try to parse: [amount] [unit] [name]
   // Regex explanation:
@@ -1432,12 +1634,24 @@ function parseIngredientText(text: string): Ingredient {
   
   if (!amountMatch) {
     // No amount found, return as-is
-    return {
+    const result = {
       amount: null,
       unit: null,
       name: cleaned,
       originalText: cleaned,
+      parseConfidence: applyConfidencePenalties(scoreIngredientParse({
+        hasAmount: false,
+        hasUnit: false,
+        normalizedBySize: false,
+        hadAmountMatch: false,
+        hasName: !!cleaned,
+      }), {
+        hasMultipleNames: false,
+        hasFromClause,
+      }),
     };
+    logIngredientParse('no-amount', result);
+    return result;
   }
   
   const amountStr = amountMatch[1];
@@ -1448,23 +1662,69 @@ function parseIngredientText(text: string): Ingredient {
   let amount = parsed.amount;
   let amountMax = parsed.amountMax || null;
   
+  // If rest starts with a size spec (e.g., "15 oz. can"), normalize to total size
+  if (amount !== null && !amountMax) {
+    const sized = extractSizedAmount(amount, rest);
+    if (sized) {
+      return {
+        amount: sized.amount,
+        unit: sized.unit,
+        name: sized.name,
+        originalText: cleaned,
+        parseConfidence: applyConfidencePenalties(scoreIngredientParse({
+          hasAmount: true,
+          hasUnit: true,
+          normalizedBySize: true,
+          hadAmountMatch: true,
+          hasName: !!sized.name,
+        }), {
+          hasMultipleNames: false,
+          hasFromClause,
+        }),
+      };
+    }
+  }
+
   // Try to find a unit at the start of the rest
   let unit: UnitValue | null = null;
   let name = rest;
+  let unitSource = rest;
 
-  const unitMatch = matchUnitFromStart(rest);
+  const sizePrefixMatch = rest.match(/^(small|medium|large)\b\s+/i);
+  if (sizePrefixMatch) {
+    unitSource = rest.substring(sizePrefixMatch[0].length);
+  }
+
+  const unitMatch = matchUnitFromStart(unitSource);
   if (unitMatch) {
     unit = unitMatch.unit;
-    name = rest.substring(unitMatch.match.length).trim();
+    name = unitSource.substring(unitMatch.match.length).trim();
   }
   
-  return {
+  const result = {
     amount,
     amountMax: amountMax || undefined,
     unit,
     name: name || cleaned,
     originalText: cleaned,
+    parseConfidence: applyConfidencePenalties(scoreIngredientParse({
+      hasAmount: amount !== null,
+      hasUnit: unit !== null,
+      normalizedBySize: false,
+      hadAmountMatch: true,
+      hasName: !!(name || cleaned),
+    }), {
+      hasMultipleNames: false,
+      hasFromClause,
+    }),
   };
+  logIngredientParse('parsed', {
+    amountStr,
+    rest,
+    unitMatch: unitMatch ? { unit: unitMatch.unit, match: unitMatch.match } : null,
+    result,
+  });
+  return result;
 }
 
 function parseIngredient(text: string): Ingredient {

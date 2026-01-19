@@ -28,6 +28,14 @@ NODE_ENV=development
 
 # Frontend URL (for CORS)
 FRONTEND_URL=http://localhost:5173
+
+# Optional AI settings (Vertex AI via service account)
+# VERTEX_AI_PROJECT_ID defaults to FIREBASE_PROJECT_ID when omitted
+VERTEX_AI_PROJECT_ID=listster-test
+VERTEX_AI_LOCATION=us-central1
+
+# Optional legacy Gemini API key (if not using Vertex AI)
+# GEMINI_API_KEY=your-api-key
 ```
 
 **Note**: The private key must be wrapped in quotes and include the `\n` newline characters.
@@ -55,6 +63,41 @@ Authorization: Bearer <firebase-id-token>
 ```json
 {
   "url": "https://example.com/recipe"
+}
+```
+
+### GET `/ai-health`
+
+Smoke test for AI connectivity (Vertex AI or API key path).
+
+**Response**:
+```json
+{
+  "status": "ok",
+  "timestamp": "2025-12-25T..."
+}
+```
+
+### POST `/ai-debug`
+
+Debug endpoint used by the AI prompt testing UI.
+
+**Request Body**:
+```json
+{
+  "systemInstruction": "Normalize these ingredient strings...",
+  "userPrompt": "Ingredients:\n1 cup diced tomatoes\n2 tsp olive oil"
+}
+```
+
+**Response**:
+```json
+{
+  "status": "ok",
+  "mode": "vertex",
+  "rawText": "[{\"amount\":1,\"unit\":\"CUP\",\"name\":\"diced tomatoes\"}]",
+  "ingredientCount": 2,
+  "timestamp": "2025-12-25T..."
 }
 ```
 

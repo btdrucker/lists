@@ -11,6 +11,7 @@ import RecipeList from './features/recipe-list/RecipeList';
 import ViewRecipe from './features/recipe/ViewRecipe';
 import RecipeStart from './features/recipe/RecipeStart';
 import EditRecipe from './features/recipe/EditRecipe.tsx';
+import AiDebug from './features/ai-debug/AiDebug';
 import { InstallBanner } from './common/components/InstallBanner';
 import { OfflineIndicator } from './common/components/OfflineIndicator';
 import { UpdatePrompt } from './common/components/UpdatePrompt';
@@ -57,6 +58,7 @@ function AppContent() {
             <Route path="/recipe/:id" element={<ViewRecipe />} />
             <Route path="/recipe-start" element={<RecipeStart />} />
             <Route path="/edit-recipe/:id" element={<EditRecipe />} />
+            <Route path="/ai-debug" element={<AiDebug />} />
             <Route path="/" element={<Navigate to="/recipe-list" replace />} />
             <Route path="*" element={<Navigate to="/recipe-list" replace />} />
           </>

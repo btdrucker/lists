@@ -1,0 +1,77 @@
+ .container {
+   display: flex;
+   flex-direction: column;
+   gap: 16px;
+   padding: 24px;
+   max-width: 960px;
+   margin: 0 auto;
+ }
+ 
+ .header {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+ }
+ 
+ .title {
+   margin: 0;
+ }
+ 
+ .section {
+   display: flex;
+   flex-direction: column;
+   gap: 8px;
+ }
+ 
+ .label {
+   font-weight: 600;
+ }
+ 
+ .textarea {
+   width: 100%;
+   min-height: 140px;
+   padding: 12px;
+   border-radius: 8px;
+   border: 1px solid #ccc;
+   font-family: inherit;
+   font-size: 14px;
+ }
+ 
+ .actions {
+   display: flex;
+   gap: 12px;
+   align-items: center;
+ }
+ 
+ .button {
+   padding: 10px 16px;
+   border-radius: 8px;
+   border: none;
+   background: #2f6fed;
+   color: #fff;
+   cursor: pointer;
+   font-weight: 600;
+ }
+ 
+ .button:disabled {
+   opacity: 0.6;
+   cursor: default;
+ }
+ 
+ .error {
+   color: #b00020;
+   background: #fde7e9;
+   border: 1px solid #f5c2c7;
+   padding: 10px 12px;
+   border-radius: 8px;
+ }
+ 
+ .resultBox {
+   background: #f7f7f9;
+   border: 1px solid #e0e0e0;
+   border-radius: 8px;
+   padding: 12px;
+   white-space: pre-wrap;
+   font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+   font-size: 13px;
+ }

@@ -6,6 +6,10 @@ export interface Ingredient {
   section?: string;
   optional?: boolean;
   originalText: string;
+  parseConfidence?: number;
+  aiAmount?: number | null;
+  aiUnit?: UnitValue | null;
+  aiName?: string | null;
 }
 
 export const UnitValue = {
@@ -14,24 +18,15 @@ export const UnitValue = {
   TABLESPOON: 'TABLESPOON',
   TEASPOON: 'TEASPOON',
   FLUID_OUNCE: 'FLUID_OUNCE',
-  MILLILITER: 'MILLILITER',
-  LITER: 'LITER',
-  PINT: 'PINT',
   QUART: 'QUART',
-  GALLON: 'GALLON',
   // Weight
   POUND: 'POUND',
   OUNCE: 'OUNCE',
-  GRAM: 'GRAM',
-  KILOGRAM: 'KILOGRAM',
   // Count/Pieces
-  PIECE: 'PIECE',
-  WHOLE: 'WHOLE',
+  EACH: 'EACH',
   CLOVE: 'CLOVE',
   SLICE: 'SLICE',
   CAN: 'CAN',
-  PACKAGE: 'PACKAGE',
-  JAR: 'JAR',
   BUNCH: 'BUNCH',
   HEAD: 'HEAD',
   STALK: 'STALK',

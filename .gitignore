@@ -1,5 +1,6 @@
 .DS_Store
 *~
+.idea/
 
 # Logs
 logs
@@ -52,6 +53,7 @@ node_modules/
 
 # Optional npm cache directory
 .npm
+.npm-cache
 
 # Optional eslint cache
 .eslintcache
@@ -83,3 +85,5 @@ frontend/.env.production
 .dataconnect
 
 *-firebase-adminsdk-*.json
+listster-test-*.json
+listster-8ffc9-*.json
