@@ -171,37 +171,29 @@ frontend/src/firebase/config.production.ts
 ### Deploy to Test
 
 ```bash
-# 1. Build frontend for test
-cd frontend
-VITE_ENV=test npm run build
+# 1. Deploy frontend (builds + hosting)
+./deploy-frontend-test.sh
 
 # 2. Deploy Firestore rules (first time only)
-cd ..
 firebase use test
 firebase deploy --only firestore:rules
 
-# 3. Deploy frontend to Firebase Hosting
-firebase deploy --only hosting
-
-# 4. Deploy backend (see Backend Deployment Options below)
+# 3. Deploy backend
+./deploy-backend-test.sh
 ```
 
 ### Deploy to Production
 
 ```bash
-# 1. Build frontend for production
-cd frontend
-VITE_ENV=production npm run build
+# 1. Deploy frontend (builds + hosting)
+./deploy-frontend-prod.sh
 
 # 2. Deploy Firestore rules (first time only)
-cd ..
 firebase use prod
 firebase deploy --only firestore:rules
 
-# 3. Deploy frontend to Firebase Hosting
-firebase deploy --only hosting
-
-# 4. Deploy backend (see Backend Deployment Options below)
+# 3. Deploy backend
+./deploy-backend-prod.sh
 ```
 
 ## 🖥️ Backend Deployment Options
@@ -219,16 +211,19 @@ You have two main options for deploying the backend:
    gcloud auth login
    ```
 
-2. **Create `backend/Dockerfile`**:
+2. **Dockerfile (already in repo root)**:
    ```dockerfile
    FROM node:22-alpine
    WORKDIR /app
-   COPY package*.json ./
-   RUN npm ci --only=production
-   COPY . .
+   COPY backend/package*.json ./backend/
+   WORKDIR /app/backend
+   RUN npm ci
+   WORKDIR /app
+   COPY backend ./backend
+   COPY shared ./shared
    RUN npm run build
-   EXPOSE 3001
-   CMD ["node", "dist/index.js"]
+   EXPOSE 8080
+   CMD ["node", "dist/backend/src/index.js"]
    ```
 
 3. **Create `backend/.dockerignore`**:
@@ -240,29 +235,27 @@ You have two main options for deploying the backend:
    *.log
    ```
 
-4. **Deploy to Cloud Run**:
+4. **Deploy to Cloud Run** (from repo root):
    ```bash
-   cd backend
-   
    # For test
-   gcloud run deploy recipe-app-backend-test \
+   gcloud run deploy listster-backend-test \
      --source . \
      --platform managed \
      --region us-central1 \
      --allow-unauthenticated \
-     --set-env-vars NODE_ENV=production \
-     --set-env-vars FRONTEND_URL=https://your-test-project.web.app \
-     --project your-test-project-id
+     --project listster-test \
+     --set-env-vars NODE_ENV=production,FRONTEND_URL=https://listster-test.web.app,FIREBASE_PROJECT_ID=listster-test,FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@listster-test.iam.gserviceaccount.com \
+     --update-secrets=FIREBASE_PRIVATE_KEY=listster-test-firebase-key:latest
    
    # For production
-   gcloud run deploy recipe-app-backend-prod \
+   gcloud run deploy listster-backend-prod \
      --source . \
      --platform managed \
      --region us-central1 \
      --allow-unauthenticated \
-     --set-env-vars NODE_ENV=production \
-     --set-env-vars FRONTEND_URL=https://listster-8ffc9.web.app \
-     --project listster-8ffc9
+     --project listster-8ffc9 \
+     --set-env-vars NODE_ENV=production,FRONTEND_URL=https://listster-8ffc9.web.app,FIREBASE_PROJECT_ID=listster-8ffc9,FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@listster-8ffc9.iam.gserviceaccount.com \
+     --update-secrets=FIREBASE_PRIVATE_KEY=listster-prod-firebase-key:latest
    ```
 
 5. **Set Firebase credentials as secrets** (more secure than env vars):
@@ -376,26 +369,14 @@ firebase deploy --only firestore:rules
 1. **Test your changes locally first**
 2. **Deploy to test**:
    ```bash
-   # Build frontend
-   cd frontend && VITE_ENV=test npm run build && cd ..
-   
-   # Deploy frontend
-   firebase use test
-   firebase deploy --only hosting
-   
-   # Deploy backend (Cloud Run or Functions)
+   ./deploy-frontend-test.sh
+   ./deploy-backend-test.sh
    ```
 3. **Test on the test environment**
 4. **Deploy to production**:
    ```bash
-   # Build frontend
-   cd frontend && VITE_ENV=production npm run build && cd ..
-   
-   # Deploy frontend
-   firebase use prod
-   firebase deploy --only hosting
-   
-   # Deploy backend
+   ./deploy-frontend-prod.sh
+   ./deploy-backend-prod.sh
    ```
 
 ## 🌐 Your Deployed URLs

@@ -1,4 +1,5 @@
 import admin from 'firebase-admin';
+import type { Auth } from 'firebase-admin/auth';
 import dotenv from 'dotenv';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -45,7 +46,7 @@ const initializeFirebase = () => {
 };
 
 export const firebaseAdmin = initializeFirebase();
-export const auth = firebaseAdmin.auth();
+export const auth: Auth = firebaseAdmin.auth();
 
 // Initialize Firestore with explicit settings
 const firestoreInstance = firebaseAdmin.firestore();

@@ -116,7 +116,7 @@ firebase deploy --only firestore:rules
 
 ### Frontend (Easy - Use Script):
 ```bash
-./deploy-test.sh
+./deploy-frontend-test.sh
 ```
 
 ### Backend (Cloud Run):
@@ -144,7 +144,7 @@ VITE_API_URL=https://recipe-app-backend-test-xxxxx-uc.a.run.app
 
 Then redeploy frontend:
 ```bash
-./deploy-test.sh
+./deploy-frontend-test.sh
 ```
 
 ## 🚀 Deploy to Production
@@ -153,7 +153,7 @@ Same process as test, but use production configs:
 
 ### Frontend:
 ```bash
-./deploy-prod.sh
+./deploy-frontend-prod.sh
 ```
 
 ### Backend:
@@ -178,7 +178,7 @@ VITE_API_URL=https://recipe-app-backend-prod-xxxxx-uc.a.run.app
 
 Then redeploy:
 ```bash
-./deploy-prod.sh
+./deploy-frontend-prod.sh
 ```
 
 ## 🌐 Your URLs
@@ -215,12 +215,12 @@ After initial setup, deploying is simple:
 
 ```bash
 # Test
-./deploy-test.sh
-cd backend && gcloud run deploy recipe-app-backend-test --source . --project your-test-project-id
+./deploy-frontend-test.sh
+./deploy-backend-test.sh
 
 # Production
-./deploy-prod.sh
-cd backend && gcloud run deploy recipe-app-backend-prod --source . --project listster-8ffc9
+./deploy-frontend-prod.sh
+./deploy-backend-prod.sh
 ```
 
 That's it! 🎉

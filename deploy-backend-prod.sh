@@ -10,8 +10,6 @@ if [ "$confirm" != "yes" ]; then
     exit 1
 fi
 
-cd backend
-
 # You'll need to create the production secret first:
 # gcloud secrets create listster-prod-firebase-key --data-file=- --project=listster-8ffc9
 # Then paste your production private key

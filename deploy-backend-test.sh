@@ -3,8 +3,6 @@ set -e
 
 echo "🚀 Deploying backend to TEST environment..."
 
-cd backend
-
 gcloud run deploy listster-backend-test \
   --source . \
   --platform managed \
