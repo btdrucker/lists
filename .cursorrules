@@ -1,0 +1,7 @@
+You are working in the lists repo. Follow these rules for all changes:
+
+- Decompose large files and functions. Prefer extracting helpers, hooks, and utilities when a component grows.
+- Keep functions small and single-purpose. Aim for focused behavior and a clear name.
+- Avoid duplication. If logic appears in more than one place, extract and share it.
+- Prefer shared modules for common logic and values (e.g., constants, selectors, helpers).
+- Favor testable units. Extract logic so it can be unit-tested without UI or network.

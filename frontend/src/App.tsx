@@ -12,6 +12,9 @@ import ViewRecipe from './features/recipe/ViewRecipe';
 import RecipeStart from './features/recipe/RecipeStart';
 import EditRecipe from './features/recipe/EditRecipe.tsx';
 import AiDebug from './features/ai-debug/AiDebug';
+import AppShell from './common/components/AppShell';
+import Shopping from './features/shopping/Shopping';
+import Calendar from './features/calendar/Calendar';
 import { InstallBanner } from './common/components/InstallBanner';
 import { OfflineIndicator } from './common/components/OfflineIndicator';
 import { UpdatePrompt } from './common/components/UpdatePrompt';
@@ -54,7 +57,30 @@ function AppContent() {
           </>
         ) : (
           <>
-            <Route path="/recipe-list" element={<RecipeList />} />
+            <Route
+              path="/recipe-list"
+              element={
+                <AppShell>
+                  <RecipeList />
+                </AppShell>
+              }
+            />
+            <Route
+              path="/shopping"
+              element={
+                <AppShell>
+                  <Shopping />
+                </AppShell>
+              }
+            />
+            <Route
+              path="/calendar"
+              element={
+                <AppShell>
+                  <Calendar />
+                </AppShell>
+              }
+            />
             <Route path="/recipe/:id" element={<ViewRecipe />} />
             <Route path="/recipe-start" element={<RecipeStart />} />
             <Route path="/edit-recipe/:id" element={<EditRecipe />} />
