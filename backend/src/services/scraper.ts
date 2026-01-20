@@ -15,25 +15,15 @@ const UNIT_ALIAS_PATTERNS: Record<UnitValue, string[]> = {
   [UnitValue.TABLESPOON]: ['tablespoons?', 'Tbsp\\.?', 'tbsp\\.?', 'tbs\\.?', 'T', 'TB'],
   [UnitValue.TEASPOON]: ['teaspoons?', 'tsp\\.?', 't'],
   [UnitValue.FLUID_OUNCE]: ['fluid ounces?', 'fl\\.?\\s*oz\\.?'],
-  [UnitValue.MILLILITER]: ['milliliters?', 'ml\\.?', 'mL\\.?'],
-  [UnitValue.LITER]: ['liters?', 'l\\.?', 'L\\.?'],
-  [UnitValue.PINT]: ['pints?', 'pt\\.?'],
   [UnitValue.QUART]: ['quarts?', 'qt\\.?'],
-  [UnitValue.GALLON]: ['gallons?', 'gal\\.?'],
   // Weight
   [UnitValue.POUND]: ['pounds?', 'lbs?\\.?'],
   [UnitValue.OUNCE]: ['ounces?', 'oz.?'],
-  [UnitValue.GRAM]: ['grams?', 'g\\.?'],
-  [UnitValue.KILOGRAM]: ['kilograms?', 'kgs?\\.?'],
   // Count/Pieces
   [UnitValue.EACH]: ['each'],
   [UnitValue.CLOVE]: ['cloves?'],
   [UnitValue.SLICE]: ['slices?'],
   [UnitValue.CAN]: ['cans?'],
-  [UnitValue.BAG]: ['bags?'],
-  [UnitValue.BOX]: ['boxes?'],
-  [UnitValue.PACKAGE]: ['packages?', 'pkgs?\\.?'],
-  [UnitValue.JAR]: ['jars?'],
   [UnitValue.BUNCH]: ['bunches?'],
   [UnitValue.HEAD]: ['heads?'],
   [UnitValue.STALK]: ['stalks?'],
@@ -52,6 +42,8 @@ const UNIT_ALIAS_MATCHERS = Object.entries(UNIT_ALIAS_PATTERNS).flatMap(
     regex: new RegExp(`^(${pattern})(?=\\s|$|[),;:])`, 'i'),
   }))
 );
+
+const UNIT_VALUE_SET = new Set(Object.values(UnitValue));
 
 /**
  * Normalize Unicode fractions to ASCII format using NFKD normalization
@@ -102,6 +94,37 @@ function parseSingleAmount(
   
   // Parse the normalized string
   return parseFunc(normalized);
+}
+
+function validateAiUnit(value: unknown, originalText: string): UnitValue | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (UNIT_VALUE_SET.has(trimmed as UnitValue)) {
+    return trimmed as UnitValue;
+  }
+  console.warn('[ingredient-ai] invalid unit from AI', {
+    unit: value,
+    ingredient: originalText,
+  });
+  return null;
+}
+
+function validateAiAmount(value: unknown, originalText: string): number | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === 'string') {
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  if (value !== null && value !== undefined) {
+    console.warn('[ingredient-ai] invalid amount from AI', {
+      amount: value,
+      ingredient: originalText,
+    });
+  }
+  return null;
 }
 
 /**
@@ -351,25 +374,22 @@ function logRecipeSample(recipe: ScrapedRecipe): void {
   console.log('Instructions count:', recipe.instructions.length);
 }
 
-async function normalizeIngredientsWithAI(recipe: ScrapedRecipe): Promise<ScrapedRecipe> {
-  if (!recipe.ingredients.length) return recipe;
+export async function enrichIngredientsWithAI(
+  ingredients: Ingredient[]
+): Promise<Ingredient[]> {
+  if (!ingredients.length) return ingredients;
 
-  const ingredientTexts = recipe.ingredients.map((ing) => ing.originalText || ing.name);
+  const ingredientTexts = ingredients.map((ing) => ing.originalText || ing.name);
   const aiResults = await fetchAiIngredientNormalization(
     ingredientTexts,
     Object.values(UnitValue)
   );
-  if (!aiResults) return recipe;
+  if (!aiResults) return ingredients;
 
-  const enriched = recipe.ingredients.map((ing, idx) => {
+  return ingredients.map((ing, idx) => {
     const ai = aiResults[idx] || {};
-    const aiAmount =
-      typeof ai.amount === 'number'
-        ? ai.amount
-        : typeof ai.amount === 'string'
-          ? parseSingleAmount(ai.amount)
-          : null;
-    const aiUnit = ai.unit ? normalizeUnitText(String(ai.unit)) : null;
+    const aiAmount = validateAiAmount(ai.amount, ing.originalText || ing.name);
+    const aiUnit = validateAiUnit(ai.unit, ing.originalText || ing.name);
     const aiName = ai.name ? String(ai.name).trim() : null;
     return {
       ...ing,
@@ -378,6 +398,13 @@ async function normalizeIngredientsWithAI(recipe: ScrapedRecipe): Promise<Scrape
       aiName,
     };
   });
+}
+
+async function normalizeIngredientsWithAI(recipe: ScrapedRecipe): Promise<ScrapedRecipe> {
+  if (!recipe.ingredients.length) return recipe;
+
+  const enriched = await enrichIngredientsWithAI(recipe.ingredients);
+  if (enriched === recipe.ingredients) return recipe;
 
   return {
     ...recipe,
@@ -388,7 +415,12 @@ async function normalizeIngredientsWithAI(recipe: ScrapedRecipe): Promise<Scrape
 /**
  * Scrape recipe from HTML content (useful for testing with fixtures)
  */
-export async function scrapeRecipeFromHTML(html: string, url: string): Promise<ScrapedRecipe> {
+export async function scrapeRecipeFromHTML(
+  html: string,
+  url: string,
+  options?: { useAi?: boolean }
+): Promise<ScrapedRecipe> {
+  const shouldUseAi = options?.useAi ?? false;
   try {
     const $ = cheerio.load(html);
 
@@ -410,7 +442,9 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
     const wprmRecipe = extractFromWPRM($);
     if (wprmRecipe) {
       console.log('✓ WPRM extraction successful');
-      const normalized = await normalizeIngredientsWithAI(wprmRecipe);
+      const normalized = shouldUseAi
+        ? await normalizeIngredientsWithAI(wprmRecipe)
+        : wprmRecipe;
       logRecipeSample(normalized);
       console.log('\n✅ Using WPRM extraction');
       normalized.extractionMethod = 'WPRM';
@@ -423,7 +457,9 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
     const dataAttrRecipe = extractFromDataAttributes($);
     if (dataAttrRecipe && dataAttrRecipe.ingredients.length > 0) {
       console.log('✓ Data attribute extraction successful');
-      const normalized = await normalizeIngredientsWithAI(dataAttrRecipe);
+      const normalized = shouldUseAi
+        ? await normalizeIngredientsWithAI(dataAttrRecipe)
+        : dataAttrRecipe;
       logRecipeSample(normalized);
       console.log('\n✅ Using data attribute extraction');
       normalized.extractionMethod = 'DataAttributes';
@@ -436,7 +472,9 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
     const jsonLdRecipe = extractFromJsonLd($);
     if (jsonLdRecipe) {
       console.log('✓ JSON-LD extraction successful');
-      const normalized = await normalizeIngredientsWithAI(jsonLdRecipe);
+      const normalized = shouldUseAi
+        ? await normalizeIngredientsWithAI(jsonLdRecipe)
+        : jsonLdRecipe;
       logRecipeSample(normalized);
       console.log('\n✅ Using JSON-LD extraction (with text parsing)');
       normalized.extractionMethod = 'JSON-LD';
@@ -448,7 +486,9 @@ export async function scrapeRecipeFromHTML(html: string, url: string): Promise<S
     console.log('\n--- Falling back to generic HTML extraction ---');
     const htmlRecipe = extractFromHtml($, url);
     console.log('✓ HTML extraction complete');
-    const normalized = await normalizeIngredientsWithAI(htmlRecipe);
+    const normalized = shouldUseAi
+      ? await normalizeIngredientsWithAI(htmlRecipe)
+      : htmlRecipe;
     logRecipeSample(normalized);
     console.log('\n✅ Using HTML extraction (with text parsing)');
     normalized.extractionMethod = 'HTML';
@@ -477,10 +517,13 @@ async function fetchHTML(url: string): Promise<string> {
 /**
  * Scrape recipe from URL (fetches HTML then processes)
  */
-export async function scrapeRecipe(url: string): Promise<ScrapedRecipe> {
+export async function scrapeRecipe(
+  url: string,
+  options?: { useAi?: boolean }
+): Promise<ScrapedRecipe> {
   const html = await fetchHTML(url);
   try {
-    return await scrapeRecipeFromHTML(html, url);
+    return await scrapeRecipeFromHTML(html, url, options);
   } catch (error) {
     throw new Error(`Failed to scrape recipe: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
@@ -1528,6 +1571,11 @@ function normalizeUnitText(unit: string | null): UnitValue | null {
   const trimmed = unit.trim();
   if (!trimmed) return null;
 
+  const normalizedValue = trimmed.toUpperCase();
+  if ((Object.values(UnitValue) as string[]).includes(normalizedValue)) {
+    return normalizedValue as UnitValue;
+  }
+
   for (const [unitValue, patterns] of Object.entries(UNIT_ALIAS_PATTERNS)) {
     for (const pattern of patterns) {
       const regex = new RegExp(`^(${pattern})$`, 'i');
@@ -1730,6 +1778,10 @@ function parseIngredientText(text: string): Ingredient {
 function parseIngredient(text: string): Ingredient {
   // Use the new text parser
   return parseIngredientText(text);
+}
+
+export function parseIngredientTextForApi(text: string): Ingredient {
+  return parseIngredient(text);
 }
 
 function parseInstructions(instructions: any[]): string[] {

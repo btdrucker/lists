@@ -2,7 +2,8 @@
 export type {
   Ingredient,
   RecipeContent,
-  RecipeBase
+  RecipeBase,
+  AiParsingMetadata
 } from '../../../shared/types/index.js';
 export { UnitValue } from '../../../shared/types/index.js';
 import type { RecipeBase } from '../../../shared/types';

@@ -48,6 +48,10 @@ const AiDebug = () => {
     const matches = prompt.match(/\S+/g);
     return matches ? matches.length : 0;
   }, [prompt]);
+  const userPromptWordCount = useMemo(() => {
+    const matches = ingredientsText.match(/\S+/g);
+    return matches ? matches.length : 0;
+  }, [ingredientsText]);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEYS.prompt, prompt);
@@ -137,7 +141,7 @@ const AiDebug = () => {
 
       <div className={styles.section}>
         <label className={styles.label} htmlFor="ai-ingredients">
-          User prompt
+          User prompt ({userPromptWordCount} words)
         </label>
         <textarea
           id="ai-ingredients"

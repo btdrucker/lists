@@ -4,6 +4,7 @@ import { saveRecipe } from '../services/firestore.js';
 import { authenticateUser } from '../middleware/auth.js';
 import { ScrapeRequest, ScrapeResponse } from '../types/index.js';
 import { fetchAiIngredientNormalization, fetchAiText } from '../services/ai.js';
+import { enrichIngredientsWithAI, parseIngredientTextForApi } from '../services/scraper.js';
 
 export async function scrapeRoutes(fastify: FastifyInstance) {
   fastify.post<{
@@ -37,7 +38,7 @@ export async function scrapeRoutes(fastify: FastifyInstance) {
         const user = request.user!;
 
         // Scrape the recipe from the URL
-        const scrapedRecipe = await scrapeRecipe(url);
+        const scrapedRecipe = await scrapeRecipe(url, { useAi: false });
 
         // Build recipe object, only including defined optional fields
         const recipeData: any = {
@@ -190,6 +191,65 @@ export async function scrapeRoutes(fastify: FastifyInstance) {
         return reply.status(500).send({
           status: 'error',
           error: error instanceof Error ? error.message : 'AI debug request failed',
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+  );
+
+  fastify.post(
+    '/parse-ingredients',
+    {
+      preHandler: authenticateUser,
+    },
+    async (request, reply) => {
+      try {
+        const body = request.body as {
+          ingredientTexts?: string[];
+          ingredients?: string[];
+          text?: string;
+          ingredientText?: string;
+        };
+
+        let ingredientTexts: string[] = [];
+        if (Array.isArray(body?.ingredientTexts)) {
+          ingredientTexts = body.ingredientTexts;
+        } else if (Array.isArray(body?.ingredients)) {
+          ingredientTexts = body.ingredients;
+        } else if (typeof body?.ingredientText === 'string') {
+          ingredientTexts = body.ingredientText.split(/\r?\n/);
+        } else if (typeof body?.text === 'string') {
+          ingredientTexts = body.text.split(/\r?\n/);
+        }
+
+        ingredientTexts = ingredientTexts
+          .map((value) => String(value).trim())
+          .filter((value) => value.length > 0);
+
+        if (!ingredientTexts.length) {
+          return reply.status(400).send({
+            status: 'error',
+            error: 'Provide ingredient text.',
+            timestamp: new Date().toISOString(),
+          });
+        }
+
+        const parsed = ingredientTexts.map((text) => ({
+          ...parseIngredientTextForApi(text),
+          originalText: text,
+        }));
+        const enriched = await enrichIngredientsWithAI(parsed);
+
+        return {
+          status: 'ok',
+          ingredients: enriched,
+          count: enriched.length,
+          timestamp: new Date().toISOString(),
+        };
+      } catch (error) {
+        return reply.status(500).send({
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Ingredient parsing failed',
           timestamp: new Date().toISOString(),
         });
       }

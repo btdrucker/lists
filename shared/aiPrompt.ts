@@ -1,3 +1,5 @@
+export const AI_PARSING_VERSION = 1;
+
 export const buildIngredientSystemInstruction = (unitValues: string[]) => {
   const unitValuesText = unitValues.join(', ');
   return [

@@ -7,6 +7,15 @@ import { getIdToken } from '../../firebase/auth';
 import IconButton from '../../common/components/IconButton.tsx';
 import { UnitValue } from '../../types';
 import type { Ingredient, Recipe } from '../../types';
+import { AI_PARSING_VERSION } from '../../../../shared/aiPrompt.js';
+import {
+  analyzeRecipeForAiParsing,
+  computeAiParsingStatus,
+  getIngredientText,
+  mergeParsedIngredients,
+  sanitizeIngredientForSave,
+} from '../../common/aiParsing';
+import type { RecipeWithAiMetadata } from '../../common/aiParsing';
 import styles from './recipe.module.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -40,6 +49,23 @@ const UNIT_OPTIONS = Object.values(UnitValue).map((value) => ({
 }));
 
 const UNIT_VALUE_SET = new Set(Object.values(UnitValue));
+
+const applyAiIngredientDefaults = (items: Ingredient[]) =>
+  items.map((ingredient) => {
+    const aiAmount = ingredient.aiAmount ?? null;
+    const aiUnit = ingredient.aiUnit ?? null;
+    const aiName = ingredient.aiName?.trim() || null;
+    const hasAnyAi = aiAmount !== null || aiUnit !== null || aiName !== null;
+
+    if (!hasAnyAi) return ingredient;
+
+    return {
+      ...ingredient,
+      amount: aiAmount,
+      unit: aiUnit,
+      name: aiName ?? '',
+    };
+  });
 
 // Instruction row component with auto-height textarea
 const InstructionRow = ({
@@ -90,8 +116,9 @@ const EditRecipe = () => {
   const recipes = useAppSelector((state) => state.recipes?.recipes || []);
 
   const isNewRecipe = id === 'new';
-  const existingRecipe = !isNewRecipe && id ? recipes.find((r: Recipe) => r.id === id) : null;
-  const isScrapedRecipe = Boolean(existingRecipe?.sourceUrl);
+  const existingRecipe = !isNewRecipe && id
+    ? (recipes.find((r: Recipe) => r.id === id) as RecipeWithAiMetadata | null)
+    : null;
 
   const [isSaving, setIsSaving] = useState(false);
   const [isRescraping, setIsRescraping] = useState(false);
@@ -216,7 +243,7 @@ const EditRecipe = () => {
         cuisine: existingRecipe.cuisine || [],
         keywords: existingRecipe.keywords || [],
         ingredients: existingRecipe.ingredients.length > 0
-          ? existingRecipe.ingredients
+          ? applyAiIngredientDefaults(existingRecipe.ingredients)
           : [{ amount: null, unit: null, name: '', originalText: '' }],
         instructions: existingRecipe.instructions.length > 0
           ? existingRecipe.instructions
@@ -245,7 +272,7 @@ const EditRecipe = () => {
       return;
     }
 
-    if (ingredients.filter((i) => i.name.trim()).length === 0) {
+    if (ingredients.filter((i) => getIngredientText(i)).length === 0) {
       setError('At least one ingredient is required');
       return;
     }
@@ -256,9 +283,87 @@ const EditRecipe = () => {
     try {
       const recipeData: any = {
         title: title.trim(),
-        ingredients: ingredients.filter((i) => i.name.trim()),
+        ingredients: ingredients
+          .filter((i) => getIngredientText(i))
+          .map((ingredient) => sanitizeIngredientForSave(ingredient)),
         instructions: instructions.filter((i) => i.trim()),
       };
+
+      const recipeForAnalysis: RecipeWithAiMetadata = {
+        ...(existingRecipe || {
+          id: 'new',
+          userId: user!.uid,
+          isPublic: true,
+          createdAt: '',
+          updatedAt: '',
+          title: recipeData.title,
+          instructions: recipeData.instructions,
+        }),
+        title: recipeData.title,
+        instructions: recipeData.instructions,
+        ingredients: recipeData.ingredients,
+        lastAiParsingVersion: existingRecipe?.lastAiParsingVersion ?? null,
+      };
+
+      const { indicesToParse: indicesNeedingAi } = analyzeRecipeForAiParsing(recipeForAnalysis);
+
+      if (indicesNeedingAi.length > 0) {
+        const token = await getIdToken();
+        if (!token) {
+          setError('Not authenticated');
+          return;
+        }
+
+        const ingredientTexts = indicesNeedingAi.map((index) =>
+          getIngredientText(recipeData.ingredients[index])
+        );
+        const response = await fetch(`${API_URL}/parse-ingredients`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ ingredientTexts }),
+        });
+
+        const data = await response.json();
+        if (!response.ok || data.status !== 'ok') {
+          setError(data.error || 'Failed to parse ingredients');
+          return;
+        }
+
+        if (!Array.isArray(data.ingredients) || data.ingredients.length !== ingredientTexts.length) {
+          setError('Failed to parse ingredients');
+          return;
+        }
+
+        const sanitizedIngredients = mergeParsedIngredients(
+          recipeData.ingredients,
+          indicesNeedingAi,
+          data.ingredients
+        );
+
+        const aiParsingStatus = computeAiParsingStatus(sanitizedIngredients);
+        if (aiParsingStatus === 'required') {
+          recipeData.aiParsingStatus = 'required';
+          if (existingRecipe?.lastAiParsingVersion !== undefined) {
+            recipeData.lastAiParsingVersion = existingRecipe.lastAiParsingVersion ?? null;
+          }
+        } else {
+          recipeData.aiParsingStatus = 'done';
+          recipeData.lastAiParsingVersion = AI_PARSING_VERSION;
+        }
+
+        recipeData.ingredients = sanitizedIngredients;
+        setIngredients(sanitizedIngredients);
+      } else {
+        if (existingRecipe?.aiParsingStatus) {
+          recipeData.aiParsingStatus = existingRecipe.aiParsingStatus;
+        }
+        if (existingRecipe?.lastAiParsingVersion !== undefined) {
+          recipeData.lastAiParsingVersion = existingRecipe.lastAiParsingVersion ?? null;
+        }
+      }
 
       // Only add optional fields if they're not empty
       if (description.trim()) {
@@ -393,7 +498,7 @@ const EditRecipe = () => {
         setKeywords(scrapedRecipe.keywords || []);
         setIngredients(
           scrapedRecipe.ingredients.length > 0
-            ? scrapedRecipe.ingredients
+            ? applyAiIngredientDefaults(scrapedRecipe.ingredients)
             : [{ amount: null, unit: null, name: '', originalText: '' }]
         );
         setInstructions(
@@ -439,6 +544,42 @@ const EditRecipe = () => {
   const updateIngredient = (index: number, updates: Partial<Ingredient>) => {
     const updated = [...ingredients];
     updated[index] = { ...updated[index], ...updates };
+    setIngredients(updated);
+  };
+
+  const handleOriginalTextChange = (index: number, value: string) => {
+    const updated = [...ingredients];
+    const current = updated[index];
+    const original = originalState?.ingredients?.[index];
+    const originalText = original ? getIngredientText(original) : '';
+    const trimmedValue = value.trim();
+
+    if (original && trimmedValue === originalText) {
+      updated[index] = {
+        ...current,
+        originalText: value,
+        amount: original.amount ?? null,
+        amountMax: original.amountMax ?? null,
+        unit: original.unit ?? null,
+        name: original.name ?? '',
+        aiAmount: original.aiAmount ?? null,
+        aiUnit: original.aiUnit ?? null,
+        aiName: original.aiName ?? null,
+      };
+    } else {
+      updated[index] = {
+        ...current,
+        originalText: value,
+        amount: null,
+        amountMax: null,
+        unit: null,
+        name: '',
+        aiAmount: null,
+        aiUnit: null,
+        aiName: null,
+      };
+    }
+
     setIngredients(updated);
   };
 
@@ -742,6 +883,13 @@ const EditRecipe = () => {
             return (
               <div key={index} className={styles.ingredientRow}>
                 <div className={styles.ingredientGroup}>
+                  <input
+                    type="text"
+                    value={ingredient.originalText || ''}
+                    onChange={(e) => handleOriginalTextChange(index, e.target.value)}
+                    placeholder="Original text"
+                    className={styles.ingredientOriginalInput}
+                  />
                   <div className={styles.ingredientGroupRow}>
                     <input
                       type="number"
@@ -786,15 +934,6 @@ const EditRecipe = () => {
                       className={styles.ingredientNameInput}
                     />
                   </div>
-                  {isScrapedRecipe && (
-                    <input
-                      type="text"
-                      value={ingredient.originalText || ''}
-                      onChange={(e) => updateIngredient(index, { originalText: e.target.value })}
-                      placeholder="Original text"
-                      className={styles.ingredientOriginalInput}
-                    />
-                  )}
                 </div>
                 <button
                   onClick={() => removeIngredient(index)}

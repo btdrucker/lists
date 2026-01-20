@@ -12,6 +12,11 @@ export interface Ingredient {
   aiName?: string | null;
 }
 
+export interface AiParsingMetadata {
+  aiParsingStatus?: 'done' | 'required';
+  lastAiParsingVersion?: number | null;
+}
+
 export const UnitValue = {
   // Volume
   CUP: 'CUP',

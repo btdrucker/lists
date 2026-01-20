@@ -371,7 +371,9 @@ const ViewRecipe = () => {
                 <ul className={styles.ingredientList}>
                   {ingredients.map((ingredient: any, index: number) => (
                     <li key={index}>
-                      {ingredient.originalText || ingredient.name}
+                      {ingredient.originalText ||
+                        ingredient.aiName ||
+                        ingredient.name}
                     </li>
                   ))}
                 </ul>
