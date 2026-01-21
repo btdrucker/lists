@@ -13,6 +13,10 @@ export async function authenticateUser(
   reply: FastifyReply
 ) {
   try {
+    if (request.method === 'OPTIONS') {
+      return reply.status(204).send();
+    }
+
     const authHeader = request.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

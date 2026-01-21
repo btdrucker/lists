@@ -10,6 +10,12 @@ if [ "$confirm" != "yes" ]; then
     exit 1
 fi
 
+# Build backend locally to catch compile errors
+echo "📦 Building backend..."
+cd backend
+npm run build
+cd ..
+
 # You'll need to create the production secret first:
 # gcloud secrets create listster-prod-firebase-key --data-file=- --project=listster-8ffc9
 # Then paste your production private key

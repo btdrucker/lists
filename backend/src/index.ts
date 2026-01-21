@@ -7,18 +7,32 @@ import { scrapeRoutes } from './routes/scrape.js';
 dotenv.config();
 
 const PORT = parseInt(process.env.PORT || '3001');
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
-
-// Allowed origins for CORS
-const allowedOrigins = [
+const defaultAllowedOrigins = [
   'http://localhost:5173', // Dev server
   'http://localhost:4173', // Preview server
-  'https://listster-8ffc9.web.app',
-  'https://listster-8ffc9.firebaseapp.com',
-  'https://listster-test.web.app',
-  'https://listster-test.firebaseapp.com',
-  FRONTEND_URL, // Add configured frontend URL
 ];
+
+const getAllowedOrigins = () => {
+  const projectId = process.env.GOOGLE_CLOUD_PROJECT || process.env.FIREBASE_PROJECT_ID;
+
+  if (projectId === 'listster-test') {
+    return [
+      'https://listster-test.web.app',
+      'https://listster-test.firebaseapp.com',
+    ];
+  }
+
+  if (projectId === 'listster-8ffc9') {
+    return [
+      'https://listster-8ffc9.web.app',
+      'https://listster-8ffc9.firebaseapp.com',
+    ];
+  }
+
+  return defaultAllowedOrigins;
+};
+
+const allowedOrigins = getAllowedOrigins();
 
 // Create Fastify instance
 const fastify = Fastify({

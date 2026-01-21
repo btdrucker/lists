@@ -3,6 +3,12 @@ set -e
 
 echo "🚀 Deploying backend to TEST environment..."
 
+# Build backend locally to catch compile errors
+echo "📦 Building backend..."
+cd backend
+npm run build
+cd ..
+
 gcloud run deploy listster-backend-test \
   --source . \
   --platform managed \
