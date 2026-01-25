@@ -165,6 +165,9 @@ const Shopping = () => {
   const [newItemUnit, setNewItemUnit] = useState<UnitValueType | ''>('');
   const [isAdding, setIsAdding] = useState(false);
 
+  // Store tag dialog state
+  const [storeDialogItemKey, setStoreDialogItemKey] = useState<string | null>(null);
+
   // Set up real-time listeners
   useEffect(() => {
     let unsubItems: (() => void) | undefined;
@@ -198,6 +201,7 @@ const Shopping = () => {
       if (unsubStores) unsubStores();
     };
   }, [dispatch]);
+
 
   // Filter items by selected stores
   const filteredItems = useMemo(() => {
@@ -344,6 +348,29 @@ const Shopping = () => {
     [recipes]
   );
 
+  // Toggle store tag for item(s)
+  const handleItemStoreToggle = useCallback(
+    async (itemIds: string[], storeId: string) => {
+      try {
+        for (const id of itemIds) {
+          const item = items.find((i) => i.id === id);
+          if (!item) continue;
+
+          const newStoreTagIds = item.storeTagIds.includes(storeId)
+            ? item.storeTagIds.filter((sid) => sid !== storeId)
+            : [...item.storeTagIds, storeId];
+
+          await updateShoppingItem(id, { storeTagIds: newStoreTagIds });
+        }
+        // Close dialog after toggle
+        setStoreDialogItemKey(null);
+      } catch (error) {
+        console.error('Error updating store tags:', error);
+      }
+    },
+    [items]
+  );
+
   // Render individual item
   const renderItem = (
     item: CombinedItem | ShoppingItem,
@@ -355,10 +382,12 @@ const Shopping = () => {
     const itemIds = isCombined
       ? (item as CombinedItem).sourceItemIds
       : [(item as ShoppingItem).id];
+    const itemKey = isCombined ? (item as CombinedItem).key : (item as ShoppingItem).id;
+    const isDialogOpen = storeDialogItemKey === itemKey;
 
     return (
       <div
-        key={isCombined ? (item as CombinedItem).key : (item as ShoppingItem).id}
+        key={itemKey}
         className={`${styles.item} ${item.isChecked ? styles.itemChecked : ''}`}
         onClick={() => handleItemClick(itemId)}
       >
@@ -370,29 +399,68 @@ const Shopping = () => {
           onChange={(e) => handleCheck(itemIds, e.target.checked)}
         />
         <div className={styles.itemDetails}>
-          <div>
-            <span className={styles.itemName}>{item.name}</span>
-            <span className={styles.itemAmount}>
-              {formatAmount(item.amount, item.unit)}
-            </span>
-          </div>
-          {item.storeTagIds.length > 0 && (
-            <div className={styles.itemStoreTags}>
-              {item.storeTagIds.map((storeId) => {
-                const store = stores.find((s) => s.id === storeId);
-                if (!store) return null;
-                return (
-                  <span
-                    key={storeId}
-                    className={styles.itemStoreTag}
-                    style={{ backgroundColor: store.color }}
-                  >
-                    {store.abbreviation}
-                  </span>
-                );
-              })}
+          <div className={styles.itemMainRow}>
+            <div className={styles.itemNameRow}>
+              <span className={styles.itemName}>{item.name}</span>
+              <span className={styles.itemAmount}>
+                {formatAmount(item.amount, item.unit)}
+              </span>
             </div>
-          )}
+            <div className={styles.itemStoreSection}>
+              <button
+                className={styles.addStoreButton}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setStoreDialogItemKey(isDialogOpen ? null : itemKey);
+                }}
+              >
+                <i className="fa-solid fa-bookmark" />
+              </button>
+              {item.storeTagIds.length > 0 && (
+                <div className={styles.itemStoreTags}>
+                  {item.storeTagIds.map((storeId) => {
+                    const store = stores.find((s) => s.id === storeId);
+                    if (!store) return null;
+                    return (
+                      <span
+                        key={storeId}
+                        className={styles.itemStoreTag}
+                        style={{ backgroundColor: store.color }}
+                      >
+                        {store.abbreviation}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+              {isDialogOpen && (
+                <div className={styles.storeDialog} onClick={(e) => e.stopPropagation()}>
+                  <div className={styles.storeDialogContent}>
+                    {[...stores]
+                      .sort((a, b) => a.sortOrder - b.sortOrder)
+                      .map((store) => {
+                        const isSelected = item.storeTagIds.includes(store.id);
+                        return (
+                          <button
+                            key={store.id}
+                            className={`${styles.storeDialogOption} ${
+                              isSelected ? styles.storeDialogOptionSelected : ''
+                            }`}
+                            style={{
+                              backgroundColor: isSelected ? store.color : `${store.color}15`,
+                              color: isSelected ? 'white' : store.color,
+                            }}
+                            onClick={() => handleItemStoreToggle(itemIds, store.id)}
+                          >
+                            {store.displayName}
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
           {isCombined && (item as CombinedItem).sourceItemIds.length > 1 && (
             <div className={styles.itemSource}>
               from {(item as CombinedItem).sourceItemIds.length} sources
@@ -556,13 +624,13 @@ const Shopping = () => {
           {groupedItems.manualItems.length > 0 && (
             <div className={styles.recipeGroup}>
               <div
-                className={`${styles.recipeGroupHeader} ${styles.manualGroupHeader}`}
+                className={styles.recipeGroupHeader}
                 onClick={() => toggleGroupCollapse('manual')}
               >
                 <i
                   className={`fa-solid fa-caret-${collapsedGroups.has('manual') ? 'right' : 'down'} ${styles.groupCaret}`}
                 />
-                Manual Items
+                Non-Recipe Items
               </div>
               {!collapsedGroups.has('manual') && (
                 <div className={styles.itemList}>
@@ -602,6 +670,14 @@ const Shopping = () => {
         onClose={() => setShowRecipePicker(false)}
         onSelect={handleRecipesSelected}
       />
+
+      {/* Backdrop for store dialog */}
+      {storeDialogItemKey && (
+        <div
+          className={styles.dialogBackdrop}
+          onClick={() => setStoreDialogItemKey(null)}
+        />
+      )}
     </div>
   );
 };
