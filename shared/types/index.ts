@@ -75,3 +75,77 @@ export interface RecipeBase<DateType = Date> extends RecipeContent {
 
 // Scraping-specific metadata (backend only, not in shared base)
 export type ExtractionMethod = 'WPRM' | 'DataAttributes' | 'JSON-LD' | 'HTML';
+
+// ============================================================================
+// Shopping List Types
+// ============================================================================
+
+// Shopping List Item (ephemeral, per shopping trip)
+export interface ShoppingItemBase<DateType = Date> {
+  id: string;
+  familyId: string; // For multi-family future
+  amount: number | null;
+  unit: UnitValue | null;
+  name: string;
+  isChecked: boolean;
+  storeTagIds: string[];
+  sourceRecipeId?: string; // undefined = manual item
+  createdAt: DateType;
+  updatedAt: DateType;
+}
+
+// Frontend: uses string dates (Redux serialization)
+export type ShoppingItem = ShoppingItemBase<string>;
+
+// Backend: uses Date objects (if needed)
+export type ShoppingItemDoc = ShoppingItemBase<Date>;
+
+// Store entity
+export interface StoreBase<DateType = Date> {
+  id: string;
+  familyId: string;
+  displayName: string;
+  abbreviation: string;
+  color: string;
+  sortOrder: number;
+  createdAt: DateType;
+  updatedAt: DateType;
+}
+
+export type Store = StoreBase<string>;
+export type StoreDoc = StoreBase<Date>;
+
+// Item Profile (future, deferred)
+export interface ItemProfileBase<DateType = Date> {
+  id: string;
+  familyId: string;
+  name: string; // normalized ingredient name
+  recentUsages: Array<{
+    timestamp: DateType;
+    storeIds: string[];
+  }>;
+  createdAt: DateType;
+  updatedAt: DateType;
+}
+
+export type ItemProfile = ItemProfileBase<string>;
+
+// Display-only types for UI (not stored in Firestore)
+export interface CombinedItem {
+  key: string; // normalized name + unit for grouping
+  name: string;
+  amount: number | null;
+  unit: UnitValue | null;
+  isChecked: boolean;
+  storeTagIds: string[];
+  sourceItemIds: string[]; // IDs of contributing items
+}
+
+export interface GroupedItems {
+  recipeGroups: Array<{
+    recipeId: string;
+    recipeTitle: string;
+    items: ShoppingItem[];
+  }>;
+  manualItems: ShoppingItem[];
+}

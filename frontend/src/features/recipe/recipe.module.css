@@ -1,10 +1,7 @@
 @import '../../common/styles.css';
 
 .container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: var(--spacing-lg);
-  min-height: 100vh;
+  composes: standardContainer from '../../common/components/shared.module.css';
 }
 
 /* Mobile: remove side padding for full-width form */
@@ -38,15 +35,7 @@
 }
 
 .backButton {
-  background: var(--color-bg-white);
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border-light);
-}
-
-.backButton:hover:not(:disabled) {
-  background: var(--color-bg-light);
-  border-color: var(--color-border-medium);
-  color: var(--color-text-primary);
+  composes: secondaryButton from '../../common/components/shared.module.css';
 }
 
 .modeToggle {
@@ -412,13 +401,8 @@
   background: #e5e5e5;
 }
 
-.header .saveButton {
-  background: var(--color-primary);
-  color: white;
-}
-
-.header .saveButton:hover:not(:disabled) {
-  background: var(--color-primary-hover);
+.saveButton {
+  composes: primaryButton from '../../common/components/shared.module.css';
 }
 
 .notFound {

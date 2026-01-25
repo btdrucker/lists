@@ -3,7 +3,15 @@ export type {
   Ingredient,
   RecipeContent,
   RecipeBase,
-  AiParsingMetadata
+  AiParsingMetadata,
+  // Shopping list types
+  ShoppingItem,
+  ShoppingItemBase,
+  Store,
+  StoreBase,
+  ItemProfile,
+  CombinedItem,
+  GroupedItems,
 } from '../../../shared/types/index.js';
 export { UnitValue } from '../../../shared/types/index.js';
 import type { RecipeBase } from '../../../shared/types';

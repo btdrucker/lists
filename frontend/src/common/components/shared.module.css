@@ -1,0 +1,32 @@
+@import '../styles.css';
+
+/* Shared button styles for secondary (back) buttons */
+.secondaryButton {
+  background: var(--color-bg-white);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-light);
+}
+
+.secondaryButton:hover:not(:disabled) {
+  background: var(--color-bg-light);
+  border-color: var(--color-border-medium);
+  color: var(--color-text-primary);
+}
+
+/* Shared button styles for primary (save) buttons */
+.primaryButton {
+  background: var(--color-primary);
+  color: white;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+/* Shared container layout - standard 800px centered container */
+.standardContainer {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+  min-height: 100vh;
+}

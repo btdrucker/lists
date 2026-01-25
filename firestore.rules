@@ -54,6 +54,47 @@ service cloud.firestore {
       allow delete: if isOwner(resource.data.userId);
     }
     
+    // Shopping Items collection
+    // For MVP: All authenticated users share the same 'default-family' list
+    // Future: Update to check family membership when multi-family support is added
+    match /shoppingItems/{itemId} {
+      // Allow read if authenticated
+      allow read: if isAuthenticated();
+      
+      // Allow create if authenticated and familyId is 'default-family'
+      allow create: if isAuthenticated() &&
+                       request.resource.data.familyId == 'default-family' &&
+                       request.resource.data.keys().hasAll(['familyId', 'name', 'isChecked', 'storeTagIds', 'createdAt', 'updatedAt']);
+      
+      // Allow update/delete if authenticated and item belongs to 'default-family'
+      allow update: if isAuthenticated() &&
+                       resource.data.familyId == 'default-family' &&
+                       request.resource.data.familyId == 'default-family';
+      
+      allow delete: if isAuthenticated() &&
+                       resource.data.familyId == 'default-family';
+    }
+    
+    // Stores collection
+    // For MVP: All authenticated users share the same 'default-family' stores
+    match /stores/{storeId} {
+      // Allow read if authenticated
+      allow read: if isAuthenticated();
+      
+      // Allow create if authenticated and familyId is 'default-family'
+      allow create: if isAuthenticated() &&
+                       request.resource.data.familyId == 'default-family' &&
+                       request.resource.data.keys().hasAll(['familyId', 'displayName', 'abbreviation', 'color', 'sortOrder', 'createdAt', 'updatedAt']);
+      
+      // Allow update/delete if authenticated and store belongs to 'default-family'
+      allow update: if isAuthenticated() &&
+                       resource.data.familyId == 'default-family' &&
+                       request.resource.data.familyId == 'default-family';
+      
+      allow delete: if isAuthenticated() &&
+                       resource.data.familyId == 'default-family';
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;

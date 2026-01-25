@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAppSelector, useAppDispatch, useAutoHeight, useWakeLock } from '../../common/hooks';
 import { updateRecipeInState } from '../recipe-list/slice';
-import { updateRecipe } from '../../firebase/firestore';
+import { updateRecipe, addShoppingItem } from '../../firebase/firestore';
 import IconButton from '../../common/components/IconButton';
 import styles from './viewRecipe.module.css';
 
@@ -189,6 +189,34 @@ const ViewRecipe = () => {
     }
   };
 
+  const handleAddToShoppingList = async () => {
+    if (!recipe) return;
+    setShowMenu(false);
+
+    try {
+      const familyId = 'default-family';
+
+      // Create shopping item for each ingredient
+      for (const ingredient of recipe.ingredients) {
+        await addShoppingItem({
+          familyId,
+          amount: ingredient.amount,
+          unit: ingredient.unit,
+          name: ingredient.name,
+          isChecked: false,
+          storeTagIds: [],
+          sourceRecipeId: recipe.id,
+        });
+      }
+
+      // Show success feedback
+      alert(`Added ${recipe.ingredients.length} items to shopping list`);
+    } catch (error) {
+      console.error('Error adding to shopping list:', error);
+      alert('Failed to add items to shopping list');
+    }
+  };
+
   if (!recipe) {
     return (
       <div className={styles.container}>
@@ -255,6 +283,10 @@ const ViewRecipe = () => {
           </button>
           {showMenu && (
             <div className={styles.contextMenu}>
+              <button onClick={handleAddToShoppingList} className={styles.menuItem}>
+                <i className="fa-solid fa-cart-shopping"></i>
+                <span>Add to Shopping List</span>
+              </button>
               <button onClick={handleShareClick} className={styles.menuItem}>
                 <i className="fa-solid fa-share-nodes"></i>
                 <span>Share</span>

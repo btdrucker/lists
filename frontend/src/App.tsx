@@ -14,6 +14,7 @@ import EditRecipe from './features/recipe/EditRecipe.tsx';
 import AiDebug from './features/ai-debug/AiDebug';
 import AppShell from './common/components/AppShell';
 import Shopping from './features/shopping/Shopping';
+import EditShoppingItem from './features/shopping/EditShoppingItem';
 import Calendar from './features/calendar/Calendar';
 import { InstallBanner } from './common/components/InstallBanner';
 import { OfflineIndicator } from './common/components/OfflineIndicator';
@@ -84,6 +85,7 @@ function AppContent() {
             <Route path="/recipe/:id" element={<ViewRecipe />} />
             <Route path="/recipe-start" element={<RecipeStart />} />
             <Route path="/edit-recipe/:id" element={<EditRecipe />} />
+            <Route path="/shopping/edit/:itemId" element={<EditShoppingItem />} />
             <Route path="/ai-debug" element={<AiDebug />} />
             <Route path="/" element={<Navigate to="/recipe-list" replace />} />
             <Route path="*" element={<Navigate to="/recipe-list" replace />} />

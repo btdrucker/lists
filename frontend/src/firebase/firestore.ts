@@ -9,9 +9,11 @@ import {
   query,
   where,
   Timestamp,
+  onSnapshot,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from './config';
-import type { Recipe } from '../types/index.ts';
+import type { Recipe, ShoppingItem, Store } from '../types/index.ts';
 
 // Get all recipes (any user can read any recipe per security rules)
 export const getAllRecipes = async (): Promise<Recipe[]> => {
@@ -96,5 +98,234 @@ export const updateRecipe = async (recipeId: string, updates: Partial<Recipe>): 
 export const deleteRecipe = async (recipeId: string): Promise<void> => {
   const docRef = doc(db, 'recipes', recipeId);
   await deleteDoc(docRef);
+};
+
+// ============================================================================
+// Shopping Items
+// ============================================================================
+
+// Get all shopping items for a family
+export const getShoppingItems = async (familyId: string): Promise<ShoppingItem[]> => {
+  const itemsRef = collection(db, 'shoppingItems');
+  const q = query(itemsRef, where('familyId', '==', familyId));
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((docSnap) => {
+    const data = docSnap.data();
+    return {
+      id: docSnap.id,
+      ...data,
+      createdAt: (data.createdAt?.toDate?.() || new Date()).toISOString(),
+      updatedAt: (data.updatedAt?.toDate?.() || new Date()).toISOString(),
+    };
+  }) as ShoppingItem[];
+};
+
+// Add new shopping item
+export const addShoppingItem = async (
+  item: Omit<ShoppingItem, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<ShoppingItem> => {
+  const itemsRef = collection(db, 'shoppingItems');
+  const now = Timestamp.now();
+
+  const docRef = await addDoc(itemsRef, {
+    ...item,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  return {
+    ...item,
+    id: docRef.id,
+    createdAt: now.toDate().toISOString(),
+    updatedAt: now.toDate().toISOString(),
+  };
+};
+
+// Update shopping item with error handling for concurrent deletes
+export const updateShoppingItem = async (
+  itemId: string,
+  updates: Partial<ShoppingItem>
+): Promise<void> => {
+  const docRef = doc(db, 'shoppingItems', itemId);
+
+  try {
+    await updateDoc(docRef, {
+      ...updates,
+      updatedAt: Timestamp.now(),
+    });
+  } catch (error: unknown) {
+    const firestoreError = error as { code?: string };
+    if (firestoreError.code === 'not-found') {
+      // Item was deleted by another user - expected in collaborative environment
+      console.log('Item no longer exists, skipping update');
+    } else {
+      throw error;
+    }
+  }
+};
+
+// Delete single shopping item
+export const deleteShoppingItem = async (itemId: string): Promise<void> => {
+  const docRef = doc(db, 'shoppingItems', itemId);
+  await deleteDoc(docRef);
+};
+
+// Bulk delete shopping items (atomic operation)
+export const bulkDeleteShoppingItems = async (itemIds: string[]): Promise<void> => {
+  if (itemIds.length === 0) return;
+
+  // Use writeBatch for atomic operations
+  const batch = writeBatch(db);
+
+  itemIds.forEach((id) => {
+    const docRef = doc(db, 'shoppingItems', id);
+    batch.delete(docRef);
+  });
+
+  // All deletes succeed or all fail (atomicity)
+  await batch.commit();
+};
+
+// Real-time listener for shopping items
+export const subscribeToShoppingItems = (
+  familyId: string,
+  callback: (items: ShoppingItem[]) => void
+): (() => void) => {
+  const q = query(
+    collection(db, 'shoppingItems'),
+    where('familyId', '==', familyId)
+  );
+
+  const unsubscribe = onSnapshot(
+    q,
+    (snapshot) => {
+      const items = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          ...data,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        } as ShoppingItem;
+      });
+      callback(items);
+    },
+    (error) => {
+      console.error('Error subscribing to shopping items:', error);
+      // Return empty array to unblock UI and allow user to see the error
+      callback([]);
+    }
+  );
+
+  return unsubscribe;
+};
+
+// ============================================================================
+// Stores
+// ============================================================================
+
+// Get all stores for a family
+export const getStores = async (familyId: string): Promise<Store[]> => {
+  const storesRef = collection(db, 'stores');
+  const q = query(storesRef, where('familyId', '==', familyId));
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((docSnap) => {
+    const data = docSnap.data();
+    return {
+      id: docSnap.id,
+      ...data,
+      createdAt: (data.createdAt?.toDate?.() || new Date()).toISOString(),
+      updatedAt: (data.updatedAt?.toDate?.() || new Date()).toISOString(),
+    };
+  }) as Store[];
+};
+
+// Add new store
+export const addStore = async (
+  store: Omit<Store, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<Store> => {
+  const storesRef = collection(db, 'stores');
+  const now = Timestamp.now();
+
+  const docRef = await addDoc(storesRef, {
+    ...store,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  return {
+    ...store,
+    id: docRef.id,
+    createdAt: now.toDate().toISOString(),
+    updatedAt: now.toDate().toISOString(),
+  };
+};
+
+// Update store
+export const updateStore = async (
+  storeId: string,
+  updates: Partial<Store>
+): Promise<void> => {
+  const docRef = doc(db, 'stores', storeId);
+  await updateDoc(docRef, {
+    ...updates,
+    updatedAt: Timestamp.now(),
+  });
+};
+
+// Real-time listener for stores
+export const subscribeToStores = (
+  familyId: string,
+  callback: (stores: Store[]) => void
+): (() => void) => {
+  const q = query(
+    collection(db, 'stores'),
+    where('familyId', '==', familyId)
+  );
+
+  const unsubscribe = onSnapshot(
+    q,
+    (snapshot) => {
+      const stores = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          ...data,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        } as Store;
+      });
+      callback(stores);
+    },
+    (error) => {
+      console.error('Error subscribing to stores:', error);
+      // Return empty array to unblock UI and allow user to see the error
+      callback([]);
+    }
+  );
+
+  return unsubscribe;
+};
+
+// Initialize default stores for a family (safe to call multiple times)
+export const initializeDefaultStores = async (familyId: string): Promise<void> => {
+  const storesRef = collection(db, 'stores');
+  const q = query(storesRef, where('familyId', '==', familyId));
+  const snapshot = await getDocs(q);
+
+  if (!snapshot.empty) return; // Already initialized
+
+  const defaultStores = [
+    { displayName: 'Fred Meyer', abbreviation: 'FM', color: '#0066CC', sortOrder: 1 },
+    { displayName: "Trader Joe's", abbreviation: 'TJ', color: '#D32F2F', sortOrder: 2 },
+    { displayName: 'New Seasons', abbreviation: 'NS', color: '#388E3C', sortOrder: 3 },
+    { displayName: 'Costco', abbreviation: 'CO', color: '#E64A19', sortOrder: 4 },
+  ];
+
+  for (const store of defaultStores) {
+    await addStore({ familyId, ...store });
+  }
 };
 

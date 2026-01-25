@@ -1,0 +1,399 @@
+@import '../../common/styles.css';
+
+.container {
+  composes: standardContainer from '../../common/components/shared.module.css';
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.header h1 {
+  font-size: 28px;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.headerButtons {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+/* Controls section */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: var(--color-bg-light);
+  border-radius: var(--radius-md);
+}
+
+.viewToggle {
+  display: flex;
+  gap: 4px;
+  background: var(--color-bg-white);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+}
+
+.viewButton {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.viewButton:hover {
+  background: var(--color-bg-light);
+}
+
+.viewButtonActive {
+  background: var(--color-primary);
+  color: white;
+}
+
+.viewButtonActive:hover {
+  background: var(--color-primary-hover);
+}
+
+.storeFilter {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.storeFilterLabel {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.storeTag {
+  padding: 6px 12px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), opacity var(--transition-fast);
+  opacity: 0.5;
+}
+
+.storeTagSelected {
+  opacity: 1;
+  border-color: currentColor;
+}
+
+/* Add item section */
+.addItemSection {
+  margin-bottom: var(--spacing-lg);
+}
+
+.addItemForm {
+  display: flex;
+  gap: var(--spacing-sm);
+  background: var(--color-bg-white);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.addItemInput {
+  flex: 1;
+  padding: 10px 14px;
+  font-size: 16px;
+  border: 2px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  transition: border-color var(--transition-fast);
+}
+
+.addItemInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.amountInput {
+  width: 80px;
+}
+
+.unitSelect {
+  width: 120px;
+  padding: 10px 14px;
+  font-size: 16px;
+  border: 2px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  background: var(--color-bg-white);
+  cursor: pointer;
+}
+
+.unitSelect:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.addItemButton {
+  padding: 10px 20px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.addItemButton:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.addItemButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Actions bar */
+.actionsBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.itemCount {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.bulkDeleteButton {
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--color-delete);
+  border: 1px solid var(--color-delete);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.bulkDeleteButton:hover:not(:disabled) {
+  background: var(--color-delete);
+  color: white;
+}
+
+.bulkDeleteButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Item list */
+.itemList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-bg-white);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.item:hover {
+  background: var(--color-bg-light);
+}
+
+.itemChecked {
+  opacity: 0.6;
+}
+
+.itemChecked .itemName {
+  text-decoration: line-through;
+  color: var(--color-text-tertiary);
+}
+
+.checkbox {
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.itemDetails {
+  flex: 1;
+  min-width: 0;
+}
+
+.itemName {
+  font-size: 16px;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.itemAmount {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin-left: 4px;
+}
+
+.itemStoreTags {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.itemStoreTag {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+}
+
+.itemSource {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  margin-top: 2px;
+}
+
+/* Recipe group section */
+.recipeGroup {
+  margin-bottom: var(--spacing-lg);
+}
+
+.recipeGroupHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--color-border-light);
+  margin-bottom: var(--spacing-sm);
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--transition-fast);
+}
+
+.recipeGroupHeader:hover {
+  color: var(--color-text-primary);
+}
+
+.groupCaret {
+  font-size: 16px;
+  transition: transform var(--transition-fast);
+}
+
+.manualGroupHeader {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
+.manualGroupHeader:hover {
+  color: var(--color-text-secondary);
+}
+
+/* States */
+.loading {
+  text-align: center;
+  padding: 60px var(--spacing-lg);
+  font-size: 18px;
+  color: var(--color-text-secondary);
+}
+
+.empty {
+  text-align: center;
+  padding: 60px var(--spacing-lg);
+  color: var(--color-text-secondary);
+}
+
+.empty p:first-child {
+  font-size: 24px;
+  font-weight: 500;
+  margin-bottom: var(--spacing-sm);
+}
+
+.emptyActions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: center;
+  margin-top: var(--spacing-lg);
+}
+
+.primaryButton {
+  padding: 12px 24px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.primaryButton:hover {
+  background: var(--color-primary-hover);
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .container {
+    padding: var(--spacing-md);
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+
+  .header h1 {
+    font-size: 24px;
+  }
+
+  .controls {
+    flex-direction: column;
+  }
+
+  .addItemForm {
+    flex-wrap: wrap;
+  }
+
+  .addItemInput {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  .amountInput {
+    width: 60px;
+  }
+
+  .unitSelect {
+    flex: 1;
+  }
+
+  .addItemButton {
+    width: 100%;
+  }
+}
