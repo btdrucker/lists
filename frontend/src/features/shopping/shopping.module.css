@@ -232,7 +232,7 @@
   opacity: 0.6;
 }
 
-.itemChecked .itemName {
+.itemChecked .itemText {
   text-decoration: line-through;
   color: var(--color-text-tertiary);
 }
@@ -261,16 +261,10 @@
   min-width: 0;
 }
 
-.itemName {
+.itemText {
   font-size: 16px;
   color: var(--color-text-primary);
   font-weight: 500;
-}
-
-.itemAmount {
-  font-size: 14px;
-  color: var(--color-text-secondary);
-  margin-left: 4px;
 }
 
 .itemStoreSection {

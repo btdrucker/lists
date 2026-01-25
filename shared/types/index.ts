@@ -137,6 +137,7 @@ export interface CombinedItem {
   amount: number | null;
   unit: UnitValue | null;
   isChecked: boolean;
+  isIndeterminate: boolean; // true when some but not all source items are checked
   storeTagIds: string[];
   sourceItemIds: string[]; // IDs of contributing items
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../common/hooks';
 import { setShoppingItems, setStores, removeShoppingItems } from './slice';
@@ -74,6 +74,8 @@ function combineItems(items: ShoppingItem[]): CombinedItem[] {
         0
       );
       const allChecked = sourceItems.every((item) => item.isChecked);
+      const someChecked = sourceItems.some((item) => item.isChecked);
+      const isIndeterminate = someChecked && !allChecked;
 
       // Merge store tags (deduplicate)
       const allStoreTagIds = [
@@ -86,6 +88,7 @@ function combineItems(items: ShoppingItem[]): CombinedItem[] {
         amount: totalAmount || null,
         unit: sourceItems[0].unit,
         isChecked: allChecked,
+        isIndeterminate,
         storeTagIds: allStoreTagIds,
         sourceItemIds: sourceItems.map((item) => item.id),
       };
@@ -142,6 +145,16 @@ function formatAmount(amount: number | null, unit: string | null): string {
   const unitLabel = unit ? UNIT_LABELS[unit] || unit.toLowerCase() : '';
   if (!amount) return unitLabel;
   return `${amount} ${unitLabel}`.trim();
+}
+
+// Helper to check if an item is indeterminate (works for both CombinedItem and ShoppingItem)
+function isItemIndeterminate(item: CombinedItem | ShoppingItem): boolean {
+  return 'isIndeterminate' in item && item.isIndeterminate;
+}
+
+// Helper to get source item IDs (works for both CombinedItem and ShoppingItem)
+function getItemIds(item: CombinedItem | ShoppingItem): string[] {
+  return 'sourceItemIds' in item ? item.sourceItemIds : [item.id];
 }
 
 const Shopping = () => {
@@ -222,10 +235,19 @@ const Shopping = () => {
     return groupByRecipe(filteredItems, recipes);
   }, [filteredItems, recipes]);
 
-  // Count checked items for bulk delete
+  // Count checked items for bulk delete - only fully checked items in current view
   const checkedItemIds = useMemo(() => {
-    return items.filter((item) => item.isChecked).map((item) => item.id);
-  }, [items]);
+    const itemsToCheck = viewMode === 'simple' ? combinedItems : filteredItems;
+    return itemsToCheck
+      .filter((item) => item.isChecked && !isItemIndeterminate(item))
+      .flatMap((item) => getItemIds(item));
+  }, [viewMode, combinedItems, filteredItems]);
+
+  // Count of VISIBLE checked items (for display in delete button)
+  const checkedItemCount = useMemo(() => {
+    const itemsToCheck = viewMode === 'simple' ? combinedItems : filteredItems;
+    return itemsToCheck.filter((item) => item.isChecked && !isItemIndeterminate(item)).length;
+  }, [viewMode, combinedItems, filteredItems]);
 
   // Toggle store filter
   const handleStoreToggle = useCallback((storeId: string) => {
@@ -376,98 +398,27 @@ const Shopping = () => {
     item: CombinedItem | ShoppingItem,
     isCombined: boolean
   ) => {
-    const itemId = isCombined
-      ? (item as CombinedItem).sourceItemIds[0]
-      : (item as ShoppingItem).id;
-    const itemIds = isCombined
-      ? (item as CombinedItem).sourceItemIds
-      : [(item as ShoppingItem).id];
+    const itemIds = getItemIds(item);
+    const itemId = itemIds[0];
     const itemKey = isCombined ? (item as CombinedItem).key : (item as ShoppingItem).id;
-    const isDialogOpen = storeDialogItemKey === itemKey;
+    const isIndeterminate = isItemIndeterminate(item);
 
     return (
-      <div
+      <ShoppingItemRow
         key={itemKey}
-        className={`${styles.item} ${item.isChecked ? styles.itemChecked : ''}`}
-        onClick={() => handleItemClick(itemId)}
-      >
-        <input
-          type="checkbox"
-          className={styles.checkbox}
-          checked={item.isChecked}
-          onClick={(e) => e.stopPropagation()}
-          onChange={(e) => handleCheck(itemIds, e.target.checked)}
-        />
-        <div className={styles.itemDetails}>
-          <div className={styles.itemMainRow}>
-            <div className={styles.itemNameRow}>
-              <span className={styles.itemName}>{item.name}</span>
-              <span className={styles.itemAmount}>
-                {formatAmount(item.amount, item.unit)}
-              </span>
-            </div>
-            <div className={styles.itemStoreSection}>
-              <button
-                className={styles.addStoreButton}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setStoreDialogItemKey(isDialogOpen ? null : itemKey);
-                }}
-              >
-                <i className="fa-solid fa-bookmark" />
-              </button>
-              {item.storeTagIds.length > 0 && (
-                <div className={styles.itemStoreTags}>
-                  {item.storeTagIds.map((storeId) => {
-                    const store = stores.find((s) => s.id === storeId);
-                    if (!store) return null;
-                    return (
-                      <span
-                        key={storeId}
-                        className={styles.itemStoreTag}
-                        style={{ backgroundColor: store.color }}
-                      >
-                        {store.abbreviation}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-              {isDialogOpen && (
-                <div className={styles.storeDialog} onClick={(e) => e.stopPropagation()}>
-                  <div className={styles.storeDialogContent}>
-                    {[...stores]
-                      .sort((a, b) => a.sortOrder - b.sortOrder)
-                      .map((store) => {
-                        const isSelected = item.storeTagIds.includes(store.id);
-                        return (
-                          <button
-                            key={store.id}
-                            className={`${styles.storeDialogOption} ${
-                              isSelected ? styles.storeDialogOptionSelected : ''
-                            }`}
-                            style={{
-                              backgroundColor: isSelected ? store.color : `${store.color}15`,
-                              color: isSelected ? 'white' : store.color,
-                            }}
-                            onClick={() => handleItemStoreToggle(itemIds, store.id)}
-                          >
-                            {store.displayName}
-                          </button>
-                        );
-                      })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          {isCombined && (item as CombinedItem).sourceItemIds.length > 1 && (
-            <div className={styles.itemSource}>
-              from {(item as CombinedItem).sourceItemIds.length} sources
-            </div>
-          )}
-        </div>
-      </div>
+        item={item}
+        itemId={itemId}
+        itemIds={itemIds}
+        itemKey={itemKey}
+        isIndeterminate={isIndeterminate}
+        isCombined={isCombined}
+        stores={stores}
+        storeDialogItemKey={storeDialogItemKey}
+        setStoreDialogItemKey={setStoreDialogItemKey}
+        handleItemClick={handleItemClick}
+        handleCheck={handleCheck}
+        handleItemStoreToggle={handleItemStoreToggle}
+      />
     );
   };
 
@@ -589,7 +540,7 @@ const Shopping = () => {
             disabled={checkedItemIds.length === 0}
           >
             <i className="fa-solid fa-trash" /> Delete Checked (
-            {checkedItemIds.length})
+            {checkedItemCount})
           </button>
         </div>
       )}
@@ -680,6 +631,136 @@ const Shopping = () => {
       )}
     </div>
   );
+};
+
+// Separate component for individual item row to use hooks
+interface ShoppingItemRowProps {
+  item: CombinedItem | ShoppingItem;
+  itemId: string;
+  itemIds: string[];
+  itemKey: string;
+  isIndeterminate: boolean;
+  isCombined: boolean;
+  stores: Store[];
+  storeDialogItemKey: string | null;
+  setStoreDialogItemKey: (key: string | null) => void;
+  handleItemClick: (itemId: string) => void;
+  handleCheck: (itemIds: string[], isChecked: boolean) => void;
+  handleItemStoreToggle: (itemIds: string[], storeId: string) => void;
+}
+
+const ShoppingItemRow = ({
+  item,
+  itemId,
+  itemIds,
+  itemKey,
+  isIndeterminate,
+  isCombined,
+  stores,
+  storeDialogItemKey,
+  setStoreDialogItemKey,
+  handleItemClick,
+  handleCheck,
+  handleItemStoreToggle,
+}: ShoppingItemRowProps) => {
+  const isDialogOpen = storeDialogItemKey === itemKey;
+  const checkboxRef = useRef<HTMLInputElement>(null);
+
+  // Set indeterminate property on checkbox
+  useEffect(() => {
+    if (checkboxRef.current) {
+      checkboxRef.current.indeterminate = isIndeterminate;
+    }
+  }, [isIndeterminate]);
+
+  return (
+    <div
+      className={`${styles.item} ${item.isChecked ? styles.itemChecked : ''}`}
+      onClick={() => handleItemClick(itemId)}
+    >
+      <input
+        ref={checkboxRef}
+        type="checkbox"
+        className={styles.checkbox}
+        checked={item.isChecked}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => {
+          // If indeterminate, check all source items
+          const newCheckedState = isIndeterminate ? true : e.target.checked;
+          handleCheck(itemIds, newCheckedState);
+        }}
+      />
+        <div className={styles.itemDetails}>
+          <div className={styles.itemMainRow}>
+            <div className={styles.itemNameRow}>
+              <span className={styles.itemText}>
+                {formatAmount(item.amount, item.unit) && `${formatAmount(item.amount, item.unit)} `}
+                {item.name}
+              </span>
+            </div>
+            <div className={styles.itemStoreSection}>
+              <button
+                className={styles.addStoreButton}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setStoreDialogItemKey(isDialogOpen ? null : itemKey);
+                }}
+              >
+                <i className="fa-solid fa-bookmark" />
+              </button>
+              {item.storeTagIds.length > 0 && (
+                <div className={styles.itemStoreTags}>
+                  {item.storeTagIds.map((storeId) => {
+                    const store = stores.find((s) => s.id === storeId);
+                    if (!store) return null;
+                    return (
+                      <span
+                        key={storeId}
+                        className={styles.itemStoreTag}
+                        style={{ backgroundColor: store.color }}
+                      >
+                        {store.abbreviation}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+              {isDialogOpen && (
+                <div className={styles.storeDialog} onClick={(e) => e.stopPropagation()}>
+                  <div className={styles.storeDialogContent}>
+                    {[...stores]
+                      .sort((a, b) => a.sortOrder - b.sortOrder)
+                      .map((store) => {
+                        const isSelected = item.storeTagIds.includes(store.id);
+                        return (
+                          <button
+                            key={store.id}
+                            className={`${styles.storeDialogOption} ${
+                              isSelected ? styles.storeDialogOptionSelected : ''
+                            }`}
+                            style={{
+                              backgroundColor: isSelected ? store.color : `${store.color}15`,
+                              color: isSelected ? 'white' : store.color,
+                            }}
+                            onClick={() => handleItemStoreToggle(itemIds, store.id)}
+                          >
+                            {store.displayName}
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          {isCombined && (item as CombinedItem).sourceItemIds.length > 1 && (
+            <div className={styles.itemSource}>
+              from {(item as CombinedItem).sourceItemIds.length} sources
+            </div>
+          )}
+        </div>
+      </div>
+    );
 };
 
 export default Shopping;

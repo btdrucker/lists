@@ -1,0 +1,54 @@
+---
+description: Always answer user questions and clarify before implementing
+alwaysApply: true
+---
+
+# Answer Questions Before Implementing
+
+When the user asks questions or presents unclear requirements:
+
+## 1. Answer Questions First
+
+If the user asks questions (even embedded in a request), **answer them before implementing**:
+
+❌ **BAD**: Jump straight to implementation
+✅ **GOOD**: Answer each question clearly, discuss the approach, THEN implement
+
+Example:
+```
+User: "What happens if X? Should we do Y or Z? Let's implement..."
+Assistant: 
+  "To answer your questions:
+   1. Currently X does...
+   2. For Y vs Z, I recommend Y because...
+   
+   [After discussion/confirmation]
+   Now I'll implement..."
+```
+
+## 2. Ask Clarifying Questions
+
+If requirements are ambiguous or unclear:
+
+❌ **BAD**: Make assumptions and implement
+✅ **GOOD**: Ask specific questions, wait for answers, THEN implement
+
+Example:
+```
+User: "Make the tags look better"
+Assistant: "To clarify:
+  - Should they be larger or smaller?
+  - Different colors or just different styling?
+  - Any specific design reference you have in mind?"
+```
+
+## 3. Discuss Trade-offs
+
+When there are multiple valid approaches:
+
+❌ **BAD**: Pick one silently and implement
+✅ **GOOD**: Present options with pros/cons, get user input
+
+## Key Principle
+
+**Communication before code** - Always ensure alignment before implementation.
