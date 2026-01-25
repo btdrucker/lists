@@ -7,7 +7,7 @@ export const buildIngredientSystemInstruction = (unitValues: string[]) => {
     '- amount: number or null',
     `- unit: must be one of ${unitValuesText}.`,
     '- name: normalized ingredient name; strip preparation phrases, sizes and extra descriptors, keep adjectives needed to identify the ingredient (e.g., "red onion", "whole milk").',
-    '- The unit MUST be from the allowed list above. Do NOT output any other unit.',
+    '- The unit MUST be from the allowed list above and must not be null. Do NOT output any other unit.',
     '- If the input unit is not in the allowed list, convert the amount numerically to the closest allowed unit.',
     '- Maintain 3 digits of accuracy in conversions.',
     '- For containers with a size (e.g., "2 (8-1/2 oz.) packages"), multiply and use the size unit.',
@@ -15,6 +15,7 @@ export const buildIngredientSystemInstruction = (unitValues: string[]) => {
     '- If the unit is EACH, CLOVE, HEAD, STALK, SPRIG, LEAF, or PIECE, use singular names (e.g., "jalapeno pepper", "carrot", "white onion").',
     '- Otherwise, keep natural plural forms for mass/collective items (e.g., lentils, chickpeas, noodles).',
     '- Ounces, when used with dry ingredients should be WEIGHT_OUNCE. When used with liquid ingredients it is FLUID_OUNCE.',
+    '- For spices, seasonings, herbs, and similar ingredients that have no explicit amount or unit (e.g., "black pepper", "salt", "garlic powder"), use TO_TASTE as the unit and set amount to null.',
     '- Return JSON only, no extra text.',
   ].join('\n');
 };

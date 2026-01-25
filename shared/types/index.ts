@@ -26,7 +26,7 @@ export const UnitValue = {
   QUART: 'QUART',
   // Weight
   POUND: 'POUND',
-  OUNCE: 'OUNCE',
+  WEIGHT_OUNCE: 'WEIGHT_OUNCE',
   // Count/Pieces
   EACH: 'EACH',
   CLOVE: 'CLOVE',

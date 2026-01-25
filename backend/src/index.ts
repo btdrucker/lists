@@ -7,9 +7,12 @@ import { scrapeRoutes } from './routes/scrape.js';
 dotenv.config();
 
 const PORT = parseInt(process.env.PORT || '3001');
+const isProduction = process.env.NODE_ENV === 'production';
 const defaultAllowedOrigins = [
   'http://localhost:5173', // Dev server
+  'http://127.0.0.1:5173',
   'http://localhost:4173', // Preview server
+  'http://127.0.0.1:4173',
 ];
 
 const getAllowedOrigins = () => {
@@ -44,6 +47,11 @@ const fastify = Fastify({
 // Register CORS
 await fastify.register(cors, {
   origin: (origin, callback) => {
+    if (!isProduction) {
+      callback(null, true);
+      return;
+    }
+
     // Allow requests with no origin (like mobile apps or curl)
     if (!origin) {
       callback(null, true);

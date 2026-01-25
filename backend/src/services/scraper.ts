@@ -18,7 +18,7 @@ const UNIT_ALIAS_PATTERNS: Record<UnitValue, string[]> = {
   [UnitValue.QUART]: ['quarts?', 'qt\\.?'],
   // Weight
   [UnitValue.POUND]: ['pounds?', 'lbs?\\.?'],
-  [UnitValue.OUNCE]: ['ounces?', 'oz.?'],
+  [UnitValue.WEIGHT_OUNCE]: ['ounces?', 'oz\\.?'],
   // Count/Pieces
   [UnitValue.EACH]: ['each'],
   [UnitValue.CLOVE]: ['cloves?'],
@@ -99,7 +99,13 @@ function parseSingleAmount(
 function validateAiUnit(value: unknown, originalText: string): UnitValue | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
-  if (!trimmed) return null;
+  if (!trimmed || trimmed === 'undefined') return null;
+  
+  // Map legacy OUNCE to WEIGHT_OUNCE for backward compatibility
+  if (trimmed === 'OUNCE') {
+    return UnitValue.WEIGHT_OUNCE;
+  }
+  
   if (UNIT_VALUE_SET.has(trimmed as UnitValue)) {
     return trimmed as UnitValue;
   }
@@ -391,6 +397,14 @@ export async function enrichIngredientsWithAI(
     const aiAmount = validateAiAmount(ai.amount, ing.originalText || ing.name);
     const aiUnit = validateAiUnit(ai.unit, ing.originalText || ing.name);
     const aiName = ai.name ? String(ai.name).trim() : null;
+    
+    if (process.env.DEBUG_INGREDIENT_PARSING === 'true') {
+      console.log(`[ingredient-ai] Processing "${ing.originalText || ing.name}":`, {
+        rawAiResponse: ai,
+        validated: { aiAmount, aiUnit, aiName },
+      });
+    }
+    
     return {
       ...ing,
       aiAmount,
@@ -1203,10 +1217,16 @@ function parseWPRMIngredient($: cheerio.CheerioAPI, elem: any, section?: string)
     parsedAmountMax = parsed.amountMax || null;
   }
 
+  const normalizedUnit = normalizeUnitText(unit);
+  
+  if (process.env.DEBUG_INGREDIENT_PARSING === 'true' && unit) {
+    console.log(`[wprm-parse] Unit "${unit}" → normalized:`, normalizedUnit);
+  }
+
   return {
     amount: parsedAmount,
     amountMax: parsedAmountMax,
-    unit: normalizeUnitText(unit),
+    unit: normalizedUnit,
     name: name || originalText,
     section: section,
     originalText: originalText,

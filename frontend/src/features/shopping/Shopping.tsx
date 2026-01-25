@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../common/hooks';
-import { setShoppingItems, setStores, removeShoppingItems } from './slice';
+import { setShoppingItems, setStores, removeShoppingItems, setViewMode, setSelectedStoreIds } from './slice';
 import {
   subscribeToShoppingItems,
   subscribeToStores,
@@ -12,6 +12,8 @@ import {
 } from '../../firebase/firestore';
 import { UnitValue } from '../../types';
 import type { ShoppingItem, Store, CombinedItem, GroupedItems, Recipe } from '../../types';
+import { ensureRecipeHasAiParsingAndUpdate, getEffectiveIngredientValues } from '../../common/aiParsing';
+import type { RecipeWithAiMetadata } from '../../common/aiParsing';
 type UnitValueType = typeof UnitValue[keyof typeof UnitValue];
 import RecipePicker from '../../common/components/RecipePicker';
 import styles from './shopping.module.css';
@@ -26,8 +28,8 @@ const UNIT_LABELS: Record<string, string> = {
   [UnitValue.FLUID_OUNCE]: 'fl oz',
   [UnitValue.QUART]: 'qt',
   [UnitValue.POUND]: 'lb',
-  [UnitValue.OUNCE]: 'oz',
-  [UnitValue.EACH]: 'ea',
+  [UnitValue.WEIGHT_OUNCE]: 'oz',
+  [UnitValue.EACH]: 'each',
   [UnitValue.CLOVE]: 'clove',
   [UnitValue.SLICE]: 'slice',
   [UnitValue.CAN]: 'can',
@@ -141,6 +143,11 @@ function groupByRecipe(items: ShoppingItem[], recipes: Recipe[]): GroupedItems {
 
 // Format amount and unit for display
 function formatAmount(amount: number | null, unit: string | null): string {
+  // Treat null and EACH the same - just show amount without unit label
+  if (unit === UnitValue.EACH || unit === null) {
+    return amount ? `${amount}` : '';
+  }
+  
   if (!amount && !unit) return '';
   const unitLabel = unit ? UNIT_LABELS[unit] || unit.toLowerCase() : '';
   if (!amount) return unitLabel;
@@ -164,11 +171,8 @@ const Shopping = () => {
   const stores: Store[] = useAppSelector((state) => state.shopping?.stores || []);
   const loading = useAppSelector((state) => state.shopping?.loading ?? true);
   const recipes: Recipe[] = useAppSelector((state) => state.recipes?.recipes || []);
-
-  const [viewMode, setViewMode] = useState<'simple' | 'recipe-grouped'>(
-    'simple'
-  );
-  const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([]);
+  const viewMode = useAppSelector((state) => state.shopping?.viewMode || 'simple');
+  const selectedStoreIds = useAppSelector((state) => state.shopping?.selectedStoreIds || []);
   const [showRecipePicker, setShowRecipePicker] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
@@ -251,12 +255,11 @@ const Shopping = () => {
 
   // Toggle store filter
   const handleStoreToggle = useCallback((storeId: string) => {
-    setSelectedStoreIds((prev) =>
-      prev.includes(storeId)
-        ? prev.filter((id) => id !== storeId)
-        : [...prev, storeId]
-    );
-  }, []);
+    const newSelectedStoreIds = selectedStoreIds.includes(storeId)
+      ? selectedStoreIds.filter((id) => id !== storeId)
+      : [...selectedStoreIds, storeId];
+    dispatch(setSelectedStoreIds(newSelectedStoreIds));
+  }, [selectedStoreIds, dispatch]);
 
   // Check/uncheck item
   const handleCheck = useCallback(
@@ -350,12 +353,22 @@ const Shopping = () => {
           const recipe = recipes.find((r) => r.id === recipeId);
           if (!recipe) continue;
 
-          for (const ingredient of recipe.ingredients) {
+          // Ensure AI parsing is done before adding to shopping list
+          const recipeWithMetadata = recipe as RecipeWithAiMetadata;
+          const ingredientsToAdd = await ensureRecipeHasAiParsingAndUpdate(
+            recipeWithMetadata,
+            dispatch
+          );
+
+          // Add ingredients to shopping list
+          for (const ingredient of ingredientsToAdd) {
+            const { amount, unit, name } = getEffectiveIngredientValues(ingredient);
+
             await addShoppingItem({
               familyId: FAMILY_ID,
-              name: ingredient.name,
-              amount: ingredient.amount,
-              unit: ingredient.unit,
+              name,
+              amount,
+              unit,
               isChecked: false,
               storeTagIds: [],
               sourceRecipeId: recipeId,
@@ -367,7 +380,7 @@ const Shopping = () => {
         alert('Failed to add recipes');
       }
     },
-    [recipes]
+    [recipes, dispatch]
   );
 
   // Toggle store tag for item(s)
@@ -445,13 +458,13 @@ const Shopping = () => {
         <div className={styles.viewToggle}>
           <button
             className={`${styles.viewButton} ${viewMode === 'simple' ? styles.viewButtonActive : ''}`}
-            onClick={() => setViewMode('simple')}
+            onClick={() => dispatch(setViewMode('simple'))}
           >
             Simple
           </button>
           <button
             className={`${styles.viewButton} ${viewMode === 'recipe-grouped' ? styles.viewButtonActive : ''}`}
-            onClick={() => setViewMode('recipe-grouped')}
+            onClick={() => dispatch(setViewMode('recipe-grouped'))}
           >
             By Recipe
           </button>

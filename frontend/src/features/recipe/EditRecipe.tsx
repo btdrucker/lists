@@ -7,12 +7,9 @@ import { getIdToken } from '../../firebase/auth';
 import IconButton from '../../common/components/IconButton.tsx';
 import { UnitValue } from '../../types';
 import type { Ingredient, Recipe } from '../../types';
-import { AI_PARSING_VERSION } from '../../../../shared/aiPrompt.js';
 import {
-  analyzeRecipeForAiParsing,
-  computeAiParsingStatus,
+  ensureRecipeHasAiParsingForSave,
   getIngredientText,
-  mergeParsedIngredients,
   sanitizeIngredientForSave,
 } from '../../common/aiParsing';
 import type { RecipeWithAiMetadata } from '../../common/aiParsing';
@@ -27,7 +24,7 @@ const UNIT_LABELS: Record<UnitValue, string> = {
   [UnitValue.FLUID_OUNCE]: 'fluid ounce',
   [UnitValue.QUART]: 'quart',
   [UnitValue.POUND]: 'pound',
-  [UnitValue.OUNCE]: 'ounce',
+  [UnitValue.WEIGHT_OUNCE]: 'ounce',
   [UnitValue.EACH]: 'piece',
   [UnitValue.CLOVE]: 'clove',
   [UnitValue.SLICE]: 'slice',
@@ -289,6 +286,7 @@ const EditRecipe = () => {
         instructions: instructions.filter((i) => i.trim()),
       };
 
+      // Ensure AI parsing is done before saving
       const recipeForAnalysis: RecipeWithAiMetadata = {
         ...(existingRecipe || {
           id: 'new',
@@ -305,64 +303,23 @@ const EditRecipe = () => {
         lastAiParsingVersion: existingRecipe?.lastAiParsingVersion ?? null,
       };
 
-      const { indicesToParse: indicesNeedingAi } = analyzeRecipeForAiParsing(recipeForAnalysis);
-
-      if (indicesNeedingAi.length > 0) {
-        const token = await getIdToken();
-        if (!token) {
-          setError('Not authenticated');
-          return;
+      try {
+        const aiParsingResult = await ensureRecipeHasAiParsingForSave(recipeForAnalysis);
+        
+        // Merge AI parsing results into recipe data
+        recipeData.ingredients = aiParsingResult.ingredients;
+        if (aiParsingResult.aiParsingStatus) {
+          recipeData.aiParsingStatus = aiParsingResult.aiParsingStatus;
         }
-
-        const ingredientTexts = indicesNeedingAi.map((index) =>
-          getIngredientText(recipeData.ingredients[index])
-        );
-        const response = await fetch(`${API_URL}/parse-ingredients`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ ingredientTexts }),
-        });
-
-        const data = await response.json();
-        if (!response.ok || data.status !== 'ok') {
-          setError(data.error || 'Failed to parse ingredients');
-          return;
+        if (aiParsingResult.lastAiParsingVersion !== undefined) {
+          recipeData.lastAiParsingVersion = aiParsingResult.lastAiParsingVersion;
         }
-
-        if (!Array.isArray(data.ingredients) || data.ingredients.length !== ingredientTexts.length) {
-          setError('Failed to parse ingredients');
-          return;
-        }
-
-        const sanitizedIngredients = mergeParsedIngredients(
-          recipeData.ingredients,
-          indicesNeedingAi,
-          data.ingredients
-        );
-
-        const aiParsingStatus = computeAiParsingStatus(sanitizedIngredients);
-        if (aiParsingStatus === 'required') {
-          recipeData.aiParsingStatus = 'required';
-          if (existingRecipe?.lastAiParsingVersion !== undefined) {
-            recipeData.lastAiParsingVersion = existingRecipe.lastAiParsingVersion ?? null;
-          }
-        } else {
-          recipeData.aiParsingStatus = 'done';
-          recipeData.lastAiParsingVersion = AI_PARSING_VERSION;
-        }
-
-        recipeData.ingredients = sanitizedIngredients;
-        setIngredients(sanitizedIngredients);
-      } else {
-        if (existingRecipe?.aiParsingStatus) {
-          recipeData.aiParsingStatus = existingRecipe.aiParsingStatus;
-        }
-        if (existingRecipe?.lastAiParsingVersion !== undefined) {
-          recipeData.lastAiParsingVersion = existingRecipe.lastAiParsingVersion ?? null;
-        }
+        
+        // Update local state with parsed ingredients
+        setIngredients(aiParsingResult.ingredients);
+      } catch (aiError) {
+        setError(`Failed to parse ingredients: ${aiError instanceof Error ? aiError.message : 'Unknown error'}`);
+        return;
       }
 
       // Only add optional fields if they're not empty
@@ -455,10 +412,6 @@ const EditRecipe = () => {
 
     try {
       const token = await getIdToken();
-      if (!token) {
-        setError('Not authenticated');
-        return;
-      }
 
       // Bypass cache by adding cache: 'no-store' and a timestamp query param
       const response = await fetch(`${API_URL}/scrape?t=${Date.now()}`, {

@@ -4,6 +4,8 @@ import { useAppSelector, useAppDispatch, useAutoHeight, useWakeLock } from '../.
 import { updateRecipeInState } from '../recipe-list/slice';
 import { updateRecipe, addShoppingItem } from '../../firebase/firestore';
 import IconButton from '../../common/components/IconButton';
+import { ensureRecipeHasAiParsingAndUpdate, getEffectiveIngredientValues } from '../../common/aiParsing';
+import type { RecipeWithAiMetadata } from '../../common/aiParsing';
 import styles from './viewRecipe.module.css';
 
 // Helper function to extract domain from URL
@@ -195,14 +197,23 @@ const ViewRecipe = () => {
 
     try {
       const familyId = 'default-family';
+      
+      // Ensure AI parsing is done before adding to shopping list
+      const recipeWithMetadata = recipe as RecipeWithAiMetadata;
+      const ingredientsToAdd = await ensureRecipeHasAiParsingAndUpdate(
+        recipeWithMetadata,
+        dispatch
+      );
 
       // Create shopping item for each ingredient
-      for (const ingredient of recipe.ingredients) {
+      for (const ingredient of ingredientsToAdd) {
+        const { amount, unit, name } = getEffectiveIngredientValues(ingredient);
+        
         await addShoppingItem({
           familyId,
-          amount: ingredient.amount,
-          unit: ingredient.unit,
-          name: ingredient.name,
+          amount,
+          unit,
+          name,
           isChecked: false,
           storeTagIds: [],
           sourceRecipeId: recipe.id,
@@ -210,7 +221,7 @@ const ViewRecipe = () => {
       }
 
       // Show success feedback
-      alert(`Added ${recipe.ingredients.length} items to shopping list`);
+      alert(`Added ${ingredientsToAdd.length} items to shopping list`);
     } catch (error) {
       console.error('Error adding to shopping list:', error);
       alert('Failed to add items to shopping list');

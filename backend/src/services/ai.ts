@@ -206,12 +206,20 @@ export async function fetchAiIngredientNormalization(
     const text = await fetchIngredientNormalizationText(ingredientTexts, unitValues);
     if (!text) return null;
 
+    if (process.env.DEBUG_INGREDIENT_PARSING === 'true') {
+      console.log('[ingredient-ai] Raw AI response:', text);
+    }
+
     const jsonArrayText = extractJsonArray(text);
     if (!jsonArrayText) return null;
 
     const parsed = JSON.parse(jsonArrayText) as AiIngredientResult[];
     if (!Array.isArray(parsed) || parsed.length !== ingredientTexts.length) {
       return null;
+    }
+
+    if (process.env.DEBUG_INGREDIENT_PARSING === 'true') {
+      console.log('[ingredient-ai] Parsed results:', JSON.stringify(parsed, null, 2));
     }
 
     return parsed;

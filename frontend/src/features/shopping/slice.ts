@@ -7,6 +7,8 @@ interface ShoppingState {
   stores: Store[];
   loading: boolean;
   error: string | null;
+  viewMode: 'simple' | 'recipe-grouped';
+  selectedStoreIds: string[];
 }
 
 const initialState: ShoppingState = {
@@ -14,6 +16,8 @@ const initialState: ShoppingState = {
   stores: [],
   loading: true,
   error: null,
+  viewMode: 'simple',
+  selectedStoreIds: [],
 };
 
 const shoppingSlice = createSlice({
@@ -48,6 +52,12 @@ const shoppingSlice = createSlice({
       state.error = action.payload;
       state.loading = false;
     },
+    setViewMode: (state, action: PayloadAction<'simple' | 'recipe-grouped'>) => {
+      state.viewMode = action.payload;
+    },
+    setSelectedStoreIds: (state, action: PayloadAction<string[]>) => {
+      state.selectedStoreIds = action.payload;
+    },
   },
 });
 
@@ -60,6 +70,8 @@ export const {
   removeShoppingItems,
   setLoading,
   setError,
+  setViewMode,
+  setSelectedStoreIds,
 } = shoppingSlice.actions;
 
 export default shoppingSlice.reducer;
