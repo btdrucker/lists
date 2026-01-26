@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../common/hooks';
 import { setShoppingItems, setStores, removeShoppingItems, setViewMode, setSelectedStoreIds } from './slice';
@@ -16,6 +16,7 @@ import { ensureRecipeHasAiParsingAndUpdate, getEffectiveIngredientValues } from 
 import type { RecipeWithAiMetadata } from '../../common/aiParsing';
 type UnitValueType = typeof UnitValue[keyof typeof UnitValue];
 import RecipePicker from '../../common/components/RecipePicker';
+import ShoppingItemRow from './ShoppingItemRow';
 import styles from './shopping.module.css';
 
 const FAMILY_ID = 'default-family';
@@ -139,19 +140,6 @@ function groupByRecipe(items: ShoppingItem[], recipes: Recipe[]): GroupedItems {
   );
 
   return { recipeGroups, manualItems: sortedManualItems };
-}
-
-// Format amount and unit for display
-function formatAmount(amount: number | null, unit: string | null): string {
-  // Treat null and EACH the same - just show amount without unit label
-  if (unit === UnitValue.EACH || unit === null) {
-    return amount ? `${amount}` : '';
-  }
-  
-  if (!amount && !unit) return '';
-  const unitLabel = unit ? UNIT_LABELS[unit] || unit.toLowerCase() : '';
-  if (!amount) return unitLabel;
-  return `${amount} ${unitLabel}`.trim();
 }
 
 // Helper to check if an item is indeterminate (works for both CombinedItem and ShoppingItem)
@@ -644,136 +632,6 @@ const Shopping = () => {
       )}
     </div>
   );
-};
-
-// Separate component for individual item row to use hooks
-interface ShoppingItemRowProps {
-  item: CombinedItem | ShoppingItem;
-  itemId: string;
-  itemIds: string[];
-  itemKey: string;
-  isIndeterminate: boolean;
-  isCombined: boolean;
-  stores: Store[];
-  storeDialogItemKey: string | null;
-  setStoreDialogItemKey: (key: string | null) => void;
-  handleItemClick: (itemId: string) => void;
-  handleCheck: (itemIds: string[], isChecked: boolean) => void;
-  handleItemStoreToggle: (itemIds: string[], storeId: string) => void;
-}
-
-const ShoppingItemRow = ({
-  item,
-  itemId,
-  itemIds,
-  itemKey,
-  isIndeterminate,
-  isCombined,
-  stores,
-  storeDialogItemKey,
-  setStoreDialogItemKey,
-  handleItemClick,
-  handleCheck,
-  handleItemStoreToggle,
-}: ShoppingItemRowProps) => {
-  const isDialogOpen = storeDialogItemKey === itemKey;
-  const checkboxRef = useRef<HTMLInputElement>(null);
-
-  // Set indeterminate property on checkbox
-  useEffect(() => {
-    if (checkboxRef.current) {
-      checkboxRef.current.indeterminate = isIndeterminate;
-    }
-  }, [isIndeterminate]);
-
-  return (
-    <div
-      className={`${styles.item} ${item.isChecked ? styles.itemChecked : ''}`}
-      onClick={() => handleItemClick(itemId)}
-    >
-      <input
-        ref={checkboxRef}
-        type="checkbox"
-        className={styles.checkbox}
-        checked={item.isChecked}
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => {
-          // If indeterminate, check all source items
-          const newCheckedState = isIndeterminate ? true : e.target.checked;
-          handleCheck(itemIds, newCheckedState);
-        }}
-      />
-        <div className={styles.itemDetails}>
-          <div className={styles.itemMainRow}>
-            <div className={styles.itemNameRow}>
-              <span className={styles.itemText}>
-                {formatAmount(item.amount, item.unit) && `${formatAmount(item.amount, item.unit)} `}
-                {item.name}
-              </span>
-            </div>
-            <div className={styles.itemStoreSection}>
-              <button
-                className={styles.addStoreButton}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setStoreDialogItemKey(isDialogOpen ? null : itemKey);
-                }}
-              >
-                <i className="fa-solid fa-bookmark" />
-              </button>
-              {item.storeTagIds.length > 0 && (
-                <div className={styles.itemStoreTags}>
-                  {item.storeTagIds.map((storeId) => {
-                    const store = stores.find((s) => s.id === storeId);
-                    if (!store) return null;
-                    return (
-                      <span
-                        key={storeId}
-                        className={styles.itemStoreTag}
-                        style={{ backgroundColor: store.color }}
-                      >
-                        {store.abbreviation}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-              {isDialogOpen && (
-                <div className={styles.storeDialog} onClick={(e) => e.stopPropagation()}>
-                  <div className={styles.storeDialogContent}>
-                    {[...stores]
-                      .sort((a, b) => a.sortOrder - b.sortOrder)
-                      .map((store) => {
-                        const isSelected = item.storeTagIds.includes(store.id);
-                        return (
-                          <button
-                            key={store.id}
-                            className={`${styles.storeDialogOption} ${
-                              isSelected ? styles.storeDialogOptionSelected : ''
-                            }`}
-                            style={{
-                              backgroundColor: isSelected ? store.color : `${store.color}15`,
-                              color: isSelected ? 'white' : store.color,
-                            }}
-                            onClick={() => handleItemStoreToggle(itemIds, store.id)}
-                          >
-                            {store.displayName}
-                          </button>
-                        );
-                      })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          {isCombined && (item as CombinedItem).sourceItemIds.length > 1 && (
-            <div className={styles.itemSource}>
-              from {(item as CombinedItem).sourceItemIds.length} sources
-            </div>
-          )}
-        </div>
-      </div>
-    );
 };
 
 export default Shopping;

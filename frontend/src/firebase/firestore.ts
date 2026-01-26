@@ -321,7 +321,7 @@ export const initializeDefaultStores = async (familyId: string): Promise<void> =
     { displayName: 'Fred Meyer', abbreviation: 'FM', color: '#0066CC', sortOrder: 1 },
     { displayName: "Trader Joe's", abbreviation: 'TJ', color: '#D32F2F', sortOrder: 2 },
     { displayName: 'New Seasons', abbreviation: 'NS', color: '#388E3C', sortOrder: 3 },
-    { displayName: 'Costco', abbreviation: 'CO', color: '#E64A19', sortOrder: 4 },
+    { displayName: 'Costco', abbreviation: 'CO', color: '#FF8C00', sortOrder: 4 },
   ];
 
   for (const store of defaultStores) {

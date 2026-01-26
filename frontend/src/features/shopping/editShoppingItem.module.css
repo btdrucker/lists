@@ -169,7 +169,6 @@
 
 .storeTagSelected {
   opacity: 1;
-  border-color: rgba(0, 0, 0, 0.3);
 }
 
 /* Loading and error states */
