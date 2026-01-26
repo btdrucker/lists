@@ -28,17 +28,59 @@ const UNIT_LABELS: Record<string, string> = {
   [UnitValue.TO_TASTE]: 'to taste',
 };
 
+// Convert decimal number to fraction character display
+function decimalToFraction(decimal: number): string {
+  // Handle zero or very small numbers
+  if (decimal < 0.001) return '0';
+  
+  // Separate whole and fractional parts
+  const whole = Math.floor(decimal);
+  const fractional = decimal - whole;
+  
+  // Handle whole numbers (with small tolerance for floating point errors)
+  if (fractional < 0.01) return whole.toString();
+  
+  // Common fractions with their Unicode characters and decimal values
+  // Ordered by decimal value for clarity
+  const fractions = [
+    { decimal: 0.125, char: '⅛' },
+    { decimal: 0.2, char: '⅕' },
+    { decimal: 0.25, char: '¼' },
+    { decimal: 0.333, char: '⅓' },
+    { decimal: 0.375, char: '⅜' },
+    { decimal: 0.4, char: '⅖' },
+    { decimal: 0.5, char: '½' },
+    { decimal: 0.6, char: '⅗' },
+    { decimal: 0.625, char: '⅝' },
+    { decimal: 0.666, char: '⅔' },
+    { decimal: 0.75, char: '¾' },
+    { decimal: 0.8, char: '⅘' },
+    { decimal: 0.875, char: '⅞' },
+  ];
+  
+  // Find closest matching fraction (within tolerance)
+  const tolerance = 0.02;
+  const match = fractions.find(f => Math.abs(fractional - f.decimal) < tolerance);
+  
+  if (match) {
+    return whole > 0 ? `${whole}${match.char}` : match.char;
+  }
+  
+  // If no match, fall back to decimal with 2 decimal places
+  return decimal.toFixed(2).replace(/\.?0+$/, '');
+}
+
 // Format amount and unit for display
 function formatAmount(amount: number | null, unit: string | null): string {
   // Treat null and EACH the same - just show amount without unit label
   if (unit === UnitValue.EACH || unit === null) {
-    return amount ? `${amount}` : '';
+    return amount ? decimalToFraction(amount) : '';
   }
   
   if (!amount && !unit) return '';
   const unitLabel = unit ? UNIT_LABELS[unit] || unit.toLowerCase() : '';
   if (!amount) return unitLabel;
-  return `${amount} ${unitLabel}`.trim();
+  return `${decimalToFraction(amount)} ${unitLabel}`.trim();
 }
 
 interface ShoppingItemRowProps {
