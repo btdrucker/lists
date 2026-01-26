@@ -17,6 +17,7 @@ import type { RecipeWithAiMetadata } from '../../common/aiParsing';
 type UnitValueType = typeof UnitValue[keyof typeof UnitValue];
 import RecipePicker from '../../common/components/RecipePicker';
 import ShoppingItemRow from './ShoppingItemRow';
+import { signOut } from '../../firebase/auth';
 import styles from './shopping.module.css';
 
 const FAMILY_ID = 'default-family';
@@ -163,6 +164,7 @@ const Shopping = () => {
   const selectedStoreIds = useAppSelector((state) => state.shopping?.selectedStoreIds || []);
   const [showRecipePicker, setShowRecipePicker] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [showMenu, setShowMenu] = useState(false);
 
   // Manual item entry state
   const [newItemName, setNewItemName] = useState('');
@@ -432,12 +434,53 @@ const Shopping = () => {
       <div className={styles.header}>
         <h1>Shopping List</h1>
         <div className={styles.headerButtons}>
-          <button
-            className={styles.primaryButton}
-            onClick={() => setShowRecipePicker(true)}
-          >
-            <i className="fa-solid fa-plus" /> Add Recipes
-          </button>
+          <div className={styles.menuContainer}>
+            <button
+              className={styles.menuButton}
+              onClick={() => setShowMenu(!showMenu)}
+            >
+              <i className="fa-solid fa-ellipsis-vertical" />
+            </button>
+            {showMenu && (
+              <div className={styles.menuDropdown}>
+                <button
+                  className={styles.menuItem}
+                  onClick={() => {
+                    setShowRecipePicker(true);
+                    setShowMenu(false);
+                  }}
+                >
+                  <i className="fa-solid fa-plus" /> Add Recipe
+                </button>
+                <button
+                  className={`${styles.menuItem} ${checkedItemIds.length === 0 ? styles.menuItemDisabled : ''}`}
+                  onClick={() => {
+                    if (checkedItemIds.length > 0) {
+                      handleBulkDelete();
+                      setShowMenu(false);
+                    }
+                  }}
+                  disabled={checkedItemIds.length === 0}
+                >
+                  <i className="fa-solid fa-trash" /> Delete Checked{checkedItemIds.length > 0 ? ` (${checkedItemCount})` : ''}
+                </button>
+                <div className={styles.menuDivider} />
+                <button
+                  className={`${styles.menuItem} ${styles.menuItemSignOut}`}
+                  onClick={async () => {
+                    try {
+                      await signOut();
+                      setShowMenu(false);
+                    } catch (error) {
+                      console.error('Error signing out:', error);
+                    }
+                  }}
+                >
+                  <i className="fa-solid fa-arrow-right-from-bracket" /> Sign Out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -464,18 +507,22 @@ const Shopping = () => {
             {[...stores]
               .sort((a, b) => a.sortOrder - b.sortOrder)
               .map((store) => (
-                <button
+                <div
                   key={store.id}
-                  className={`${styles.storeTag} ${
-                    selectedStoreIds.includes(store.id)
-                      ? styles.storeTagSelected
-                      : ''
-                  }`}
-                  style={{ backgroundColor: store.color, color: 'white' }}
+                  className={styles.storeTagWrapper}
                   onClick={() => handleStoreToggle(store.id)}
                 >
-                  {store.abbreviation}
-                </button>
+                  <button
+                    className={`${styles.storeTag} ${
+                      selectedStoreIds.includes(store.id)
+                        ? styles.storeTagSelected
+                        : ''
+                    }`}
+                    style={{ backgroundColor: store.color, color: 'white' }}
+                  >
+                    {store.abbreviation}
+                  </button>
+                </div>
               ))}
           </div>
         )}
@@ -535,14 +582,6 @@ const Shopping = () => {
             {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}
             {selectedStoreIds.length > 0 && ` (filtered)`}
           </span>
-          <button
-            className={styles.bulkDeleteButton}
-            onClick={handleBulkDelete}
-            disabled={checkedItemIds.length === 0}
-          >
-            <i className="fa-solid fa-trash" /> Delete Checked (
-            {checkedItemCount})
-          </button>
         </div>
       )}
 
@@ -551,14 +590,6 @@ const Shopping = () => {
         <div className={styles.empty}>
           <p>No items yet</p>
           <p>Add items manually or from your recipes</p>
-          <div className={styles.emptyActions}>
-            <button
-              className={styles.primaryButton}
-              onClick={() => setShowRecipePicker(true)}
-            >
-              Add from Recipes
-            </button>
-          </div>
         </div>
       )}
 
@@ -623,11 +654,19 @@ const Shopping = () => {
         onSelect={handleRecipesSelected}
       />
 
-      {/* Backdrop for store dialog */}
+      {/* Modal backdrop for store dialog */}
       {storeDialogItemKey && (
         <div
-          className={styles.dialogBackdrop}
+          className={styles.modalBackdrop}
           onClick={() => setStoreDialogItemKey(null)}
+        />
+      )}
+
+      {/* Backdrop for menu */}
+      {showMenu && (
+        <div
+          className={styles.menuBackdrop}
+          onClick={() => setShowMenu(false)}
         />
       )}
     </div>

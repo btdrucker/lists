@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { UnitValue } from '../../types';
 import type { ShoppingItem, Store, CombinedItem } from '../../types';
 import StoreTagDialog from './StoreTagDialog';
@@ -72,6 +72,8 @@ const ShoppingItemRow = ({
 }: ShoppingItemRowProps) => {
   const isDialogOpen = storeDialogItemKey === itemKey;
   const checkboxRef = useRef<HTMLInputElement>(null);
+  const storeSectionRef = useRef<HTMLDivElement>(null);
+  const [showDialogAbove, setShowDialogAbove] = useState<boolean | null>(null);
 
   // Set indeterminate property on checkbox
   useEffect(() => {
@@ -80,23 +82,44 @@ const ShoppingItemRow = ({
     }
   }, [isIndeterminate]);
 
+  // Calculate dialog position when it opens
+  useEffect(() => {
+    if (isDialogOpen && storeSectionRef.current) {
+      const rect = storeSectionRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const estimatedDialogHeight = 250; // Rough estimate
+      
+      // Show above if not enough space below and there's more space above
+      setShowDialogAbove(spaceBelow < estimatedDialogHeight && rect.top > spaceBelow);
+    } else if (!isDialogOpen) {
+      // Reset when dialog closes
+      setShowDialogAbove(null);
+    }
+  }, [isDialogOpen]);
+
   return (
     <div
       className={`${styles.item} ${item.isChecked ? styles.itemChecked : ''}`}
       onClick={() => handleItemClick(itemId)}
     >
-      <input
-        ref={checkboxRef}
-        type="checkbox"
-        className={styles.checkbox}
-        checked={item.isChecked}
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => {
-          // If indeterminate, check all source items
-          const newCheckedState = isIndeterminate ? true : e.target.checked;
+      <div
+        className={styles.checkboxWrapper}
+        onClick={(e) => {
+          e.stopPropagation();
+          // Trigger checkbox change
+          const newCheckedState = isIndeterminate ? true : !item.isChecked;
           handleCheck(itemIds, newCheckedState);
         }}
-      />
+      >
+        <input
+          ref={checkboxRef}
+          type="checkbox"
+          className={styles.checkbox}
+          checked={item.isChecked}
+          onChange={() => {}} // Controlled by wrapper click
+          tabIndex={-1} // Wrapper handles interaction
+        />
+      </div>
       <div className={styles.itemDetails}>
         <div className={styles.itemMainRow}>
           <div className={styles.itemNameRow}>
@@ -105,16 +128,20 @@ const ShoppingItemRow = ({
               {item.name}
             </span>
           </div>
-          <div className={styles.itemStoreSection}>
-            <button
-              className={styles.addStoreButton}
+          <div className={styles.itemStoreSection} ref={storeSectionRef}>
+            <div
+              className={`${styles.addStoreButtonWrapper} ${item.isChecked ? styles.addStoreButtonWrapperDisabled : ''}`}
               onClick={(e) => {
                 e.stopPropagation();
-                setStoreDialogItemKey(isDialogOpen ? null : itemKey);
+                if (!item.isChecked) {
+                  setStoreDialogItemKey(isDialogOpen ? null : itemKey);
+                }
               }}
             >
-              <i className="fa-solid fa-bookmark" />
-            </button>
+              <button className={styles.addStoreButton} disabled={item.isChecked}>
+                <i className="fa-solid fa-bookmark" />
+              </button>
+            </div>
             {item.storeTagIds.length > 0 && (
               <div className={styles.itemStoreTags}>
                 {item.storeTagIds.map((storeId) => {
@@ -138,6 +165,8 @@ const ShoppingItemRow = ({
                 selectedStoreIds={item.storeTagIds}
                 itemIds={itemIds}
                 onStoreToggle={handleItemStoreToggle}
+                showAbove={showDialogAbove === true}
+                isPositioned={showDialogAbove !== null}
               />
             )}
           </div>

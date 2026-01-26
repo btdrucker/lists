@@ -3,11 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useOnlineStatus } from '../../common/hooks';
 import { addRecipe } from '../recipe-list/slice.ts';
 import { getIdToken } from '../../firebase/auth';
+import Dialog from '../../common/components/Dialog';
 import styles from './recipeStart.module.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-const RecipeStart = () => {
+interface RecipeStartProps {
+  isModal?: boolean;
+  onClose?: () => void;
+}
+
+const RecipeStart = ({ isModal = false, onClose }: RecipeStartProps) => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const isOnline = useOnlineStatus();
@@ -93,18 +99,15 @@ const RecipeStart = () => {
       );
       if (!confirmed) return;
     }
-    navigate('/recipe-list');
+    if (isModal && onClose) {
+      onClose();
+    } else {
+      navigate('/recipe-list');
+    }
   };
 
-  return (
-    <div className={styles.container}>
-      <header className={styles.header}>
-        <h1>Add EditRecipe</h1>
-        <button onClick={handleCancel} className={styles.cancelButton}>
-          Cancel
-        </button>
-      </header>
-
+  const content = (
+    <>
       {error && <div className={styles.error}>{error}</div>}
 
       <div className={styles.content}>
@@ -133,7 +136,7 @@ const RecipeStart = () => {
               className={styles.primaryButton}
               title={!isOnline ? 'Scraping requires an internet connection' : ''}
             >
-              {isScraping ? 'Scraping...' : isOnline ? 'Scrape EditRecipe' : 'Offline - Cannot Scrape'}
+              {isScraping ? 'Scraping...' : isOnline ? 'Scrape Recipe' : 'Offline - Cannot Scrape'}
             </button>
           </div>
         </div>
@@ -153,7 +156,7 @@ const RecipeStart = () => {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="EditRecipe title"
+              placeholder="Recipe title"
               className={styles.input}
               onKeyUp={(e) => {
                 if (e.key === 'Enter' && title.trim()) {
@@ -171,8 +174,29 @@ const RecipeStart = () => {
           </div>
         </div>
       </div>
+    </>
+  );
+
+  if (isModal) {
+    return (
+      <Dialog isOpen={true} onClose={handleCancel} title="Add Recipe" maxWidth="lg">
+        {content}
+      </Dialog>
+    );
+  }
+
+  return (
+    <div className={styles.container}>
+      <header className={styles.header}>
+        <h1>Add Recipe</h1>
+        <button onClick={handleCancel} className={styles.cancelButton}>
+          Cancel
+        </button>
+      </header>
+      {content}
     </div>
   );
 };
 
 export default RecipeStart;
+

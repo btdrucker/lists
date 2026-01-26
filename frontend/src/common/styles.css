@@ -45,6 +45,10 @@
   /* Shadows */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.2);
+  
+  /* Modal */
+  --modal-backdrop: rgba(0, 0, 0, 0.5);
   
   /* Transitions */
   --transition-fast: 0.2s;
@@ -54,6 +58,19 @@
      Use these values consistently across all CSS files:
      - Mobile/Tablet: @media (max-width: 640px)
   */
+}
+
+/* Common title style for main screens */
+.pageTitle {
+  font-size: 28px;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 640px) {
+  .pageTitle {
+    font-size: 24px;
+  }
 }
 
 /* Button modifier classes */

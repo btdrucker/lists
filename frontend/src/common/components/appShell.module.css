@@ -8,9 +8,13 @@
 
 .nav {
   width: 200px;
+  height: 100vh;
   background: var(--color-bg-white);
   border-right: 1px solid var(--color-border-light);
   padding: var(--spacing-md) var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .navList {
@@ -50,6 +54,28 @@
   text-align: center;
 }
 
+.signOutButton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  text-align: left;
+  width: 100%;
+}
+
+.signOutButton:hover {
+  background: var(--color-bg-light);
+  color: var(--color-text-primary);
+}
+
 .content {
   flex: 1;
   min-width: 0;
@@ -66,16 +92,24 @@
     left: 0;
     right: 0;
     width: 100%;
+    height: auto;
     border-right: none;
     border-top: none;
     padding: var(--spacing-xs) var(--spacing-sm);
     z-index: 1000;
     background: transparent;
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .signOutButton {
+    display: none;
   }
 
   .navList {
     flex-direction: row;
-    justify-content: space-around;
+    gap: var(--spacing-xs);
+    width: 100%;
   }
 
   .navLink {

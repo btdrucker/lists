@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useAppSelector } from '../hooks';
+import Dialog from './Dialog';
 import styles from './recipePicker.module.css';
 
 interface RecipePickerProps {
@@ -11,12 +12,12 @@ interface RecipePickerProps {
 const RecipePicker = ({ isOpen, onClose, onSelect }: RecipePickerProps) => {
   const recipes = useAppSelector((state) => state.recipes?.recipes || []);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Reset state and close
   const handleClose = useCallback(() => {
     setSearchTerm('');
-    setSelectedIds([]);
+    setSelectedId(null);
     onClose();
   }, [onClose]);
 
@@ -31,125 +32,68 @@ const RecipePicker = ({ isOpen, onClose, onSelect }: RecipePickerProps) => {
     );
   }, [recipes, searchTerm]);
 
-  // Toggle recipe selection
-  const handleToggle = useCallback((recipeId: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(recipeId)
-        ? prev.filter((id) => id !== recipeId)
-        : [...prev, recipeId]
-    );
-  }, []);
-
-  // Handle confirm
-  const handleConfirm = useCallback(() => {
-    if (selectedIds.length > 0) {
-      onSelect(selectedIds);
-    }
-    handleClose();
-  }, [selectedIds, onSelect, handleClose]);
-
-  // Handle click outside
-  const handleOverlayClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.target === e.currentTarget) {
-        handleClose();
-      }
-    },
-    [handleClose]
-  );
-
-  // Handle escape key
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, handleClose]);
-
-  if (!isOpen) return null;
+  // Handle recipe selection - highlight briefly then add
+  const handleSelect = useCallback((recipeId: string) => {
+    setSelectedId(recipeId);
+    // Brief highlight then add and close
+    setTimeout(() => {
+      onSelect([recipeId]);
+      handleClose();
+    }, 200);
+  }, [onSelect, handleClose]);
 
   return (
-    <div className={styles.overlay} onClick={handleOverlayClick}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <header className={styles.header}>
-          <h2>Add Recipes</h2>
-          <button className={styles.closeButton} onClick={handleClose}>
-            <i className="fa-solid fa-xmark" />
-          </button>
-        </header>
+    <Dialog 
+      isOpen={isOpen} 
+      onClose={handleClose} 
+      title="Add Recipe" 
+      maxWidth="md"
+      toolbar={
+        <input
+          type="search"
+          className={styles.searchInput}
+          placeholder="Search recipes..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          autoFocus
+        />
+      }
+    >
+      <div className={styles.recipeList}>
+        {filteredRecipes.length === 0 && (
+          <div className={styles.emptyState}>
+            {searchTerm ? (
+              <>
+                <p>No recipes found</p>
+                <p>Try a different search term</p>
+              </>
+            ) : (
+              <>
+                <p>No recipes yet</p>
+                <p>Add recipes to your collection first</p>
+              </>
+            )}
+          </div>
+        )}
 
-        <div className={styles.searchSection}>
-          <input
-            type="search"
-            className={styles.searchInput}
-            placeholder="Search recipes..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            autoFocus
-          />
-        </div>
-
-        <div className={styles.recipeList}>
-          {filteredRecipes.length === 0 && (
-            <div className={styles.emptyState}>
-              {searchTerm ? (
-                <>
-                  <p>No recipes found</p>
-                  <p>Try a different search term</p>
-                </>
-              ) : (
-                <>
-                  <p>No recipes yet</p>
-                  <p>Add recipes to your collection first</p>
-                </>
-              )}
-            </div>
-          )}
-
-          {filteredRecipes.map((recipe) => (
-            <label
-              key={recipe.id}
-              className={`${styles.recipeItem} ${
-                selectedIds.includes(recipe.id) ? styles.recipeItemSelected : ''
-              }`}
-            >
-              <input
-                type="checkbox"
-                className={styles.recipeCheckbox}
-                checked={selectedIds.includes(recipe.id)}
-                onChange={() => handleToggle(recipe.id)}
-              />
-              <div className={styles.recipeInfo}>
-                <p className={styles.recipeTitle}>{recipe.title}</p>
-                <p className={styles.recipeIngredients}>
-                  {recipe.ingredients?.length || 0} ingredients
-                </p>
-              </div>
-            </label>
-          ))}
-        </div>
-
-        <footer className={styles.footer}>
-          <span className={styles.selectedCount}>
-            {selectedIds.length} recipe{selectedIds.length !== 1 ? 's' : ''}{' '}
-            selected
-          </span>
-          <button
-            className={styles.addButton}
-            onClick={handleConfirm}
-            disabled={selectedIds.length === 0}
+        {filteredRecipes.map((recipe) => (
+          <div
+            key={recipe.id}
+            className={`${styles.recipeItem} ${
+              selectedId === recipe.id ? styles.recipeItemSelected : ''
+            }`}
+            onClick={() => handleSelect(recipe.id)}
           >
-            Add to List
-          </button>
-        </footer>
+            <div className={styles.recipeInfo}>
+              <p className={styles.recipeTitle}>{recipe.title}</p>
+              <p className={styles.recipeIngredients}>
+                {recipe.ingredients?.length || 0} ingredients
+              </p>
+            </div>
+          </div>
+        ))}
       </div>
-    </div>
+    </Dialog>
   );
 };
 

@@ -50,14 +50,11 @@
 }
 
 .option {
-  background: var(--color-bg-white);
-  padding: var(--spacing-xl);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-sm);
+  padding: 0;
 }
 
 .optionHeader {
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
 }
 
 .optionHeader h2 {
@@ -142,10 +139,6 @@
 
   .header h1 {
     font-size: 24px;
-  }
-
-  .option {
-    padding: var(--spacing-lg);
   }
 
   .optionHeader h2 {

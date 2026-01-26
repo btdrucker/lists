@@ -1,0 +1,67 @@
+---
+description: Mobile accessibility requirements for touch targets
+globs: **/*.css
+alwaysApply: false
+---
+
+# Mobile Accessibility - Touch Target Minimum Size
+
+All interactive elements (buttons, checkboxes, links) must have a minimum touch area of **48px × 48px** for mobile accessibility.
+
+## Implementation Pattern
+
+The visual element can remain small, but extend the touch area using padding and negative margins:
+
+```css
+/* Example: 24px button with 48px touch area */
+.button {
+  width: 24px;
+  height: 24px;
+  /* Extend touch area to 48px */
+  padding: 12px;  /* 24 + (12 × 2) = 48px */
+  margin: -12px;  /* Negative margin to prevent layout shift */
+}
+
+/* Example: 22px checkbox with 48px touch area */
+.checkbox {
+  width: 22px;
+  height: 22px;
+  /* Extend touch area to 48px */
+  padding: 13px;  /* 22 + (13 × 2) = 48px */
+  margin: -13px;
+}
+
+/* Example: 30px tag with 48px touch area */
+.tag {
+  min-width: 30px;
+  height: 30px;
+  /* Extend touch area to 48px */
+  padding: 9px 14px;  /* vertical: 30 + (9 × 2) = 48px */
+  margin: -9px -9px;
+}
+```
+
+## Spacing Considerations
+
+When buttons have expanded touch areas, increase spacing between them to prevent overlapping touch targets:
+
+```css
+/* ❌ BAD: Touch areas overlap with 6px gap */
+.buttonGroup {
+  gap: 6px;
+}
+
+/* ✅ GOOD: Adequate spacing with 12px gap */
+.buttonGroup {
+  gap: 12px;
+}
+```
+
+## Common Interactive Elements
+
+Apply this pattern to:
+- Checkboxes
+- Icon buttons (bookmark, expand, close, etc.)
+- Filter/tag buttons
+- Small action buttons
+- Toggle switches

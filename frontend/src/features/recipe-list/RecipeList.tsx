@@ -5,8 +5,8 @@ import { setRecipes, setLoading, removeRecipe } from './slice.ts';
 import { clearAuth } from '../auth/slice';
 import { getAllRecipes, deleteRecipe } from '../../firebase/firestore';
 import { signOut } from '../../firebase/auth';
-import IconButton from '../../common/components/IconButton.tsx';
 import { InstallButton } from '../../common/components/InstallButton';
+import RecipeStart from '../recipe/RecipeStart';
 import styles from './recipe-list.module.css';
 
 const RecipeList = () => {
@@ -16,6 +16,8 @@ const RecipeList = () => {
   const user = useAppSelector((state) => state.auth?.user);
   const hasLoadedRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showMenu, setShowMenu] = useState(false);
+  const [showAddRecipe, setShowAddRecipe] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -122,23 +124,54 @@ const RecipeList = () => {
       <header className={styles.header}>
         <h1>My Recipes</h1>
         <div className={styles.headerButtons}>
-          <IconButton
-            onClick={() => navigate('/recipe-start')}
-            icon="fa-plus"
-            hideTextOnMobile={true}
-            className={styles.addButton}
-          >
-            Add Recipe
-          </IconButton>
           <InstallButton />
-          <IconButton
-            onClick={handleSignOut}
-            icon="fa-sign-out"
-            hideTextOnMobile={true}
-            className={styles.signOutButton}
+          
+          {/* Desktop: Plus button */}
+          <button
+            className={styles.addButtonDesktop}
+            onClick={() => setShowAddRecipe(true)}
+            title="Add Recipe"
           >
-            Sign Out
-          </IconButton>
+            <i className="fa-solid fa-plus" />
+          </button>
+
+          {/* Mobile: Menu */}
+          <div className={styles.menuContainer}>
+            <button
+              className={styles.menuButton}
+              onClick={() => setShowMenu(!showMenu)}
+              aria-label="Menu"
+            >
+              <i className="fa-solid fa-ellipsis-vertical" />
+            </button>
+            {showMenu && (
+              <div className={styles.menuDropdown}>
+                <button
+                  className={styles.menuItem}
+                  onClick={() => {
+                    setShowAddRecipe(true);
+                    setShowMenu(false);
+                  }}
+                >
+                  <i className="fa-solid fa-plus" /> Add Recipe
+                </button>
+                <div className={styles.menuDivider} />
+                <button
+                  className={styles.menuItem}
+                  onClick={async () => {
+                    try {
+                      await handleSignOut();
+                      setShowMenu(false);
+                    } catch (error) {
+                      console.error('Error signing out:', error);
+                    }
+                  }}
+                >
+                  <i className="fa-solid fa-arrow-right-from-bracket" /> Sign Out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -239,6 +272,22 @@ const RecipeList = () => {
       <footer className={styles.footer}>
         <p>Logged in as {user?.email}</p>
       </footer>
+
+      {/* Backdrop for menu */}
+      {showMenu && (
+        <div
+          className={styles.menuBackdrop}
+          onClick={() => setShowMenu(false)}
+        />
+      )}
+
+      {/* Add Recipe Modal */}
+      {showAddRecipe && (
+        <RecipeStart
+          isModal={true}
+          onClose={() => setShowAddRecipe(false)}
+        />
+      )}
     </div>
   );
 };

@@ -1,0 +1,131 @@
+@import '../styles.css';
+
+.backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--color-bg-white);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl);
+  width: calc(100% - 32px);
+  max-height: 85vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 1001;
+  box-shadow: var(--shadow-xl);
+  animation: slideUp 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog-sm {
+  max-width: 400px;
+}
+
+.dialog-md {
+  max-width: 550px;
+}
+
+.dialog-lg {
+  max-width: 700px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  flex-shrink: 0;
+}
+
+.toolbar {
+  margin-bottom: var(--spacing-md);
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.closeButton {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-bg-light);
+  color: var(--color-text-secondary);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.closeButton:hover {
+  background: var(--color-border-medium);
+  color: var(--color-text-primary);
+}
+
+.closeButton:active {
+  transform: scale(0.95);
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -45%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .dialog {
+    padding: var(--spacing-lg);
+    width: calc(100% - 24px);
+    max-height: 90vh;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+
+  .header {
+    margin-bottom: var(--spacing-md);
+  }
+}

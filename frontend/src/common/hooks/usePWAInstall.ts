@@ -27,7 +27,7 @@ export function usePWAInstall(): UsePWAInstallReturn {
 
     // Check if device is mobile
     const checkMobile = () => {
-      const isMobileDevice = window.matchMedia('(max-width: 768px)').matches ||
+      const isMobileDevice = window.matchMedia('(max-width: 640px)').matches ||
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       setIsMobile(isMobileDevice);
     };
@@ -53,7 +53,7 @@ export function usePWAInstall(): UsePWAInstallReturn {
     window.addEventListener('appinstalled', handleAppInstalled);
 
     // Also listen for media query changes
-    const mobileQuery = window.matchMedia('(max-width: 768px)');
+    const mobileQuery = window.matchMedia('(max-width: 640px)');
     const handleMobileChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mobileQuery.addEventListener('change', handleMobileChange);
 
