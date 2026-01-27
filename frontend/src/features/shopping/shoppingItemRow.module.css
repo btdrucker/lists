@@ -7,7 +7,8 @@
   gap: var(--spacing-md);
   padding: var(--spacing-md);
   background: var(--color-bg-white);
-  border-radius: var(--radius-md);
+  border: none;
+  border-radius: 0;
   cursor: pointer;
   transition: background var(--transition-fast);
 }
@@ -148,10 +149,3 @@
   margin-top: 2px;
 }
 
-/* Mobile responsive */
-@media (max-width: 640px) {
-  .item {
-    padding: var(--spacing-md) !important;
-    border-radius: 0;
-  }
-}

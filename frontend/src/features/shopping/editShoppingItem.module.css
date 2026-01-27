@@ -50,32 +50,12 @@
   box-shadow: var(--shadow-sm);
 }
 
-.sourceHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-md);
-  padding-bottom: var(--spacing-sm);
-  border-bottom: 1px solid var(--color-border-light);
-}
-
-.sourceLabel {
+.sourceInfo {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border-light);
   font-size: 13px;
-  font-weight: 600;
   color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.sourceLabelManual {
-  color: var(--color-text-tertiary);
-  font-style: italic;
-}
-
-.sourceRecipe {
-  font-size: 13px;
-  color: var(--color-primary);
-  font-weight: 500;
 }
 
 .formRow {
@@ -158,7 +138,7 @@
 .storeTag {
   padding: 8px 14px;
   border: 2px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: 9999px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;

@@ -121,73 +121,70 @@ const RecipeList = () => {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <h1>My Recipes</h1>
-        <div className={styles.headerButtons}>
-          <InstallButton />
-          
-          {/* Desktop: Plus button */}
-          <button
-            className={styles.addButtonDesktop}
-            onClick={() => setShowAddRecipe(true)}
-            title="Add Recipe"
-          >
-            <i className="fa-solid fa-plus" />
-          </button>
-
-          {/* Mobile: Menu */}
-          <div className={styles.menuContainer}>
+      <div className={styles.stickyHeader}>
+        <header className={styles.header}>
+          <h1>My Recipes</h1>
+          <div className={styles.headerButtons}>
+            <InstallButton />
+            
+            {/* Desktop: Plus button */}
             <button
-              className={styles.menuButton}
-              onClick={() => setShowMenu(!showMenu)}
-              aria-label="Menu"
+              className={styles.addButtonDesktop}
+              onClick={() => setShowAddRecipe(true)}
+              title="Add Recipe"
             >
-              <i className="fa-solid fa-ellipsis-vertical" />
+              <i className="fa-solid fa-plus" />
             </button>
-            {showMenu && (
-              <div className={styles.menuDropdown}>
-                <button
-                  className={styles.menuItem}
-                  onClick={() => {
-                    setShowAddRecipe(true);
-                    setShowMenu(false);
-                  }}
-                >
-                  <i className="fa-solid fa-plus" /> Add Recipe
-                </button>
-                <div className={styles.menuDivider} />
-                <button
-                  className={styles.menuItem}
-                  onClick={async () => {
-                    try {
-                      await handleSignOut();
-                      setShowMenu(false);
-                    } catch (error) {
-                      console.error('Error signing out:', error);
-                    }
-                  }}
-                >
-                  <i className="fa-solid fa-arrow-right-from-bracket" /> Sign Out
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
 
-      <div className={styles.searchSection}>
-        <input
-          type="search"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search recipes, ingredients, category, cuisine, or keywords..."
-          className={styles.searchInput}
-        />
-        {searchQuery.trim() && (
-          <div className={styles.searchInfo}>
-            Found {filteredRecipes.length} recipe{filteredRecipes.length !== 1 ? 's' : ''}
+            {/* Mobile: Menu */}
+            <div className={styles.menuContainer}>
+              <button
+                className={styles.menuButton}
+                onClick={() => setShowMenu(!showMenu)}
+                aria-label="Menu"
+              >
+                <i className="fa-solid fa-ellipsis-vertical" />
+              </button>
+              {showMenu && (
+                <div className={styles.menuDropdown}>
+                  <button
+                    className={styles.menuItem}
+                    onClick={() => {
+                      setShowAddRecipe(true);
+                      setShowMenu(false);
+                    }}
+                  >
+                    <i className="fa-solid fa-plus" /> Add Recipe
+                  </button>
+                  <div className={styles.menuDivider} />
+                  <button
+                    className={styles.menuItem}
+                    onClick={async () => {
+                      try {
+                        await handleSignOut();
+                        setShowMenu(false);
+                      } catch (error) {
+                        console.error('Error signing out:', error);
+                      }
+                    }}
+                  >
+                    <i className="fa-solid fa-arrow-right-from-bracket" /> Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </header>
+
+        <div className={styles.searchSection}>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search recipes, ingredients, category, cuisine, or keywords..."
+            className={styles.searchInput}
+          />
+        </div>
       </div>
 
       {filteredRecipes.length === 0 ? (

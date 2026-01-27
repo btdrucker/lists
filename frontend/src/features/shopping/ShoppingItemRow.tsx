@@ -93,7 +93,7 @@ interface ShoppingItemRowProps {
   stores: Store[];
   storeDialogItemKey: string | null;
   setStoreDialogItemKey: (key: string | null) => void;
-  handleItemClick: (itemId: string) => void;
+  handleItemClick: (itemId: string, isCombined: boolean) => void;
   handleCheck: (itemIds: string[], isChecked: boolean) => void;
   handleItemStoreToggle: (itemIds: string[], storeId: string) => void;
 }
@@ -142,7 +142,7 @@ const ShoppingItemRow = ({
   return (
     <div
       className={`${styles.item} ${item.isChecked ? styles.itemChecked : ''}`}
-      onClick={() => handleItemClick(itemId)}
+      onClick={() => handleItemClick(itemId, isCombined)}
     >
       <div
         className={styles.checkboxWrapper}

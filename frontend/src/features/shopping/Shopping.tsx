@@ -10,11 +10,9 @@ import {
   updateShoppingItem,
   bulkDeleteShoppingItems,
 } from '../../firebase/firestore';
-import { UnitValue } from '../../types';
 import type { ShoppingItem, Store, CombinedItem, GroupedItems, Recipe } from '../../types';
 import { ensureRecipeHasAiParsingAndUpdate, getEffectiveIngredientValues } from '../../common/aiParsing';
 import type { RecipeWithAiMetadata } from '../../common/aiParsing';
-type UnitValueType = typeof UnitValue[keyof typeof UnitValue];
 import RecipePicker from '../../common/components/RecipePicker';
 import ShoppingItemRow from './ShoppingItemRow';
 import { signOut } from '../../firebase/auth';
@@ -22,33 +20,23 @@ import styles from './shopping.module.css';
 
 const FAMILY_ID = 'default-family';
 
-// Unit labels for display
-const UNIT_LABELS: Record<string, string> = {
-  [UnitValue.CUP]: 'cup',
-  [UnitValue.TABLESPOON]: 'tbsp',
-  [UnitValue.TEASPOON]: 'tsp',
-  [UnitValue.FLUID_OUNCE]: 'fl oz',
-  [UnitValue.QUART]: 'qt',
-  [UnitValue.POUND]: 'lb',
-  [UnitValue.WEIGHT_OUNCE]: 'oz',
-  [UnitValue.EACH]: 'each',
-  [UnitValue.CLOVE]: 'clove',
-  [UnitValue.SLICE]: 'slice',
-  [UnitValue.CAN]: 'can',
-  [UnitValue.BUNCH]: 'bunch',
-  [UnitValue.HEAD]: 'head',
-  [UnitValue.STALK]: 'stalk',
-  [UnitValue.SPRIG]: 'sprig',
-  [UnitValue.LEAF]: 'leaf',
-  [UnitValue.PINCH]: 'pinch',
-  [UnitValue.DASH]: 'dash',
-  [UnitValue.HANDFUL]: 'handful',
-  [UnitValue.TO_TASTE]: 'to taste',
-};
+// Pantry items that users typically always have - skip adding to shopping list
+const PANTRY_ITEMS = new Set([
+  'water',
+  'salt',
+  'pepper',
+  'black pepper',
+]);
 
 // Normalize ingredient name for combining
 function normalizeItemName(name: string): string {
   return name.toLowerCase().trim();
+}
+
+// Check if ingredient is a pantry item that should be skipped
+function isPantryItem(ingredientName: string): boolean {
+  const normalized = normalizeItemName(ingredientName);
+  return PANTRY_ITEMS.has(normalized);
 }
 
 // Get unique key for item grouping
@@ -166,12 +154,6 @@ const Shopping = () => {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [showMenu, setShowMenu] = useState(false);
 
-  // Manual item entry state
-  const [newItemName, setNewItemName] = useState('');
-  const [newItemAmount, setNewItemAmount] = useState('');
-  const [newItemUnit, setNewItemUnit] = useState<UnitValueType | ''>('');
-  const [isAdding, setIsAdding] = useState(false);
-
   // Store tag dialog state
   const [storeDialogItemKey, setStoreDialogItemKey] = useState<string | null>(null);
 
@@ -266,32 +248,6 @@ const Shopping = () => {
   );
 
   // Add manual item
-  const handleAddItem = useCallback(async () => {
-    if (!newItemName.trim()) return;
-
-    setIsAdding(true);
-    try {
-      await addShoppingItem({
-        familyId: FAMILY_ID,
-        name: newItemName.trim(),
-        amount: newItemAmount ? parseFloat(newItemAmount) : null,
-        unit: newItemUnit || null,
-        isChecked: false,
-        storeTagIds: [],
-      });
-
-      // Clear form
-      setNewItemName('');
-      setNewItemAmount('');
-      setNewItemUnit('');
-    } catch (error) {
-      console.error('Error adding item:', error);
-      alert('Failed to add item');
-    } finally {
-      setIsAdding(false);
-    }
-  }, [newItemName, newItemAmount, newItemUnit]);
-
   // Bulk delete checked items
   const handleBulkDelete = useCallback(async () => {
     if (checkedItemIds.length === 0) return;
@@ -316,8 +272,10 @@ const Shopping = () => {
 
   // Navigate to edit screen
   const handleItemClick = useCallback(
-    (itemId: string) => {
-      navigate(`/shopping/edit/${itemId}`);
+    (itemId: string, isCombined: boolean) => {
+      // In simple mode (combined), edit all related items
+      // In grouped mode (not combined), edit only this specific item
+      navigate(`/shopping/edit/${itemId}${isCombined ? '' : '?single=true'}`);
     },
     [navigate]
   );
@@ -350,9 +308,29 @@ const Shopping = () => {
             dispatch
           );
 
+          // Get existing items from this recipe to avoid duplicates
+          const existingRecipeItems = items.filter(
+            (item) => item.sourceRecipeId === recipeId
+          );
+          const existingNames = new Set(
+            existingRecipeItems.map((item) => normalizeItemName(item.name))
+          );
+
+          let addedCount = 0;
+
           // Add ingredients to shopping list
           for (const ingredient of ingredientsToAdd) {
             const { amount, unit, name } = getEffectiveIngredientValues(ingredient);
+
+            // Skip pantry items (water, salt, pepper, etc.)
+            if (isPantryItem(name)) {
+              continue;
+            }
+
+            // Skip if already exists from this recipe
+            if (existingNames.has(normalizeItemName(name))) {
+              continue;
+            }
 
             await addShoppingItem({
               familyId: FAMILY_ID,
@@ -363,6 +341,12 @@ const Shopping = () => {
               storeTagIds: [],
               sourceRecipeId: recipeId,
             });
+            addedCount++;
+          }
+
+          // Notify user if nothing was added (recipe already fully on list)
+          if (addedCount === 0 && ingredientsToAdd.length > 0) {
+            alert(`"${recipe.title}" is already on your shopping list.`);
           }
         }
       } catch (error) {
@@ -370,7 +354,7 @@ const Shopping = () => {
         alert('Failed to add recipes');
       }
     },
-    [recipes, dispatch]
+    [recipes, items, dispatch]
   );
 
   // Toggle store tag for item(s)
@@ -431,183 +415,143 @@ const Shopping = () => {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1>Shopping List</h1>
-        <div className={styles.headerButtons}>
-          <div className={styles.menuContainer}>
-            <button
-              className={styles.menuButton}
-              onClick={() => setShowMenu(!showMenu)}
-            >
-              <i className="fa-solid fa-ellipsis-vertical" />
-            </button>
-            {showMenu && (
-              <div className={styles.menuDropdown}>
-                <button
-                  className={styles.menuItem}
-                  onClick={() => {
-                    setShowRecipePicker(true);
-                    setShowMenu(false);
-                  }}
-                >
-                  <i className="fa-solid fa-plus" /> Add Recipe
-                </button>
-                <button
-                  className={`${styles.menuItem} ${checkedItemIds.length === 0 ? styles.menuItemDisabled : ''}`}
-                  onClick={() => {
-                    if (checkedItemIds.length > 0) {
-                      handleBulkDelete();
-                      setShowMenu(false);
-                    }
-                  }}
-                  disabled={checkedItemIds.length === 0}
-                >
-                  <i className="fa-solid fa-trash" /> Delete Checked{checkedItemIds.length > 0 ? ` (${checkedItemCount})` : ''}
-                </button>
-                <div className={styles.menuDivider} />
-                <button
-                  className={`${styles.menuItem} ${styles.menuItemSignOut}`}
-                  onClick={async () => {
-                    try {
-                      await signOut();
-                      setShowMenu(false);
-                    } catch (error) {
-                      console.error('Error signing out:', error);
-                    }
-                  }}
-                >
-                  <i className="fa-solid fa-arrow-right-from-bracket" /> Sign Out
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Controls */}
-      <div className={styles.controls}>
-        <div className={styles.viewToggle}>
-          <button
-            className={`${styles.viewButton} ${viewMode === 'simple' ? styles.viewButtonActive : ''}`}
-            onClick={() => dispatch(setViewMode('simple'))}
-          >
-            Simple
-          </button>
-          <button
-            className={`${styles.viewButton} ${viewMode === 'recipe-grouped' ? styles.viewButtonActive : ''}`}
-            onClick={() => dispatch(setViewMode('recipe-grouped'))}
-          >
-            By Recipe
-          </button>
-        </div>
-
-        {stores.length > 0 && (
-          <div className={styles.storeFilter}>
-            <span className={styles.storeFilterLabel}>Stores:</span>
-            {[...stores]
-              .sort((a, b) => a.sortOrder - b.sortOrder)
-              .map((store) => (
-                <div
-                  key={store.id}
-                  className={styles.storeTagWrapper}
-                  onClick={() => handleStoreToggle(store.id)}
-                >
+      <div className={styles.stickyHeader}>
+        <div className={styles.header}>
+          <h1>Shopping List</h1>
+          <div className={styles.headerButtons}>
+            <div className={styles.menuContainer}>
+              <button
+                className={styles.menuButton}
+                onClick={() => setShowMenu(!showMenu)}
+              >
+                <i className="fa-solid fa-ellipsis-vertical" />
+              </button>
+              {showMenu && (
+                <div className={styles.menuDropdown}>
                   <button
-                    className={`${styles.storeTag} ${
-                      selectedStoreIds.includes(store.id)
-                        ? styles.storeTagSelected
-                        : ''
-                    }`}
-                    style={{ backgroundColor: store.color, color: 'white' }}
+                    className={styles.menuItem}
+                    onClick={() => {
+                      setShowRecipePicker(true);
+                      setShowMenu(false);
+                    }}
                   >
-                    {store.abbreviation}
+                    <i className="fa-solid fa-plus" /> Add Recipe
+                  </button>
+                  <button
+                    className={`${styles.menuItem} ${checkedItemIds.length === 0 ? styles.menuItemDisabled : ''}`}
+                    onClick={() => {
+                      if (checkedItemIds.length > 0) {
+                        handleBulkDelete();
+                        setShowMenu(false);
+                      }
+                    }}
+                    disabled={checkedItemIds.length === 0}
+                  >
+                    <i className="fa-solid fa-trash" /> Delete Checked{checkedItemIds.length > 0 ? ` (${checkedItemCount})` : ''}
+                  </button>
+                  <div className={styles.menuDivider} />
+                  <button
+                    className={`${styles.menuItem} ${styles.menuItemSignOut}`}
+                    onClick={async () => {
+                      try {
+                        await signOut();
+                        setShowMenu(false);
+                      } catch (error) {
+                        console.error('Error signing out:', error);
+                      }
+                    }}
+                  >
+                    <i className="fa-solid fa-arrow-right-from-bracket" /> Sign Out
                   </button>
                 </div>
-              ))}
+              )}
+            </div>
           </div>
-        )}
-      </div>
-
-      {/* Add item form */}
-      <div className={styles.addItemSection}>
-        <form
-          className={styles.addItemForm}
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleAddItem();
-          }}
-        >
-          <input
-            type="number"
-            className={`${styles.addItemInput} ${styles.amountInput}`}
-            placeholder="Qty"
-            value={newItemAmount}
-            onChange={(e) => setNewItemAmount(e.target.value)}
-            min="0"
-            step="any"
-          />
-          <select
-            className={styles.unitSelect}
-            value={newItemUnit}
-            onChange={(e) => setNewItemUnit(e.target.value as UnitValueType | '')}
-          >
-            <option value="">No unit</option>
-            {Object.entries(UNIT_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <input
-            type="text"
-            className={styles.addItemInput}
-            placeholder="Add item..."
-            value={newItemName}
-            onChange={(e) => setNewItemName(e.target.value)}
-          />
-          <button
-            type="submit"
-            className={styles.addItemButton}
-            disabled={!newItemName.trim() || isAdding}
-          >
-            Add
-          </button>
-        </form>
-      </div>
-
-      {/* Actions bar */}
-      {items.length > 0 && (
-        <div className={styles.actionsBar}>
-          <span className={styles.itemCount}>
-            {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''}
-            {selectedStoreIds.length > 0 && ` (filtered)`}
-          </span>
         </div>
-      )}
+
+        {/* Controls */}
+        <div className={styles.controls}>
+          <label className={styles.groupControl}>
+            <input
+              type="checkbox"
+              className={styles.groupCheckbox}
+              checked={viewMode === 'recipe-grouped'}
+              onChange={() => dispatch(setViewMode(viewMode === 'simple' ? 'recipe-grouped' : 'simple'))}
+            />
+            Group
+          </label>
+
+          {stores.length > 0 && (
+            <div className={styles.storeFilter}>
+              {[...stores]
+                .sort((a, b) => a.sortOrder - b.sortOrder)
+                .map((store) => (
+                  <div
+                    key={store.id}
+                    className={styles.storeTagWrapper}
+                    onClick={() => handleStoreToggle(store.id)}
+                  >
+                    <button
+                      className={`${styles.storeTag} ${
+                        selectedStoreIds.includes(store.id)
+                          ? styles.storeTagSelected
+                          : ''
+                      }`}
+                      style={{ backgroundColor: store.color, color: 'white' }}
+                    >
+                      {store.abbreviation}
+                    </button>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+
+      </div>
 
       {/* Empty state */}
       {items.length === 0 && (
-        <div className={styles.empty}>
-          <p>No items yet</p>
-          <p>Add items manually or from your recipes</p>
-        </div>
+        <>
+          <div className={styles.addItemSection}>
+            <button
+              className={styles.addItemButton}
+              onClick={() => navigate('/shopping/edit/add')}
+            >
+              + Add Item
+            </button>
+          </div>
+          <div className={styles.empty}>
+            <p>No items yet</p>
+            <p>Add items manually or from your recipes</p>
+          </div>
+        </>
       )}
 
       {/* Item list - Simple view */}
       {items.length > 0 && viewMode === 'simple' && (
-        <div className={styles.itemList}>
-          {combinedItems.map((item) => renderItem(item, true))}
-        </div>
+        <>
+          <div className={styles.addItemSection}>
+            <button
+              className={styles.addItemButton}
+              onClick={() => navigate('/shopping/edit/add')}
+            >
+              + Add Item
+            </button>
+          </div>
+          <div className={styles.itemList}>
+            {combinedItems.map((item) => renderItem(item, true))}
+          </div>
+        </>
       )}
 
       {/* Item list - Recipe grouped view */}
       {items.length > 0 && viewMode === 'recipe-grouped' && (
         <div>
           {/* Manual items first */}
-          {groupedItems.manualItems.length > 0 && (
-            <div className={styles.recipeGroup}>
-              <div
-                className={styles.recipeGroupHeader}
+          <div className={styles.recipeGroup}>
+            <div className={styles.recipeGroupHeader}>
+              <div 
+                className={styles.recipeGroupHeaderContent}
                 onClick={() => toggleGroupCollapse('manual')}
               >
                 <i
@@ -615,27 +559,35 @@ const Shopping = () => {
                 />
                 Non-Recipe Items
               </div>
-              {!collapsedGroups.has('manual') && (
-                <div className={styles.itemList}>
-                  {groupedItems.manualItems.map((item) =>
-                    renderItem(item, false)
-                  )}
-                </div>
-              )}
+              <button
+                className={styles.addItemButton}
+                onClick={() => navigate('/shopping/edit/add')}
+              >
+                + Add Item
+              </button>
             </div>
-          )}
+            {!collapsedGroups.has('manual') && (
+              <div className={styles.itemList}>
+                {groupedItems.manualItems.map((item) =>
+                  renderItem(item, false)
+                )}
+              </div>
+            )}
+          </div>
           
           {/* Recipe groups */}
           {groupedItems.recipeGroups.map((group) => (
             <div key={group.recipeId} className={styles.recipeGroup}>
-              <div
-                className={styles.recipeGroupHeader}
-                onClick={() => toggleGroupCollapse(group.recipeId)}
-              >
-                <i
-                  className={`fa-solid fa-caret-${collapsedGroups.has(group.recipeId) ? 'right' : 'down'} ${styles.groupCaret}`}
-                />
-                {group.recipeTitle}
+              <div className={styles.recipeGroupHeader}>
+                <div
+                  className={styles.recipeGroupHeaderContent}
+                  onClick={() => toggleGroupCollapse(group.recipeId)}
+                >
+                  <i
+                    className={`fa-solid fa-caret-${collapsedGroups.has(group.recipeId) ? 'right' : 'down'} ${styles.groupCaret}`}
+                  />
+                  {group.recipeTitle}
+                </div>
               </div>
               {!collapsedGroups.has(group.recipeId) && (
                 <div className={styles.itemList}>

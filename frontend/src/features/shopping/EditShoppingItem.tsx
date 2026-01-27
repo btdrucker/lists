@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../common/hooks';
 import { 
+  addShoppingItem,
   updateShoppingItem,
   subscribeToShoppingItems,
   subscribeToStores,
@@ -63,6 +64,9 @@ const EditShoppingItem = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { itemId } = useParams<{ itemId: string }>();
+  const [searchParams] = useSearchParams();
+  const editSingleOnly = searchParams.get('single') === 'true';
+  const isAddMode = itemId === 'add';
   const allItems: ShoppingItem[] = useAppSelector((state) => state.shopping?.items || []);
   const stores: Store[] = useAppSelector((state) => state.shopping?.stores || []);
   const recipes = useAppSelector((state) => state.recipes?.recipes || []);
@@ -91,19 +95,33 @@ const EditShoppingItem = () => {
 
   // Find the clicked item and all related items
   const clickedItem = useMemo(
-    () => allItems.find((i) => i.id === itemId),
-    [allItems, itemId]
+    () => isAddMode ? null : allItems.find((i) => i.id === itemId),
+    [allItems, itemId, isAddMode]
   );
 
   const relatedItems = useMemo(() => {
+    if (isAddMode) return [];
     if (!clickedItem) return [];
+    // If editing single item only (from grouped mode), return just that item
+    if (editSingleOnly) return [clickedItem];
+    // Otherwise, return all items with the same name+unit (from simple/combined mode)
     const key = getItemKey(clickedItem);
     return allItems.filter((i) => getItemKey(i) === key);
-  }, [allItems, clickedItem]);
+  }, [allItems, clickedItem, editSingleOnly, isAddMode]);
 
   // Initialize editable state from items
   useEffect(() => {
-    if (relatedItems.length > 0) {
+    if (isAddMode) {
+      // Initialize with empty item for add mode
+      setEditableItems([{
+        id: 'new',
+        amount: '',
+        unit: '',
+        name: '',
+        storeTagIds: [],
+      }]);
+      setHasChanges(false);
+    } else if (relatedItems.length > 0) {
       setEditableItems(
         relatedItems.map((item) => ({
           id: item.id,
@@ -116,7 +134,7 @@ const EditShoppingItem = () => {
       );
       setHasChanges(false);
     }
-  }, [relatedItems]);
+  }, [relatedItems, isAddMode]);
 
   // Update a field for an item
   const handleFieldChange = useCallback(
@@ -149,37 +167,57 @@ const EditShoppingItem = () => {
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      for (const item of editableItems) {
-        const original = relatedItems.find((i) => i.id === item.id);
-        if (!original) continue;
-
-        // Build updates object only with changed fields
-        const updates: Partial<ShoppingItem> = {};
-
-        const newAmount = item.amount ? parseFloat(item.amount) : null;
-        if (newAmount !== original.amount) {
-          updates.amount = newAmount;
+      if (isAddMode) {
+        // Add new item
+        const item = editableItems[0];
+        if (!item.name.trim()) {
+          alert('Please enter an item name');
+          setIsSaving(false);
+          return;
         }
+        
+        await addShoppingItem({
+          familyId: FAMILY_ID,
+          name: item.name.trim(),
+          amount: item.amount ? parseFloat(item.amount) : null,
+          unit: (item.unit as UnitValueType) || null,
+          isChecked: false,
+          storeTagIds: item.storeTagIds,
+        });
+      } else {
+        // Update existing items
+        for (const item of editableItems) {
+          const original = relatedItems.find((i) => i.id === item.id);
+          if (!original) continue;
 
-        const newUnit: UnitValueType | null = (item.unit as UnitValueType) || null;
-        if (newUnit !== original.unit) {
-          updates.unit = newUnit;
-        }
+          // Build updates object only with changed fields
+          const updates: Partial<ShoppingItem> = {};
 
-        if (item.name !== original.name) {
-          updates.name = item.name;
-        }
+          const newAmount = item.amount ? parseFloat(item.amount) : null;
+          if (newAmount !== original.amount) {
+            updates.amount = newAmount;
+          }
 
-        if (
-          JSON.stringify([...item.storeTagIds].sort()) !==
-          JSON.stringify([...original.storeTagIds].sort())
-        ) {
-          updates.storeTagIds = item.storeTagIds;
-        }
+          const newUnit: UnitValueType | null = (item.unit as UnitValueType) || null;
+          if (newUnit !== original.unit) {
+            updates.unit = newUnit;
+          }
 
-        // Only update if there are changes
-        if (Object.keys(updates).length > 0) {
-          await updateShoppingItem(item.id, updates);
+          if (item.name !== original.name) {
+            updates.name = item.name;
+          }
+
+          if (
+            JSON.stringify([...item.storeTagIds].sort()) !==
+            JSON.stringify([...original.storeTagIds].sort())
+          ) {
+            updates.storeTagIds = item.storeTagIds;
+          }
+
+          // Only update if there are changes
+          if (Object.keys(updates).length > 0) {
+            await updateShoppingItem(item.id, updates);
+          }
         }
       }
 
@@ -190,7 +228,7 @@ const EditShoppingItem = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [editableItems, relatedItems, navigate]);
+  }, [editableItems, relatedItems, navigate, isAddMode]);
 
   // Handle back navigation
   const handleBack = useCallback(() => {
@@ -213,11 +251,11 @@ const EditShoppingItem = () => {
     [recipes]
   );
 
-  if (loading) {
+  if (loading && !isAddMode) {
     return <div className={styles.loading}>Loading...</div>;
   }
 
-  if (!clickedItem) {
+  if (!isAddMode && !clickedItem) {
     return (
       <div className={styles.container}>
         <div className={styles.error}>
@@ -231,6 +269,11 @@ const EditShoppingItem = () => {
     );
   }
 
+  // Determine if save button should be disabled
+  const isSaveDisabled = isSaving || (isAddMode 
+    ? !editableItems[0]?.name?.trim() 
+    : !hasChanges);
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -242,11 +285,11 @@ const EditShoppingItem = () => {
         >
           Done
         </IconButton>
-        <h1>Edit Item</h1>
+        <h1>{isAddMode ? 'Add Item' : 'Edit Item'}</h1>
         <IconButton
           onClick={handleSave}
           icon="fa-floppy-disk"
-          disabled={isSaving || !hasChanges}
+          disabled={isSaveDisabled}
           hideTextOnMobile={true}
           className={styles.saveButton}
         >
@@ -256,19 +299,6 @@ const EditShoppingItem = () => {
 
       {editableItems.map((item) => (
           <div key={item.id} className={styles.sourceItem}>
-            <div className={styles.sourceHeader}>
-              <span
-                className={`${styles.sourceLabel} ${!item.sourceRecipeId ? styles.sourceLabelManual : ''}`}
-              >
-                {item.sourceRecipeId ? 'From Recipe' : 'Manual Item'}
-              </span>
-              {item.sourceRecipeId && (
-                <span className={styles.sourceRecipe}>
-                  {getRecipeTitle(item.sourceRecipeId)}
-                </span>
-              )}
-            </div>
-
             <div className={styles.formRow}>
               <div className={styles.formGroupSmall}>
                 <label className={styles.label}>Amount</label>
@@ -316,7 +346,6 @@ const EditShoppingItem = () => {
             </div>
 
             <div className={styles.storeTagsSection}>
-              <span className={styles.storeTagsLabel}>Store Tags</span>
               <div className={styles.storeTags}>
                 {[...stores]
                   .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -337,6 +366,12 @@ const EditShoppingItem = () => {
                   ))}
               </div>
             </div>
+
+            {item.sourceRecipeId && (
+              <div className={styles.sourceInfo}>
+                From recipe "{getRecipeTitle(item.sourceRecipeId)}"
+              </div>
+            )}
           </div>
         ))}
     </div>
