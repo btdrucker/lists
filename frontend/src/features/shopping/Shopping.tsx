@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../common/hooks';
 import { setShoppingItems, setStores, removeShoppingItems, setViewMode, setSelectedStoreIds } from './slice';
@@ -13,6 +13,7 @@ import {
 import type { ShoppingItem, Store, CombinedItem, GroupedItems, Recipe } from '../../types';
 import { ensureRecipeHasAiParsingAndUpdate, getEffectiveIngredientValues } from '../../common/aiParsing';
 import type { RecipeWithAiMetadata } from '../../common/aiParsing';
+import { getIngredientsNeedingAiIndices } from '../../common/aiParsing';
 import RecipePicker from '../../common/components/RecipePicker';
 import ShoppingItemRow from './ShoppingItemRow';
 import { signOut } from '../../firebase/auth';
@@ -153,6 +154,8 @@ const Shopping = () => {
   const [showRecipePicker, setShowRecipePicker] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [loadingRecipes, setLoadingRecipes] = useState<Map<string, string>>(new Map()); // recipeId -> recipeTitle
 
   // Store tag dialog state
   const [storeDialogItemKey, setStoreDialogItemKey] = useState<string | null>(null);
@@ -191,6 +194,21 @@ const Shopping = () => {
     };
   }, [dispatch]);
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showMenu]);
 
   // Filter items by selected stores
   const filteredItems = useMemo(() => {
@@ -301,8 +319,19 @@ const Shopping = () => {
           const recipe = recipes.find((r) => r.id === recipeId);
           if (!recipe) continue;
 
-          // Ensure AI parsing is done before adding to shopping list
+          // Check if this recipe needs AI parsing
           const recipeWithMetadata = recipe as RecipeWithAiMetadata;
+          const needsAiParsing = getIngredientsNeedingAiIndices(
+            recipeWithMetadata.ingredients,
+            recipeWithMetadata.lastAiParsingVersion
+          ).length > 0;
+
+          // Only show loading state if AI parsing is needed
+          if (needsAiParsing) {
+            setLoadingRecipes((prev) => new Map(prev).set(recipeId, recipe.title));
+          }
+
+          // Ensure AI parsing is done before adding to shopping list
           const ingredientsToAdd = await ensureRecipeHasAiParsingAndUpdate(
             recipeWithMetadata,
             dispatch
@@ -318,7 +347,7 @@ const Shopping = () => {
 
           let addedCount = 0;
 
-          // Add ingredients to shopping list
+          // Add ingredients to shopping list one by one
           for (const ingredient of ingredientsToAdd) {
             const { amount, unit, name } = getEffectiveIngredientValues(ingredient);
 
@@ -342,7 +371,23 @@ const Shopping = () => {
               sourceRecipeId: recipeId,
             });
             addedCount++;
+
+            // Remove loading state after first item is added
+            if (addedCount === 1) {
+              setLoadingRecipes((prev) => {
+                const next = new Map(prev);
+                next.delete(recipeId);
+                return next;
+              });
+            }
           }
+
+          // Remove loading state if no items were added
+          setLoadingRecipes((prev) => {
+            const next = new Map(prev);
+            next.delete(recipeId);
+            return next;
+          });
 
           // Notify user if nothing was added (recipe already fully on list)
           if (addedCount === 0 && ingredientsToAdd.length > 0) {
@@ -352,6 +397,8 @@ const Shopping = () => {
       } catch (error) {
         console.error('Error adding recipes:', error);
         alert('Failed to add recipes');
+        // Clear all loading states on error
+        setLoadingRecipes(new Map());
       }
     },
     [recipes, items, dispatch]
@@ -419,10 +466,13 @@ const Shopping = () => {
         <div className={styles.header}>
           <h1>Shopping List</h1>
           <div className={styles.headerButtons}>
-            <div className={styles.menuContainer}>
+            <div className={styles.menuContainer} ref={menuRef}>
               <button
                 className={styles.menuButton}
-                onClick={() => setShowMenu(!showMenu)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(!showMenu);
+                }}
               >
                 <i className="fa-solid fa-ellipsis-vertical" />
               </button>
@@ -472,13 +522,16 @@ const Shopping = () => {
         {/* Controls */}
         <div className={styles.controls}>
           <label className={styles.groupControl}>
-            <input
-              type="checkbox"
-              className={styles.groupCheckbox}
-              checked={viewMode === 'recipe-grouped'}
-              onChange={() => dispatch(setViewMode(viewMode === 'simple' ? 'recipe-grouped' : 'simple'))}
-            />
-            Group
+            <span className={styles.groupLabel}>Group</span>
+            <div className={styles.toggleWrapper}>
+              <input
+                type="checkbox"
+                className={styles.toggleInput}
+                checked={viewMode === 'recipe-grouped'}
+                onChange={() => dispatch(setViewMode(viewMode === 'simple' ? 'recipe-grouped' : 'simple'))}
+              />
+              <span className={styles.toggleSlider}></span>
+            </div>
           </label>
 
           {stores.length > 0 && (
@@ -575,6 +628,24 @@ const Shopping = () => {
             )}
           </div>
           
+          {/* Loading recipe groups (shown while AI parsing / adding items) */}
+          {Array.from(loadingRecipes.entries()).map(([recipeId, recipeTitle]) => (
+            <div key={`loading-${recipeId}`} className={styles.recipeGroup}>
+              <div className={styles.recipeGroupHeader}>
+                <div className={styles.recipeGroupHeaderContent}>
+                  <i className="fa-solid fa-caret-down" style={{ opacity: 0.3 }} />
+                  {recipeTitle}
+                </div>
+              </div>
+              <div className={styles.itemList}>
+                <div className={styles.loadingItem}>
+                  <i className="fa-solid fa-spinner fa-spin" />
+                  <span>Loading ingredients...</span>
+                </div>
+              </div>
+            </div>
+          ))}
+
           {/* Recipe groups */}
           {groupedItems.recipeGroups.map((group) => (
             <div key={group.recipeId} className={styles.recipeGroup}>
@@ -611,14 +682,6 @@ const Shopping = () => {
         <div
           className={styles.modalBackdrop}
           onClick={() => setStoreDialogItemKey(null)}
-        />
-      )}
-
-      {/* Backdrop for menu */}
-      {showMenu && (
-        <div
-          className={styles.menuBackdrop}
-          onClick={() => setShowMenu(false)}
         />
       )}
     </div>

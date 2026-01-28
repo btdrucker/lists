@@ -5,7 +5,7 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  padding: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
   background: var(--color-bg-white);
   border: none;
   border-radius: 0;
@@ -14,7 +14,7 @@
 }
 
 .item:hover {
-  background: var(--color-bg-light);
+  background: #f0f0f0;
 }
 
 .itemChecked {
@@ -149,3 +149,10 @@
   margin-top: 2px;
 }
 
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .item {
+    padding-left: var(--spacing-md);
+    padding-right: var(--spacing-md);
+  }
+}

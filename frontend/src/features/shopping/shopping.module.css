@@ -114,16 +114,6 @@
   margin: 8px 0;
 }
 
-.menuBackdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1000;
-  background: transparent;
-}
-
 /* Controls section */
 .controls {
   display: flex;
@@ -143,15 +133,56 @@
   color: var(--color-text-primary);
   cursor: pointer;
   user-select: none;
-  /* 48px touch area wrapper */
-  padding: 12px 0;
 }
 
-.groupCheckbox {
-  width: 20px;
-  height: 20px;
+.groupLabel {
+  margin-right: 4px;
+}
+
+.toggleWrapper {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  display: inline-block;
+}
+
+.toggleInput {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.toggleSlider {
+  position: absolute;
   cursor: pointer;
-  accent-color: var(--color-primary);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--color-border-light);
+  transition: background-color var(--transition-fast);
+  border-radius: 12px;
+}
+
+.toggleSlider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: transform var(--transition-fast);
+  border-radius: 50%;
+}
+
+.toggleInput:checked + .toggleSlider {
+  background-color: var(--color-primary);
+}
+
+.toggleInput:checked + .toggleSlider:before {
+  transform: translateX(16px);
 }
 
 .storeFilter {
@@ -201,8 +232,7 @@
 }
 
 .addItemButton {
-  padding: 0 var(--spacing-md);
-  height: 28px;
+  padding: 4px var(--spacing-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -210,7 +240,7 @@
   color: white;
   border: none;
   border-radius: var(--radius-sm);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: background var(--transition-fast);
@@ -253,6 +283,21 @@
   margin-right: 0;
 }
 
+/* Loading item indicator */
+.loadingItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-bg-white);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.loadingItem i {
+  font-size: 16px;
+}
+
 /* Modal backdrop */
 .modalBackdrop {
   position: fixed;
@@ -278,9 +323,10 @@
   gap: var(--spacing-sm);
   font-size: 16px;
   font-weight: 600;
-  color: var(--color-text-secondary);
-  padding: var(--spacing-sm) var(--spacing-lg);
-  margin: 0 0 var(--spacing-sm) 0;
+  color: var(--color-text-primary);
+  padding: var(--spacing-md) var(--spacing-lg);
+  margin: 0;
+  background: #e8e8e8;
 }
 
 .recipeGroupHeaderContent {
@@ -289,12 +335,12 @@
   gap: var(--spacing-sm);
   cursor: pointer;
   user-select: none;
-  transition: color var(--transition-fast);
+  transition: opacity var(--transition-fast);
   flex: 1;
 }
 
 .recipeGroupHeaderContent:hover {
-  color: var(--color-text-primary);
+  opacity: 0.8;
 }
 
 .groupCaret {
@@ -328,6 +374,12 @@
     padding: var(--spacing-md);
   }
 
+  .stickyHeader {
+    margin: calc(-1 * var(--spacing-lg)) calc(-1 * var(--spacing-lg)) var(--spacing-md);
+    padding-left: var(--spacing-md);
+    padding-right: var(--spacing-md);
+  }
+
   .header h1 {
     font-size: 24px;
   }
@@ -345,8 +397,8 @@
   }
 
   .itemList {
-    margin-left: calc(var(--spacing-md) * -1);
-    margin-right: calc(var(--spacing-md) * -1);
+    margin-left: calc(var(--spacing-lg) * -1);
+    margin-right: calc(var(--spacing-lg) * -1);
   }
 
   .recipeGroup {
@@ -355,6 +407,11 @@
   }
 
   .recipeGroupHeader {
-    padding: var(--spacing-sm) var(--spacing-md);
+    padding: var(--spacing-md);
+  }
+
+  .loadingItem {
+    padding-left: var(--spacing-md);
+    padding-right: var(--spacing-md);
   }
 }

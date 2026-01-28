@@ -2,16 +2,18 @@
 
 .shell {
   min-height: 100vh;
-  display: flex;
   background: var(--color-bg-lighter);
 }
 
 .nav {
-  width: 200px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: fit-content;
   height: 100vh;
   background: var(--color-bg-white);
   border-right: 1px solid var(--color-border-light);
-  padding: var(--spacing-md) var(--spacing-sm);
+  padding: var(--spacing-md);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -77,20 +79,19 @@
 }
 
 .content {
-  flex: 1;
   min-width: 0;
+  padding: 0 var(--spacing-lg);
+  /* Offset for fixed nav - nav will be fit-content but roughly ~150px */
+  margin-left: 150px;
 }
 
 @media (max-width: 640px) {
-  .shell {
-    flex-direction: column;
-  }
-
   .nav {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
+    top: auto;
     width: 100%;
     height: auto;
     border-right: none;
@@ -138,6 +139,7 @@
   }
 
   .content {
-    padding-bottom: 64px;
+    padding: 0 0 64px 0;
+    margin-left: 0;
   }
 }
