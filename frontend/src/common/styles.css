@@ -35,6 +35,9 @@
   --spacing-md: 16px;
   --spacing-lg: 20px;
   --spacing-xl: 24px;
+
+  /* Layout */
+  --nav-width: 160px;
   
   /* Border radius */
   --radius-sm: 6px;

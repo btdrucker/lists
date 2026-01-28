@@ -2,17 +2,17 @@
 
 .container {
   composes: standardContainer from '../../common/components/shared.module.css';
+  padding: var(--spacing-lg);
 }
 
 .stickyHeader {
   position: sticky;
   top: 0;
-  background: var(--color-bg-white);
   z-index: 100;
-  padding: var(--spacing-lg) 0;
-  margin: calc(-1 * var(--spacing-lg)) calc(-1 * var(--spacing-lg)) var(--spacing-lg);
-  padding-left: var(--spacing-lg);
-  padding-right: var(--spacing-lg);
+  padding-bottom: var(--spacing-lg);
+  margin-left: calc(-1 * var(--spacing-lg));
+  margin-right: calc(-1 * var(--spacing-lg));
+  margin-bottom: var(--spacing-lg);
 }
 
 .header {
@@ -375,7 +375,7 @@
   }
 
   .stickyHeader {
-    margin: calc(-1 * var(--spacing-lg)) calc(-1 * var(--spacing-lg)) var(--spacing-md);
+    margin: calc(-1 * var(--spacing-md)) calc(-1 * var(--spacing-md)) var(--spacing-md);
     padding-left: var(--spacing-md);
     padding-right: var(--spacing-md);
   }

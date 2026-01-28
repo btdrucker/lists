@@ -3,14 +3,13 @@
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-lg) 0;
   min-height: 100vh;
 }
 
 .stickyHeader {
   position: sticky;
   top: 0;
-  background: var(--color-bg-white);
   z-index: 100;
   padding: var(--spacing-lg) 0;
   margin: calc(-1 * var(--spacing-lg)) calc(-1 * var(--spacing-lg)) var(--spacing-xl);
@@ -357,6 +356,10 @@
 
 /* Mobile responsive */
 @media (max-width: 640px) {
+  .container {
+    padding: var(--spacing-lg);
+  }
+
   .header h1 {
     font-size: 24px;
   }
