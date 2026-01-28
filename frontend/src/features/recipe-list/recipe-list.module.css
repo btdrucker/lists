@@ -10,9 +10,11 @@
 .stickyHeader {
   position: sticky;
   top: 0;
+  background: var(--color-bg-lighter);
   z-index: 100;
   padding: var(--spacing-lg) 0;
-  margin: calc(-1 * var(--spacing-lg)) calc(-1 * var(--spacing-lg)) var(--spacing-xl);
+  margin-left: calc(-1 * var(--spacing-lg));
+  margin-right: calc(-1 * var(--spacing-lg));
   padding-left: var(--spacing-lg);
   padding-right: var(--spacing-lg);
 }

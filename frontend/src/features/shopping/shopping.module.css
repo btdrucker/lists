@@ -8,11 +8,11 @@
 .stickyHeader {
   position: sticky;
   top: 0;
+  background: var(--color-bg-lighter);
   z-index: 100;
   padding-bottom: var(--spacing-lg);
   margin-left: calc(-1 * var(--spacing-lg));
   margin-right: calc(-1 * var(--spacing-lg));
-  margin-bottom: var(--spacing-lg);
 }
 
 .header {
