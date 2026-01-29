@@ -152,6 +152,7 @@ const ShoppingItemRow = ({
             </span>
           </div>
           <div className={styles.itemStoreSection} ref={storeSectionRef}>
+            {/* Store selection button hidden for cleaner UI - kept for potential reuse
             <div
               className={`${styles.addStoreButtonWrapper} ${item.isChecked ? styles.addStoreButtonWrapperDisabled : ''}`}
               onClick={(e) => {
@@ -165,6 +166,7 @@ const ShoppingItemRow = ({
                 <i className="fa-solid fa-bookmark" />
               </button>
             </div>
+            */}
             {item.storeTagIds.length > 0 && (
               <div className={styles.itemStoreTags}>
                 {item.storeTagIds.map((storeId) => {

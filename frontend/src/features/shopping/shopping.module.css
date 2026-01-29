@@ -41,6 +41,26 @@
   position: relative;
 }
 
+.headerAddButton {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast);
+}
+
+.headerAddButton:hover {
+  background: var(--color-border-medium);
+}
+
 .menuButton {
   width: 40px;
   height: 40px;
@@ -292,9 +312,11 @@
 
 /* Editable group name */
 .editableGroupName {
+  flex: 1;
   cursor: text;
   padding: 4px 8px;
   margin: -4px -8px;
+  margin-left: var(--spacing-sm);
   border-radius: var(--radius-sm);
   transition: background var(--transition-fast);
   /* Ensure 48px touch height */
@@ -401,10 +423,29 @@
   background: #e8e8e8;
 }
 
+.groupAddButton {
+  width: 48px;
+  height: 48px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast);
+}
+
+.groupAddButton:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
 .recipeGroupHeaderContent {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 0;
   cursor: pointer;
   user-select: none;
   transition: opacity var(--transition-fast);
@@ -433,9 +474,15 @@
   transition: transform var(--transition-fast);
 }
 
-/* Group checkbox spacing adjustment - left margin 0 instead of negative */
-.groupCheckbox {
-  margin-left: 0;
+/* Group checkbox aligned to left edge */
+.groupCheckboxLeft {
+  margin: 0 !important;
+}
+
+/* Group title - flex grow to push elements to right */
+.groupTitle {
+  flex: 1;
+  margin-left: var(--spacing-sm);
 }
 
 /* States */

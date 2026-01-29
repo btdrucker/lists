@@ -721,6 +721,13 @@ const Shopping = () => {
         <div className={styles.header}>
           <h1>Shopping List</h1>
           <div className={styles.headerButtons}>
+            <button
+              className={styles.headerAddButton}
+              onClick={() => navigate('/shopping/edit/add')}
+              aria-label="Add item"
+            >
+              <i className="fa-solid fa-plus" />
+            </button>
             <div className={styles.menuContainer} ref={menuRef}>
               <button
                 className={styles.menuButton}
@@ -832,69 +839,30 @@ const Shopping = () => {
 
       {/* Empty state - Simple view: show when no items (groups don't matter) */}
       {items.length === 0 && viewMode === 'simple' && (
-        <>
-          <div className={styles.addItemSection}>
-            <button
-              className={styles.addItemButton}
-              onClick={() => navigate('/shopping/edit/add')}
-            >
-              + Add Item
-            </button>
-          </div>
-          <div className={styles.empty}>
-            <p>No items yet</p>
-            <p>Add items manually or from your recipes</p>
-          </div>
-        </>
+        <div className={styles.empty}>
+          <p>No items yet</p>
+          <p>Add items manually or from your recipes</p>
+        </div>
       )}
 
       {/* Empty state - Grouped view: show when no items AND no groups */}
       {items.length === 0 && groups.length === 0 && viewMode === 'recipe-grouped' && (
-        <>
-          <div className={styles.addItemSection}>
-            <button
-              className={styles.addItemButton}
-              onClick={() => navigate('/shopping/edit/add')}
-            >
-              + Add Item
-            </button>
-          </div>
-          <div className={styles.empty}>
-            <p>No items yet</p>
-            <p>Add items manually or from your recipes</p>
-          </div>
-        </>
+        <div className={styles.empty}>
+          <p>No items yet</p>
+          <p>Add items manually or from your recipes</p>
+        </div>
       )}
 
       {/* Item list - Simple view */}
       {items.length > 0 && viewMode === 'simple' && (
-        <>
-          <div className={styles.addItemSection}>
-            <button
-              className={styles.addItemButton}
-              onClick={() => navigate('/shopping/edit/add')}
-            >
-              + Add Item
-            </button>
-          </div>
-          <div className={styles.itemList}>
-            {combinedItems.map((item) => renderItem(item, true))}
-          </div>
-        </>
+        <div className={styles.itemList}>
+          {combinedItems.map((item) => renderItem(item, true))}
+        </div>
       )}
 
       {/* Item list - Recipe grouped view */}
       {(items.length > 0 || groups.length > 0) && viewMode === 'recipe-grouped' && (
         <div>
-          {/* Add Item button at top */}
-          <div className={styles.addItemSection}>
-            <button
-              className={styles.addItemButton}
-              onClick={() => navigate('/shopping/edit/add')}
-            >
-              + Add Item
-            </button>
-          </div>
 
           {/* Manual items - shown directly without a header */}
           {groupedItems.manualItems.length > 0 && (
@@ -932,15 +900,11 @@ const Shopping = () => {
                     className={styles.recipeGroupHeaderContent}
                     onClick={() => toggleGroupCollapse(group.groupId)}
                   >
-                    <CollapseToggle
-                      collapsed={collapsedGroups.has(group.groupId)}
-                      onToggle={() => toggleGroupCollapse(group.groupId)}
-                    />
                     <Checkbox
                       checked={getGroupCheckedState(group.items, group.groupId) === 'all'}
                       indeterminate={getGroupCheckedState(group.items, group.groupId) === 'some'}
                       onChange={() => handleGroupCheckToggle(group.items, group.groupId)}
-                      className={styles.groupCheckbox}
+                      className={styles.groupCheckboxLeft}
                     />
                     <span
                       className={styles.editableGroupName}
@@ -951,14 +915,22 @@ const Shopping = () => {
                     >
                       {group.groupName}
                     </span>
+                    <button
+                      className={styles.groupAddButton}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/shopping/edit/add?groupId=${group.groupId}`);
+                      }}
+                      aria-label="Add item to group"
+                    >
+                      <i className="fa-solid fa-plus" />
+                    </button>
+                    <CollapseToggle
+                      collapsed={collapsedGroups.has(group.groupId)}
+                      onToggle={() => toggleGroupCollapse(group.groupId)}
+                    />
                   </div>
                 )}
-                <button
-                  className={styles.addItemButton}
-                  onClick={() => navigate(`/shopping/edit/add?groupId=${group.groupId}`)}
-                >
-                  + Add Item
-                </button>
               </div>
               {!collapsedGroups.has(group.groupId) && (
                 <div className={styles.itemList}>
@@ -994,17 +966,17 @@ const Shopping = () => {
                   className={styles.recipeGroupHeaderContent}
                   onClick={() => toggleGroupCollapse(group.recipeId)}
                 >
-                  <CollapseToggle
-                    collapsed={collapsedGroups.has(group.recipeId)}
-                    onToggle={() => toggleGroupCollapse(group.recipeId)}
-                  />
                   <Checkbox
                     checked={getGroupCheckedState(group.items) === 'all'}
                     indeterminate={getGroupCheckedState(group.items) === 'some'}
                     onChange={() => handleGroupCheckToggle(group.items)}
-                    className={styles.groupCheckbox}
+                    className={styles.groupCheckboxLeft}
                   />
-                  From "{group.recipeTitle}"
+                  <span className={styles.groupTitle}>From "{group.recipeTitle}"</span>
+                  <CollapseToggle
+                    collapsed={collapsedGroups.has(group.recipeId)}
+                    onToggle={() => toggleGroupCollapse(group.recipeId)}
+                  />
                 </div>
               </div>
               {!collapsedGroups.has(group.recipeId) && (
