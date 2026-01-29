@@ -151,12 +151,17 @@
 
 .searchInput {
   width: 100%;
+  height: 52px;
   padding: 14px var(--spacing-lg);
   font-size: 16px;
+  line-height: 1.2;
   border: 2px solid var(--color-border-light);
   border-radius: var(--radius-lg);
   transition: border-color var(--transition-fast);
   font-family: inherit;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .searchInput:focus {

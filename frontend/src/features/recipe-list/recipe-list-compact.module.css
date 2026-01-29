@@ -1,0 +1,111 @@
+@import '../../common/styles.css';
+
+.card {
+  background: var(--color-bg-white);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm);
+  min-height: 80px;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.deleteButton {
+  position: absolute;
+  top: var(--spacing-xs);
+  right: var(--spacing-xs);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--color-delete);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  box-shadow: var(--shadow-sm);
+  transition: background var(--transition-fast), transform var(--transition-fast);
+  z-index: 10;
+}
+
+.deleteButton:hover {
+  background: var(--color-delete);
+  color: white;
+  transform: scale(1.1);
+}
+
+.deleteButton:active {
+  transform: scale(0.95);
+}
+
+.thumbnail {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.thumbnailPlaceholder {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  background: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24px;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  padding-right: var(--spacing-lg);
+}
+
+.title {
+  font-size: 16px;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .card {
+    min-height: 72px;
+  }
+
+  .thumbnail,
+  .thumbnailPlaceholder {
+    width: 56px;
+    height: 56px;
+  }
+
+  .thumbnailPlaceholder {
+    font-size: 20px;
+  }
+
+  .title {
+    font-size: 15px;
+  }
+}

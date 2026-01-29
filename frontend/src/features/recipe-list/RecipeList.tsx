@@ -7,7 +7,12 @@ import { getAllRecipes, deleteRecipe } from '../../firebase/firestore';
 import { signOut } from '../../firebase/auth';
 import { InstallButton } from '../../common/components/InstallButton';
 import RecipeStart from '../recipe/RecipeStart';
+import RecipeListItem from './RecipeListItem';
+import RecipeListItemCompact from './RecipeListItemCompact';
 import styles from './recipe-list.module.css';
+
+// Toggle between RecipeListItem and RecipeListItemCompact
+const ItemComponent = RecipeListItemCompact;
 
 const RecipeList = () => {
   const navigate = useNavigate();
@@ -203,66 +208,13 @@ const RecipeList = () => {
         </div>
       ) : (
         <div className={styles.grid}>
-          {filteredRecipes.map((recipe: any) => {
-            const category = recipe.category || [];
-            const cuisine = recipe.cuisine || [];
-            const keywords = recipe.keywords || [];
-            return (
-            <div
+          {filteredRecipes.map((recipe: any) => (
+            <ItemComponent
               key={recipe.id}
-              className={styles.card}
-              onClick={() => navigate(`/recipe/${recipe.id}`)}
-            >
-              <button
-                className={styles.deleteButton}
-                onClick={(e) => handleDelete(recipe.id, recipe.title, e)}
-                title="Delete recipe"
-              >
-                <i className="fa-solid fa-trash-can"></i>
-              </button>
-              {recipe.imageUrl && (
-                <img
-                  src={recipe.imageUrl}
-                  alt={recipe.title}
-                  className={styles.image}
-                />
-              )}
-              <div className={styles.content}>
-                <h3 className={styles.title}>{recipe.title}</h3>
-                {recipe.description && (
-                  <p className={styles.description}>{recipe.description}</p>
-                )}
-                <div className={styles.meta}>
-                  <span>{recipe.ingredients.length} ingredients</span>
-                  <span>•</span>
-                  <span>{recipe.instructions.length} steps</span>
-                </div>
-                {/* Metadata badges */}
-                <div className={styles.badges}>
-                    {category.map((cat: string, idx: number) => (
-                      <span key={`cat-${idx}`} className={`${styles.badge} ${styles.badgeCategory}`}>
-                        {cat}
-                      </span>
-                    ))}
-                    {cuisine.map((cui: string, idx: number) => (
-                      <span key={`cui-${idx}`} className={`${styles.badge} ${styles.badgeCuisine}`}>
-                        {cui}
-                      </span>
-                    ))}
-                    {keywords.slice(0, 3).map((keyword: string, idx: number) => (
-                      <span key={`kw-${idx}`} className={`${styles.badge} ${styles.badgeKeyword}`}>
-                        {keyword}
-                      </span>
-                    ))}
-                    {keywords.length > 3 && (
-                      <span className={`${styles.badge} ${styles.badgeKeyword}`}>
-                        +{keywords.length - 3} more
-                      </span>
-                    )}
-                </div>
-              </div>
-            </div>
-          )})}
+              recipe={recipe}
+              onDelete={handleDelete}
+            />
+          ))}
         </div>
       )}
 
