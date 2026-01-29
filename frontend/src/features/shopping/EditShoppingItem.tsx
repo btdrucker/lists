@@ -66,6 +66,7 @@ const EditShoppingItem = () => {
   const { itemId } = useParams<{ itemId: string }>();
   const [searchParams] = useSearchParams();
   const editSingleOnly = searchParams.get('single') === 'true';
+  const customGroupId = searchParams.get('groupId') || undefined;
   const isAddMode = itemId === 'add';
   const allItems: ShoppingItem[] = useAppSelector((state) => state.shopping?.items || []);
   const stores: Store[] = useAppSelector((state) => state.shopping?.stores || []);
@@ -183,6 +184,7 @@ const EditShoppingItem = () => {
           unit: (item.unit as UnitValueType) || null,
           isChecked: false,
           storeTagIds: item.storeTagIds,
+          ...(customGroupId && { customGroupId }),
         });
       } else {
         // Update existing items

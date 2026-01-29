@@ -2,7 +2,8 @@
 
 .container {
   composes: standardContainer from '../../common/components/shared.module.css';
-  padding: var(--spacing-lg);
+  /* No horizontal padding - content is full-bleed */
+  padding: 0 !important;
 }
 
 .stickyHeader {
@@ -10,9 +11,9 @@
   top: 0;
   background: var(--color-bg-lighter);
   z-index: 100;
-  padding-bottom: var(--spacing-lg);
-  margin-left: calc(-1 * var(--spacing-lg));
-  margin-right: calc(-1 * var(--spacing-lg));
+  /* Padding inside sticky header for title/controls */
+  padding: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
 }
 
 .header {
@@ -187,17 +188,16 @@
 
 .storeFilter {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: 0;
   flex-wrap: wrap;
   align-items: center;
   margin-left: auto;
 }
 
 .storeTagWrapper {
-  /* 48px minimum touch area for accessibility */
+  /* 48px minimum touch area for accessibility - no overlap */
+  min-width: 48px;
   min-height: 48px;
-  padding: 9px;
-  margin: -9px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -255,6 +255,76 @@
   opacity: 0.9;
 }
 
+/* Add group section */
+.addGroupSection {
+  display: flex;
+  justify-content: flex-start;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--color-bg-light);
+  margin-bottom: var(--spacing-sm);
+}
+
+.addGroupButton {
+  /* 48px minimum touch area for accessibility */
+  min-height: 48px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--color-primary);
+  border: 2px dashed var(--color-primary);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.addGroupButton:hover {
+  background: rgba(var(--color-primary-rgb, 74, 144, 226), 0.1);
+  border-color: var(--color-primary-hover);
+}
+
+.addGroupButton:active {
+  opacity: 0.9;
+}
+
+/* Editable group name */
+.editableGroupName {
+  cursor: text;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+  /* Ensure 48px touch height */
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.editableGroupName:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.editableGroupNameInput {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  background: var(--color-bg-white);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  /* 48px touch target height */
+  min-height: 40px;
+  flex: 1;
+  outline: none;
+}
+
+.editableGroupNameInput:focus {
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 74, 144, 226), 0.2);
+}
+
 /* Actions bar */
 .actionsBar {
   display: flex;
@@ -273,8 +343,6 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-left: calc(var(--spacing-lg) * -1);
-  margin-right: calc(var(--spacing-lg) * -1);
 }
 
 /* Reset itemList margins when inside recipeGroup to avoid compounding */
@@ -309,22 +377,26 @@
   z-index: 1000;
 }
 
+/* Manual items section (non-recipe items in grouped view) */
+.manualItemsSection {
+  margin-bottom: var(--spacing-lg);
+}
+
 /* Recipe group section */
 .recipeGroup {
   margin-bottom: var(--spacing-lg);
-  margin-left: calc(var(--spacing-lg) * -1);
-  margin-right: calc(var(--spacing-lg) * -1);
 }
 
 .recipeGroupHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-sm);
+  min-height: 48px;
   font-size: 16px;
   font-weight: 600;
   color: var(--color-text-primary);
-  padding: var(--spacing-md) var(--spacing-lg);
+  /* No horizontal padding - caret touch area extends to left edge */
+  padding: 0;
   margin: 0;
   background: #e8e8e8;
 }
@@ -343,9 +415,27 @@
   opacity: 0.8;
 }
 
+.groupCaretWrapper {
+  /* 48px touch area for accessibility */
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  /* Align to left edge */
+  margin: 0;
+}
+
 .groupCaret {
   font-size: 16px;
   transition: transform var(--transition-fast);
+}
+
+/* Group checkbox spacing adjustment - left margin 0 instead of negative */
+.groupCheckbox {
+  margin-left: 0;
 }
 
 /* States */
@@ -370,14 +460,8 @@
 
 /* Mobile responsive */
 @media (max-width: 640px) {
-  .container {
-    padding: var(--spacing-md);
-  }
-
   .stickyHeader {
-    margin: calc(-1 * var(--spacing-md)) calc(-1 * var(--spacing-md)) var(--spacing-md);
-    padding-left: var(--spacing-md);
-    padding-right: var(--spacing-md);
+    padding: var(--spacing-md);
   }
 
   .header h1 {
@@ -396,21 +480,7 @@
     gap: var(--spacing-xs);
   }
 
-  .itemList {
-    margin-left: calc(var(--spacing-lg) * -1);
-    margin-right: calc(var(--spacing-lg) * -1);
-  }
-
-  .recipeGroup {
-    margin-left: calc(var(--spacing-md) * -1);
-    margin-right: calc(var(--spacing-md) * -1);
-  }
-
-  .recipeGroupHeader {
-    padding: var(--spacing-md);
-  }
-
-  .loadingItem {
+  .addGroupSection {
     padding-left: var(--spacing-md);
     padding-right: var(--spacing-md);
   }

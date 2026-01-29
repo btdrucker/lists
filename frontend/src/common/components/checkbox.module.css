@@ -1,0 +1,32 @@
+@import '../styles.css';
+
+/* 48px touch area wrapper for accessibility */
+.wrapper {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  /* Negative margins to maintain visual spacing */
+  margin: -13px;
+}
+
+/* 22px Font Awesome icon checkbox */
+.icon {
+  font-size: 22px;
+  transition: color var(--transition-fast);
+}
+
+.unchecked {
+  color: var(--color-border-medium);
+}
+
+.checked {
+  color: var(--color-primary);
+}
+
+.indeterminate {
+  color: var(--color-primary);
+}

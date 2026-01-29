@@ -95,6 +95,26 @@ service cloud.firestore {
                        resource.data.familyId == 'default-family';
     }
     
+    // Shopping Groups collection (user-created custom groups)
+    // For MVP: All authenticated users share the same 'default-family' groups
+    match /shoppingGroups/{groupId} {
+      // Allow read if authenticated
+      allow read: if isAuthenticated();
+      
+      // Allow create if authenticated and familyId is 'default-family'
+      allow create: if isAuthenticated() &&
+                       request.resource.data.familyId == 'default-family' &&
+                       request.resource.data.keys().hasAll(['familyId', 'displayName', 'sortOrder', 'createdAt', 'updatedAt']);
+      
+      // Allow update/delete if authenticated and group belongs to 'default-family'
+      allow update: if isAuthenticated() &&
+                       resource.data.familyId == 'default-family' &&
+                       request.resource.data.familyId == 'default-family';
+      
+      allow delete: if isAuthenticated() &&
+                       resource.data.familyId == 'default-family';
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;

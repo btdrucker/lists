@@ -90,6 +90,7 @@ export interface ShoppingItemBase<DateType = Date> {
   isChecked: boolean;
   storeTagIds: string[];
   sourceRecipeId?: string; // undefined = manual item
+  customGroupId?: string; // Link to custom shopping group
   createdAt: DateType;
   updatedAt: DateType;
 }
@@ -114,6 +115,19 @@ export interface StoreBase<DateType = Date> {
 
 export type Store = StoreBase<string>;
 export type StoreDoc = StoreBase<Date>;
+
+// Shopping Group (user-created custom groups)
+export interface ShoppingGroupBase<DateType = Date> {
+  id: string;
+  familyId: string;
+  displayName: string;
+  sortOrder: number; // Used for creation order (timestamp-based)
+  createdAt: DateType;
+  updatedAt: DateType;
+}
+
+export type ShoppingGroup = ShoppingGroupBase<string>;
+export type ShoppingGroupDoc = ShoppingGroupBase<Date>;
 
 // Item Profile (future, deferred)
 export interface ItemProfileBase<DateType = Date> {
@@ -146,6 +160,11 @@ export interface GroupedItems {
   recipeGroups: Array<{
     recipeId: string;
     recipeTitle: string;
+    items: ShoppingItem[];
+  }>;
+  customGroups: Array<{
+    groupId: string;
+    groupName: string;
     items: ShoppingItem[];
   }>;
   manualItems: ShoppingItem[];

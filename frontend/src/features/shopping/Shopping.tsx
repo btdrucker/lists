@@ -1,20 +1,26 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../common/hooks';
-import { setShoppingItems, setStores, removeShoppingItems, setViewMode, setSelectedStoreIds } from './slice';
+import { setShoppingItems, setStores, setShoppingGroups, removeShoppingItems, setViewMode, setSelectedStoreIds } from './slice';
 import {
   subscribeToShoppingItems,
   subscribeToStores,
+  subscribeToShoppingGroups,
   initializeDefaultStores,
   addShoppingItem,
   updateShoppingItem,
   bulkDeleteShoppingItems,
+  addShoppingGroup,
+  updateShoppingGroup,
+  deleteShoppingGroup,
 } from '../../firebase/firestore';
-import type { ShoppingItem, Store, CombinedItem, GroupedItems, Recipe } from '../../types';
+import type { ShoppingItem, Store, ShoppingGroup, CombinedItem, GroupedItems, Recipe } from '../../types';
 import { ensureRecipeHasAiParsingAndUpdate, getEffectiveIngredientValues } from '../../common/aiParsing';
 import type { RecipeWithAiMetadata } from '../../common/aiParsing';
 import { getIngredientsNeedingAiIndices } from '../../common/aiParsing';
 import RecipePicker from '../../common/components/RecipePicker';
+import Checkbox from '../../common/components/Checkbox';
+import CollapseToggle from './CollapseToggle';
 import ShoppingItemRow from './ShoppingItemRow';
 import { signOut } from '../../firebase/auth';
 import styles from './shopping.module.css';
@@ -94,18 +100,34 @@ function combineItems(items: ShoppingItem[]): CombinedItem[] {
   );
 }
 
-// Group items by recipe source
-function groupByRecipe(items: ShoppingItem[], recipes: Recipe[]): GroupedItems {
+// Group items by recipe source and custom groups
+function groupItems(
+  items: ShoppingItem[],
+  recipes: Recipe[],
+  groups: ShoppingGroup[]
+): GroupedItems {
   const recipeMap = new Map<string, ShoppingItem[]>();
+  const customGroupMap = new Map<string, ShoppingItem[]>();
   const manualItems: ShoppingItem[] = [];
 
+  // Build a set of valid group IDs for quick lookup
+  const validGroupIds = new Set(groups.map((g) => g.id));
+  
+  // Priority: customGroupId (if valid) > sourceRecipeId > manual
   items.forEach((item) => {
-    if (item.sourceRecipeId) {
+    if (item.customGroupId && validGroupIds.has(item.customGroupId)) {
+      // Only group by customGroupId if the group still exists
+      if (!customGroupMap.has(item.customGroupId)) {
+        customGroupMap.set(item.customGroupId, []);
+      }
+      customGroupMap.get(item.customGroupId)!.push(item);
+    } else if (item.sourceRecipeId) {
       if (!recipeMap.has(item.sourceRecipeId)) {
         recipeMap.set(item.sourceRecipeId, []);
       }
       recipeMap.get(item.sourceRecipeId)!.push(item);
     } else {
+      // Items with invalid customGroupId fall back to manual items
       manualItems.push(item);
     }
   });
@@ -124,12 +146,29 @@ function groupByRecipe(items: ShoppingItem[], recipes: Recipe[]): GroupedItems {
     }
   );
 
+  // Build custom groups with names, sorted by sortOrder (creation time)
+  // Include ALL groups from Firestore, even empty ones
+  const customGroups = groups
+    .map((group) => {
+      const groupItemsList = customGroupMap.get(group.id) || [];
+      return {
+        groupId: group.id,
+        groupName: group.displayName,
+        sortOrder: group.sortOrder,
+        items: [...groupItemsList].sort((a, b) =>
+          normalizeItemName(a.name).localeCompare(normalizeItemName(b.name))
+        ),
+      };
+    })
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(({ groupId, groupName, items }) => ({ groupId, groupName, items }));
+
   // Sort manual items alphabetically (create copy to avoid mutating)
   const sortedManualItems = [...manualItems].sort((a, b) =>
     normalizeItemName(a.name).localeCompare(normalizeItemName(b.name))
   );
 
-  return { recipeGroups, manualItems: sortedManualItems };
+  return { recipeGroups, customGroups, manualItems: sortedManualItems };
 }
 
 // Helper to check if an item is indeterminate (works for both CombinedItem and ShoppingItem)
@@ -147,6 +186,7 @@ const Shopping = () => {
   const navigate = useNavigate();
   const items: ShoppingItem[] = useAppSelector((state) => state.shopping?.items || []);
   const stores: Store[] = useAppSelector((state) => state.shopping?.stores || []);
+  const groups: ShoppingGroup[] = useAppSelector((state) => state.shopping?.groups || []);
   const loading = useAppSelector((state) => state.shopping?.loading ?? true);
   const recipes: Recipe[] = useAppSelector((state) => state.recipes?.recipes || []);
   const viewMode = useAppSelector((state) => state.shopping?.viewMode || 'simple');
@@ -160,10 +200,14 @@ const Shopping = () => {
   // Store tag dialog state
   const [storeDialogItemKey, setStoreDialogItemKey] = useState<string | null>(null);
 
+  // Track checked empty groups (groups with no items that user wants to delete)
+  const [checkedEmptyGroupIds, setCheckedEmptyGroupIds] = useState<Set<string>>(new Set());
+
   // Set up real-time listeners
   useEffect(() => {
     let unsubItems: (() => void) | undefined;
     let unsubStores: (() => void) | undefined;
+    let unsubGroups: (() => void) | undefined;
 
     const initAndSubscribe = async () => {
       try {
@@ -178,11 +222,16 @@ const Shopping = () => {
         unsubStores = subscribeToStores(FAMILY_ID, (newStores) => {
           dispatch(setStores(newStores));
         });
+
+        unsubGroups = subscribeToShoppingGroups(FAMILY_ID, (newGroups) => {
+          dispatch(setShoppingGroups(newGroups));
+        });
       } catch (error) {
         console.error('Error initializing shopping list:', error);
         // Set loading to false to show empty state instead of infinite loading
         dispatch(setShoppingItems([]));
         dispatch(setStores([]));
+        dispatch(setShoppingGroups([]));
       }
     };
 
@@ -191,6 +240,7 @@ const Shopping = () => {
     return () => {
       if (unsubItems) unsubItems();
       if (unsubStores) unsubStores();
+      if (unsubGroups) unsubGroups();
     };
   }, [dispatch]);
 
@@ -226,8 +276,49 @@ const Shopping = () => {
   }, [filteredItems]);
 
   const groupedItems = useMemo(() => {
-    return groupByRecipe(filteredItems, recipes);
-  }, [filteredItems, recipes]);
+    return groupItems(filteredItems, recipes, groups);
+  }, [filteredItems, recipes, groups]);
+
+  // Track which group IDs had items in the previous render
+  const prevGroupIdsWithItemsRef = useRef<Set<string>>(new Set());
+  
+  // Auto-delete custom groups only when their last item is removed
+  useEffect(() => {
+    const currentGroupIdsWithItems = new Set(
+      items
+        .filter((item) => item.customGroupId)
+        .map((item) => item.customGroupId as string)
+    );
+    
+    const prevGroupIdsWithItems = prevGroupIdsWithItemsRef.current;
+    
+    // Find groups that HAD items before but now have none
+    const groupsThatBecameEmpty = [...prevGroupIdsWithItems].filter(
+      (groupId) => !currentGroupIdsWithItems.has(groupId)
+    );
+    
+    // Update ref for next comparison
+    prevGroupIdsWithItemsRef.current = currentGroupIdsWithItems;
+    
+    // Delete groups that just became empty
+    const deleteEmptyGroups = async () => {
+      for (const groupId of groupsThatBecameEmpty) {
+        // Verify the group still exists before deleting
+        const groupExists = groups.some((g) => g.id === groupId);
+        if (groupExists) {
+          try {
+            await deleteShoppingGroup(groupId);
+          } catch (error) {
+            console.error('Error deleting empty group:', error);
+          }
+        }
+      }
+    };
+
+    if (groupsThatBecameEmpty.length > 0) {
+      deleteEmptyGroups();
+    }
+  }, [items, groups]);
 
   // Count checked items for bulk delete - only fully checked items in current view
   const checkedItemIds = useMemo(() => {
@@ -265,28 +356,128 @@ const Shopping = () => {
     []
   );
 
-  // Add manual item
-  // Bulk delete checked items
-  const handleBulkDelete = useCallback(async () => {
-    if (checkedItemIds.length === 0) return;
+  // Helper to compute group checked state
+  const getGroupCheckedState = useCallback((groupItems: ShoppingItem[], groupId?: string): 'all' | 'some' | 'none' => {
+    if (groupItems.length === 0) {
+      // Empty group - check if it's in checkedEmptyGroupIds
+      return groupId && checkedEmptyGroupIds.has(groupId) ? 'all' : 'none';
+    }
+    const checkedCount = groupItems.filter((item) => item.isChecked).length;
+    if (checkedCount === 0) return 'none';
+    if (checkedCount === groupItems.length) return 'all';
+    return 'some';
+  }, [checkedEmptyGroupIds]);
 
-    if (
-      !window.confirm(
-        `Delete ${checkedItemIds.length} checked item${checkedItemIds.length > 1 ? 's' : ''}?`
-      )
-    ) {
+  // Toggle all items in a group (or toggle empty group checked state)
+  const handleGroupCheckToggle = useCallback(
+    async (groupItems: ShoppingItem[], groupId?: string) => {
+      if (groupItems.length === 0 && groupId) {
+        // Empty group - toggle checked state
+        setCheckedEmptyGroupIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(groupId)) {
+            next.delete(groupId);
+          } else {
+            next.add(groupId);
+          }
+          return next;
+        });
+        return;
+      }
+      
+      const currentState = getGroupCheckedState(groupItems, groupId);
+      // If all checked, uncheck all. Otherwise, check all.
+      const newCheckedState = currentState !== 'all';
+      try {
+        // Update all items in parallel
+        const updates = groupItems
+          .filter((item) => item.isChecked !== newCheckedState)
+          .map((item) => updateShoppingItem(item.id, { isChecked: newCheckedState }));
+        await Promise.all(updates);
+      } catch (error) {
+        console.error('Error toggling group items:', error);
+      }
+    },
+    [getGroupCheckedState]
+  );
+
+  // Clear checkedEmptyGroupIds for groups that now have items
+  useEffect(() => {
+    const groupsWithItems = new Set(
+      groupedItems.customGroups
+        .filter((group) => group.items.length > 0)
+        .map((group) => group.groupId)
+    );
+    
+    setCheckedEmptyGroupIds((prev) => {
+      // Remove any groupIds that now have items
+      const stillEmpty = new Set([...prev].filter((id) => !groupsWithItems.has(id)));
+      if (stillEmpty.size !== prev.size) {
+        return stillEmpty;
+      }
+      return prev;
+    });
+  }, [groupedItems.customGroups]);
+
+  // Find fully-checked custom groups (for deletion with bulk delete)
+  const fullyCheckedCustomGroupIds = useMemo(() => {
+    const groupsWithAllChecked = groupedItems.customGroups
+      .filter((group) => group.items.length > 0 && group.items.every((item) => item.isChecked))
+      .map((group) => group.groupId);
+    
+    // Also include checked empty groups (only those that are still empty)
+    const emptyGroupIds = new Set(
+      groupedItems.customGroups
+        .filter((group) => group.items.length === 0)
+        .map((group) => group.groupId)
+    );
+    const checkedEmpty = [...checkedEmptyGroupIds].filter((id) => emptyGroupIds.has(id));
+    
+    return [...groupsWithAllChecked, ...checkedEmpty];
+  }, [groupedItems.customGroups, checkedEmptyGroupIds]);
+
+  // Bulk delete checked items (and fully-checked custom groups)
+  const handleBulkDelete = useCallback(async () => {
+    const hasItems = checkedItemIds.length > 0;
+    const hasGroups = fullyCheckedCustomGroupIds.length > 0;
+    
+    if (!hasItems && !hasGroups) return;
+
+    const groupCount = fullyCheckedCustomGroupIds.length;
+    const itemCount = checkedItemIds.length;
+    
+    let message: string;
+    if (hasItems && hasGroups) {
+      message = `Delete ${itemCount} checked item${itemCount > 1 ? 's' : ''} and ${groupCount} group${groupCount > 1 ? 's' : ''}?`;
+    } else if (hasGroups) {
+      message = `Delete ${groupCount} group${groupCount > 1 ? 's' : ''}?`;
+    } else {
+      message = `Delete ${itemCount} checked item${itemCount > 1 ? 's' : ''}?`;
+    }
+
+    if (!window.confirm(message)) {
       return;
     }
 
     try {
-      // Optimistic update
-      dispatch(removeShoppingItems(checkedItemIds));
-      await bulkDeleteShoppingItems(checkedItemIds);
+      // Delete items if any
+      if (hasItems) {
+        dispatch(removeShoppingItems(checkedItemIds));
+        await bulkDeleteShoppingItems(checkedItemIds);
+      }
+      
+      // Delete fully-checked custom groups
+      for (const groupId of fullyCheckedCustomGroupIds) {
+        await deleteShoppingGroup(groupId);
+      }
+      
+      // Clear checked empty groups state
+      setCheckedEmptyGroupIds(new Set());
     } catch (error) {
       console.error('Error deleting items:', error);
       // Real-time listener will restore correct state on error
     }
-  }, [checkedItemIds, dispatch]);
+  }, [checkedItemIds, fullyCheckedCustomGroupIds, dispatch]);
 
   // Navigate to edit screen
   const handleItemClick = useCallback(
@@ -427,6 +618,70 @@ const Shopping = () => {
     [items]
   );
 
+  // Inline editing state for custom group names
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editingGroupName, setEditingGroupName] = useState('');
+  const editingInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (editingGroupId && editingInputRef.current) {
+      editingInputRef.current.focus();
+      editingInputRef.current.select();
+    }
+  }, [editingGroupId]);
+
+  // Create a new custom group
+  const handleAddGroup = useCallback(async () => {
+    try {
+      const newGroup = await addShoppingGroup({
+        familyId: FAMILY_ID,
+        displayName: 'New Group',
+        sortOrder: Date.now(),
+      });
+      // Immediately enter edit mode for the new group
+      setEditingGroupId(newGroup.id);
+      setEditingGroupName(newGroup.displayName);
+    } catch (error) {
+      console.error('Error creating group:', error);
+      alert('Failed to create group');
+    }
+  }, []);
+
+  // Start editing a group name
+  const handleStartEditGroupName = useCallback((groupId: string, currentName: string) => {
+    setEditingGroupId(groupId);
+    setEditingGroupName(currentName);
+  }, []);
+
+  // Save the edited group name
+  const handleSaveGroupName = useCallback(async () => {
+    if (!editingGroupId) return;
+    
+    const trimmedName = editingGroupName.trim();
+    if (!trimmedName) {
+      // Revert to original name if empty
+      setEditingGroupId(null);
+      setEditingGroupName('');
+      return;
+    }
+
+    try {
+      await updateShoppingGroup(editingGroupId, { displayName: trimmedName });
+    } catch (error) {
+      console.error('Error updating group name:', error);
+    }
+    
+    setEditingGroupId(null);
+    setEditingGroupName('');
+  }, [editingGroupId, editingGroupName]);
+
+  // Cancel editing
+  const handleCancelEditGroupName = useCallback(() => {
+    setEditingGroupId(null);
+    setEditingGroupName('');
+  }, []);
+
   // Render individual item
   const renderItem = (
     item: CombinedItem | ShoppingItem,
@@ -488,16 +743,29 @@ const Shopping = () => {
                     <i className="fa-solid fa-plus" /> Add Recipe
                   </button>
                   <button
-                    className={`${styles.menuItem} ${checkedItemIds.length === 0 ? styles.menuItemDisabled : ''}`}
+                    className={styles.menuItem}
                     onClick={() => {
-                      if (checkedItemIds.length > 0) {
+                      // Switch to grouped view if not already
+                      if (viewMode !== 'recipe-grouped') {
+                        dispatch(setViewMode('recipe-grouped'));
+                      }
+                      handleAddGroup();
+                      setShowMenu(false);
+                    }}
+                  >
+                    <i className="fa-solid fa-folder-plus" /> Add Group
+                  </button>
+                  <button
+                    className={`${styles.menuItem} ${checkedItemIds.length === 0 && fullyCheckedCustomGroupIds.length === 0 ? styles.menuItemDisabled : ''}`}
+                    onClick={() => {
+                      if (checkedItemIds.length > 0 || fullyCheckedCustomGroupIds.length > 0) {
                         handleBulkDelete();
                         setShowMenu(false);
                       }
                     }}
-                    disabled={checkedItemIds.length === 0}
+                    disabled={checkedItemIds.length === 0 && fullyCheckedCustomGroupIds.length === 0}
                   >
-                    <i className="fa-solid fa-trash" /> Delete Checked{checkedItemIds.length > 0 ? ` (${checkedItemCount})` : ''}
+                    <i className="fa-solid fa-trash" /> Delete Checked{checkedItemIds.length > 0 ? ` (${checkedItemCount})` : ''}{checkedItemIds.length === 0 && fullyCheckedCustomGroupIds.length > 0 ? ` (${fullyCheckedCustomGroupIds.length} group${fullyCheckedCustomGroupIds.length > 1 ? 's' : ''})` : ''}
                   </button>
                   <div className={styles.menuDivider} />
                   <button
@@ -562,8 +830,26 @@ const Shopping = () => {
 
       </div>
 
-      {/* Empty state */}
-      {items.length === 0 && (
+      {/* Empty state - Simple view: show when no items (groups don't matter) */}
+      {items.length === 0 && viewMode === 'simple' && (
+        <>
+          <div className={styles.addItemSection}>
+            <button
+              className={styles.addItemButton}
+              onClick={() => navigate('/shopping/edit/add')}
+            >
+              + Add Item
+            </button>
+          </div>
+          <div className={styles.empty}>
+            <p>No items yet</p>
+            <p>Add items manually or from your recipes</p>
+          </div>
+        </>
+      )}
+
+      {/* Empty state - Grouped view: show when no items AND no groups */}
+      {items.length === 0 && groups.length === 0 && viewMode === 'recipe-grouped' && (
         <>
           <div className={styles.addItemSection}>
             <button
@@ -598,35 +884,89 @@ const Shopping = () => {
       )}
 
       {/* Item list - Recipe grouped view */}
-      {items.length > 0 && viewMode === 'recipe-grouped' && (
+      {(items.length > 0 || groups.length > 0) && viewMode === 'recipe-grouped' && (
         <div>
-          {/* Manual items first */}
-          <div className={styles.recipeGroup}>
-            <div className={styles.recipeGroupHeader}>
-              <div 
-                className={styles.recipeGroupHeaderContent}
-                onClick={() => toggleGroupCollapse('manual')}
-              >
-                <i
-                  className={`fa-solid fa-caret-${collapsedGroups.has('manual') ? 'right' : 'down'} ${styles.groupCaret}`}
-                />
-                Non-Recipe Items
-              </div>
-              <button
-                className={styles.addItemButton}
-                onClick={() => navigate('/shopping/edit/add')}
-              >
-                + Add Item
-              </button>
-            </div>
-            {!collapsedGroups.has('manual') && (
+          {/* Add Item button at top */}
+          <div className={styles.addItemSection}>
+            <button
+              className={styles.addItemButton}
+              onClick={() => navigate('/shopping/edit/add')}
+            >
+              + Add Item
+            </button>
+          </div>
+
+          {/* Manual items - shown directly without a header */}
+          {groupedItems.manualItems.length > 0 && (
+            <div className={styles.manualItemsSection}>
               <div className={styles.itemList}>
                 {groupedItems.manualItems.map((item) =>
                   renderItem(item, false)
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Custom groups */}
+          {groupedItems.customGroups.map((group) => (
+            <div key={group.groupId} className={styles.recipeGroup}>
+              <div className={styles.recipeGroupHeader}>
+                {editingGroupId === group.groupId ? (
+                  <input
+                    ref={editingInputRef}
+                    type="text"
+                    className={styles.editableGroupNameInput}
+                    value={editingGroupName}
+                    onChange={(e) => setEditingGroupName(e.target.value)}
+                    onBlur={handleSaveGroupName}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSaveGroupName();
+                      } else if (e.key === 'Escape') {
+                        handleCancelEditGroupName();
+                      }
+                    }}
+                  />
+                ) : (
+                  <div
+                    className={styles.recipeGroupHeaderContent}
+                    onClick={() => toggleGroupCollapse(group.groupId)}
+                  >
+                    <CollapseToggle
+                      collapsed={collapsedGroups.has(group.groupId)}
+                      onToggle={() => toggleGroupCollapse(group.groupId)}
+                    />
+                    <Checkbox
+                      checked={getGroupCheckedState(group.items, group.groupId) === 'all'}
+                      indeterminate={getGroupCheckedState(group.items, group.groupId) === 'some'}
+                      onChange={() => handleGroupCheckToggle(group.items, group.groupId)}
+                      className={styles.groupCheckbox}
+                    />
+                    <span
+                      className={styles.editableGroupName}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStartEditGroupName(group.groupId, group.groupName);
+                      }}
+                    >
+                      {group.groupName}
+                    </span>
+                  </div>
+                )}
+                <button
+                  className={styles.addItemButton}
+                  onClick={() => navigate(`/shopping/edit/add?groupId=${group.groupId}`)}
+                >
+                  + Add Item
+                </button>
+              </div>
+              {!collapsedGroups.has(group.groupId) && (
+                <div className={styles.itemList}>
+                  {group.items.map((item) => renderItem(item, false))}
+                </div>
+              )}
+            </div>
+          ))}
           
           {/* Loading recipe groups (shown while AI parsing / adding items) */}
           {Array.from(loadingRecipes.entries()).map(([recipeId, recipeTitle]) => (
@@ -634,7 +974,7 @@ const Shopping = () => {
               <div className={styles.recipeGroupHeader}>
                 <div className={styles.recipeGroupHeaderContent}>
                   <i className="fa-solid fa-caret-down" style={{ opacity: 0.3 }} />
-                  {recipeTitle}
+                  From "{recipeTitle}"
                 </div>
               </div>
               <div className={styles.itemList}>
@@ -654,10 +994,17 @@ const Shopping = () => {
                   className={styles.recipeGroupHeaderContent}
                   onClick={() => toggleGroupCollapse(group.recipeId)}
                 >
-                  <i
-                    className={`fa-solid fa-caret-${collapsedGroups.has(group.recipeId) ? 'right' : 'down'} ${styles.groupCaret}`}
+                  <CollapseToggle
+                    collapsed={collapsedGroups.has(group.recipeId)}
+                    onToggle={() => toggleGroupCollapse(group.recipeId)}
                   />
-                  {group.recipeTitle}
+                  <Checkbox
+                    checked={getGroupCheckedState(group.items) === 'all'}
+                    indeterminate={getGroupCheckedState(group.items) === 'some'}
+                    onChange={() => handleGroupCheckToggle(group.items)}
+                    className={styles.groupCheckbox}
+                  />
+                  From "{group.recipeTitle}"
                 </div>
               </div>
               {!collapsedGroups.has(group.recipeId) && (

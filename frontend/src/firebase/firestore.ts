@@ -13,7 +13,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from './config';
-import type { Recipe, ShoppingItem, Store } from '../types/index.ts';
+import type { Recipe, ShoppingItem, Store, ShoppingGroup } from '../types/index.ts';
 
 // Get all recipes (any user can read any recipe per security rules)
 export const getAllRecipes = async (): Promise<Recipe[]> => {
@@ -327,5 +327,98 @@ export const initializeDefaultStores = async (familyId: string): Promise<void> =
   for (const store of defaultStores) {
     await addStore({ familyId, ...store });
   }
+};
+
+// ============================================================================
+// Shopping Groups (user-created custom groups)
+// ============================================================================
+
+// Get all shopping groups for a family
+export const getShoppingGroups = async (familyId: string): Promise<ShoppingGroup[]> => {
+  const groupsRef = collection(db, 'shoppingGroups');
+  const q = query(groupsRef, where('familyId', '==', familyId));
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((docSnap) => {
+    const data = docSnap.data();
+    return {
+      id: docSnap.id,
+      ...data,
+      createdAt: (data.createdAt?.toDate?.() || new Date()).toISOString(),
+      updatedAt: (data.updatedAt?.toDate?.() || new Date()).toISOString(),
+    };
+  }) as ShoppingGroup[];
+};
+
+// Add new shopping group
+export const addShoppingGroup = async (
+  group: Omit<ShoppingGroup, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<ShoppingGroup> => {
+  const groupsRef = collection(db, 'shoppingGroups');
+  const now = Timestamp.now();
+
+  const docRef = await addDoc(groupsRef, {
+    ...group,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  return {
+    ...group,
+    id: docRef.id,
+    createdAt: now.toDate().toISOString(),
+    updatedAt: now.toDate().toISOString(),
+  };
+};
+
+// Update shopping group
+export const updateShoppingGroup = async (
+  groupId: string,
+  updates: Partial<ShoppingGroup>
+): Promise<void> => {
+  const docRef = doc(db, 'shoppingGroups', groupId);
+  await updateDoc(docRef, {
+    ...updates,
+    updatedAt: Timestamp.now(),
+  });
+};
+
+// Delete shopping group
+export const deleteShoppingGroup = async (groupId: string): Promise<void> => {
+  const docRef = doc(db, 'shoppingGroups', groupId);
+  await deleteDoc(docRef);
+};
+
+// Real-time listener for shopping groups
+export const subscribeToShoppingGroups = (
+  familyId: string,
+  callback: (groups: ShoppingGroup[]) => void
+): (() => void) => {
+  const q = query(
+    collection(db, 'shoppingGroups'),
+    where('familyId', '==', familyId)
+  );
+
+  const unsubscribe = onSnapshot(
+    q,
+    (snapshot) => {
+      const groups = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          ...data,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        } as ShoppingGroup;
+      });
+      callback(groups);
+    },
+    (error) => {
+      console.error('Error subscribing to shopping groups:', error);
+      callback([]);
+    }
+  );
+
+  return unsubscribe;
 };
 

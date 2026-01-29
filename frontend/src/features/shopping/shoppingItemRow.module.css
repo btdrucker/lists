@@ -4,13 +4,19 @@
 .item {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md) var(--spacing-lg);
+  min-height: 48px;
+  /* No horizontal padding - checkbox/store button extend to edges */
+  padding: 0;
   background: var(--color-bg-white);
   border: none;
   border-radius: 0;
   cursor: pointer;
   transition: background var(--transition-fast);
+}
+
+/* Checkbox touch area aligned to left edge */
+.itemCheckbox {
+  margin: 0 !important;
 }
 
 .item:hover {
@@ -26,30 +32,11 @@
   color: var(--color-text-tertiary);
 }
 
-.checkboxWrapper {
-  /* 48px touch area for accessibility */
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  /* Negative margins to maintain original visual spacing */
-  margin: -13px;
-}
-
-.checkbox {
-  width: 22px;
-  height: 22px;
-  cursor: pointer;
-  accent-color: var(--color-primary);
-  pointer-events: none; /* Wrapper handles clicks */
-}
-
 .itemDetails {
   flex: 1;
   min-width: 0;
+  /* Spacing from checkbox (checkbox is 48px, visual is 22px centered, so 13px gap on right) */
+  padding-left: var(--spacing-sm);
 }
 
 .itemMainRow {
@@ -87,8 +74,8 @@
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  /* Negative margins to maintain original visual spacing */
-  margin: -12px;
+  /* Align to right edge */
+  margin: 0;
 }
 
 .addStoreButton {
@@ -128,6 +115,7 @@
   display: flex;
   gap: 0;
   flex-shrink: 0;
+  margin-right: 12px;
 }
 
 .itemStoreTag {
@@ -149,10 +137,3 @@
   margin-top: 2px;
 }
 
-/* Mobile responsive */
-@media (max-width: 640px) {
-  .item {
-    padding-left: var(--spacing-md);
-    padding-right: var(--spacing-md);
-  }
-}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { UnitValue } from '../../types';
 import type { ShoppingItem, Store, CombinedItem } from '../../types';
+import Checkbox from '../../common/components/Checkbox';
 import StoreTagDialog from './StoreTagDialog';
 import styles from './shoppingItemRow.module.css';
 
@@ -113,16 +114,8 @@ const ShoppingItemRow = ({
   handleItemStoreToggle,
 }: ShoppingItemRowProps) => {
   const isDialogOpen = storeDialogItemKey === itemKey;
-  const checkboxRef = useRef<HTMLInputElement>(null);
   const storeSectionRef = useRef<HTMLDivElement>(null);
   const [showDialogAbove, setShowDialogAbove] = useState<boolean | null>(null);
-
-  // Set indeterminate property on checkbox
-  useEffect(() => {
-    if (checkboxRef.current) {
-      checkboxRef.current.indeterminate = isIndeterminate;
-    }
-  }, [isIndeterminate]);
 
   // Calculate dialog position when it opens
   useEffect(() => {
@@ -144,24 +137,12 @@ const ShoppingItemRow = ({
       className={`${styles.item} ${item.isChecked ? styles.itemChecked : ''}`}
       onClick={() => handleItemClick(itemId, isCombined)}
     >
-      <div
-        className={styles.checkboxWrapper}
-        onClick={(e) => {
-          e.stopPropagation();
-          // Trigger checkbox change
-          const newCheckedState = isIndeterminate ? true : !item.isChecked;
-          handleCheck(itemIds, newCheckedState);
-        }}
-      >
-        <input
-          ref={checkboxRef}
-          type="checkbox"
-          className={styles.checkbox}
-          checked={item.isChecked}
-          onChange={() => {}} // Controlled by wrapper click
-          tabIndex={-1} // Wrapper handles interaction
-        />
-      </div>
+      <Checkbox
+        checked={item.isChecked}
+        indeterminate={isIndeterminate}
+        onChange={(newChecked) => handleCheck(itemIds, newChecked)}
+        className={styles.itemCheckbox}
+      />
       <div className={styles.itemDetails}>
         <div className={styles.itemMainRow}>
           <div className={styles.itemNameRow}>

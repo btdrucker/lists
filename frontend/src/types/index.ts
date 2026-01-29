@@ -9,6 +9,8 @@ export type {
   ShoppingItemBase,
   Store,
   StoreBase,
+  ShoppingGroup,
+  ShoppingGroupBase,
   ItemProfile,
   CombinedItem,
   GroupedItems,
