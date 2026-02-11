@@ -890,35 +890,40 @@ const Shopping = () => {
           {groupedItems.customGroups.map((group) => (
             <div key={group.groupId} className={styles.recipeGroup}>
               <div className={styles.recipeGroupHeader}>
-                {editingGroupId === group.groupId ? (
-                  <input
-                    ref={editingInputRef}
-                    type="text"
-                    className={styles.editableGroupNameInput}
-                    value={editingGroupName}
-                    onChange={(e) => setEditingGroupName(e.target.value)}
-                    onBlur={handleSaveGroupName}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleSaveGroupName();
-                      } else if (e.key === 'Escape') {
-                        handleCancelEditGroupName();
-                      }
-                    }}
+                <div
+                  className={styles.recipeGroupHeaderContent}
+                  onClick={() => {
+                    if (editingGroupId !== group.groupId) {
+                      toggleGroupCollapse(group.groupId);
+                    }
+                  }}
+                >
+                  <Checkbox
+                    checked={getGroupCheckedState(group.items, group.groupId) === 'all'}
+                    indeterminate={getGroupCheckedState(group.items, group.groupId) === 'some'}
+                    onChange={() => handleGroupCheckToggle(group.items, group.groupId)}
+                    className={styles.groupCheckboxLeft}
                   />
-                ) : (
-                  <div
-                    className={styles.recipeGroupHeaderContent}
-                    onClick={() => toggleGroupCollapse(group.groupId)}
-                  >
-                    <Checkbox
-                      checked={getGroupCheckedState(group.items, group.groupId) === 'all'}
-                      indeterminate={getGroupCheckedState(group.items, group.groupId) === 'some'}
-                      onChange={() => handleGroupCheckToggle(group.items, group.groupId)}
-                      className={styles.groupCheckboxLeft}
+                  {editingGroupId === group.groupId ? (
+                    <input
+                      ref={editingInputRef}
+                      type="text"
+                      className={styles.editableGroupNameInput}
+                      value={editingGroupName}
+                      onChange={(e) => setEditingGroupName(e.target.value)}
+                      onBlur={handleSaveGroupName}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSaveGroupName();
+                        } else if (e.key === 'Escape') {
+                          handleCancelEditGroupName();
+                        }
+                      }}
                     />
+                  ) : (
                     <span
-                      className={styles.editableGroupName}
+                      className={`${styles.editableGroupName} ${getGroupCheckedState(group.items, group.groupId) === 'all' ? styles.groupTitleChecked : ''}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleStartEditGroupName(group.groupId, group.groupName);
@@ -926,6 +931,8 @@ const Shopping = () => {
                     >
                       {group.groupName}
                     </span>
+                  )}
+                  {editingGroupId !== group.groupId && (
                     <button
                       className={styles.groupAddButton}
                       onClick={(e) => {
@@ -936,12 +943,12 @@ const Shopping = () => {
                     >
                       <i className="fa-solid fa-plus" />
                     </button>
-                    <CollapseToggle
-                      collapsed={collapsedGroups.has(group.groupId)}
-                      onToggle={() => toggleGroupCollapse(group.groupId)}
-                    />
-                  </div>
-                )}
+                  )}
+                  <CollapseToggle
+                    collapsed={collapsedGroups.has(group.groupId)}
+                    onToggle={() => toggleGroupCollapse(group.groupId)}
+                  />
+                </div>
               </div>
               {!collapsedGroups.has(group.groupId) && (
                 <div className={styles.itemList}>
@@ -983,7 +990,7 @@ const Shopping = () => {
                     onChange={() => handleGroupCheckToggle(group.items)}
                     className={styles.groupCheckboxLeft}
                   />
-                  <span className={styles.groupTitle}>From "{group.recipeTitle}"</span>
+                  <span className={`${styles.groupTitle} ${getGroupCheckedState(group.items) === 'all' ? styles.groupTitleChecked : ''}`}>From "{group.recipeTitle}"</span>
                   <CollapseToggle
                     collapsed={collapsedGroups.has(group.recipeId)}
                     onToggle={() => toggleGroupCollapse(group.recipeId)}

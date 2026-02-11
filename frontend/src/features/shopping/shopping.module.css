@@ -293,7 +293,7 @@
   cursor: text;
   padding: 4px 8px;
   margin: -4px -8px;
-  margin-left: var(--spacing-sm);
+  margin-left: calc(var(--spacing-sm) - 8px);
   border-radius: var(--radius-sm);
   transition: background var(--transition-fast);
   /* Ensure 48px touch height */
@@ -460,6 +460,12 @@
 .groupTitle {
   flex: 1;
   margin-left: var(--spacing-sm);
+}
+
+/* Checked state for group/recipe titles */
+.groupTitleChecked {
+  text-decoration: line-through;
+  color: var(--color-text-tertiary);
 }
 
 /* States */
