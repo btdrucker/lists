@@ -5,12 +5,12 @@ import {
   addShoppingItem,
   updateShoppingItem,
   subscribeToShoppingItems,
-  subscribeToStores,
+  subscribeToTags,
 } from '../../firebase/firestore';
-import { setShoppingItems, setStores } from './slice';
+import { setShoppingItems, setTags } from './slice';
 import IconButton from '../../common/components/IconButton';
 import { UnitValue } from '../../types';
-import type { ShoppingItem, Store } from '../../types';
+import type { ShoppingItem, Tag } from '../../types';
 type UnitValueType = typeof UnitValue[keyof typeof UnitValue];
 import styles from './editShoppingItem.module.css';
 
@@ -56,7 +56,7 @@ interface EditableItem {
   amount: string;
   unit: string;
   name: string;
-  storeTagIds: string[];
+  tagIds: string[];
   sourceRecipeId?: string;
 }
 
@@ -69,7 +69,7 @@ const EditShoppingItem = () => {
   const customGroupId = searchParams.get('groupId') || undefined;
   const isAddMode = itemId === 'add';
   const allItems: ShoppingItem[] = useAppSelector((state) => state.shopping?.items || []);
-  const stores: Store[] = useAppSelector((state) => state.shopping?.stores || []);
+  const tags: Tag[] = useAppSelector((state) => state.shopping?.tags || []);
   const recipes = useAppSelector((state) => state.recipes?.recipes || []);
   const loading = useAppSelector((state) => state.shopping?.loading ?? true);
 
@@ -84,13 +84,13 @@ const EditShoppingItem = () => {
       dispatch(setShoppingItems(newItems));
     });
 
-    const unsubStores = subscribeToStores(FAMILY_ID, (newStores) => {
-      dispatch(setStores(newStores));
+    const unsubTags = subscribeToTags(FAMILY_ID, (newTags) => {
+      dispatch(setTags(newTags));
     });
 
     return () => {
       unsubItems();
-      unsubStores();
+      unsubTags();
     };
   }, [dispatch]);
 
@@ -119,7 +119,7 @@ const EditShoppingItem = () => {
         amount: '',
         unit: '',
         name: '',
-        storeTagIds: [],
+        tagIds: [],
       }]);
       setHasChanges(false);
     } else if (relatedItems.length > 0) {
@@ -129,7 +129,7 @@ const EditShoppingItem = () => {
           amount: item.amount?.toString() || '',
           unit: item.unit || '',
           name: item.name,
-          storeTagIds: [...item.storeTagIds],
+          tagIds: [...item.tagIds],
           sourceRecipeId: item.sourceRecipeId,
         }))
       );
@@ -150,15 +150,15 @@ const EditShoppingItem = () => {
     []
   );
 
-  // Toggle store tag for an item
-  const handleStoreToggle = useCallback((itemId: string, storeId: string) => {
+  // Toggle tag for an item
+  const handleTagToggle = useCallback((itemId: string, tagId: string) => {
     setEditableItems((prev) =>
       prev.map((item) => {
         if (item.id !== itemId) return item;
-        const newStoreTagIds = item.storeTagIds.includes(storeId)
-          ? item.storeTagIds.filter((id) => id !== storeId)
-          : [...item.storeTagIds, storeId];
-        return { ...item, storeTagIds: newStoreTagIds };
+        const newTagIds = item.tagIds.includes(tagId)
+          ? item.tagIds.filter((id) => id !== tagId)
+          : [...item.tagIds, tagId];
+        return { ...item, tagIds: newTagIds };
       })
     );
     setHasChanges(true);
@@ -183,7 +183,7 @@ const EditShoppingItem = () => {
           amount: item.amount ? parseFloat(item.amount) : null,
           unit: (item.unit as UnitValueType) || null,
           isChecked: false,
-          storeTagIds: item.storeTagIds,
+          tagIds: item.tagIds,
           ...(customGroupId && { customGroupId }),
         });
       } else {
@@ -210,10 +210,10 @@ const EditShoppingItem = () => {
           }
 
           if (
-            JSON.stringify([...item.storeTagIds].sort()) !==
-            JSON.stringify([...original.storeTagIds].sort())
+            JSON.stringify([...item.tagIds].sort()) !==
+            JSON.stringify([...original.tagIds].sort())
           ) {
-            updates.storeTagIds = item.storeTagIds;
+            updates.tagIds = item.tagIds;
           }
 
           // Only update if there are changes
@@ -347,23 +347,23 @@ const EditShoppingItem = () => {
               </div>
             </div>
 
-            <div className={styles.storeTagsSection}>
-              <div className={styles.storeTags}>
-                {[...stores]
+            <div className={styles.tagsSection}>
+              <div className={styles.tags}>
+                {[...tags]
                   .sort((a, b) => a.sortOrder - b.sortOrder)
-                  .map((store) => (
+                  .map((tag) => (
                     <button
-                      key={store.id}
+                      key={tag.id}
                       type="button"
-                      className={`${styles.storeTag} ${
-                        item.storeTagIds.includes(store.id)
-                          ? styles.storeTagSelected
+                      className={`${styles.tag} ${
+                        item.tagIds.includes(tag.id)
+                          ? styles.tagSelected
                           : ''
                       }`}
-                      style={{ backgroundColor: store.color }}
-                      onClick={() => handleStoreToggle(item.id, store.id)}
+                      style={{ backgroundColor: tag.color }}
+                      onClick={() => handleTagToggle(item.id, tag.id)}
                     >
-                      {store.displayName}
+                      {tag.displayName}
                     </button>
                   ))}
               </div>

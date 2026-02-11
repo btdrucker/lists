@@ -116,12 +116,12 @@
   border-color: var(--color-primary);
 }
 
-/* Store tags section */
-.storeTagsSection {
+/* Tags section */
+.tagsSection {
   margin-top: var(--spacing-md);
 }
 
-.storeTagsLabel {
+.tagsLabel {
   display: block;
   font-size: 13px;
   font-weight: 500;
@@ -129,13 +129,13 @@
   margin-bottom: var(--spacing-sm);
 }
 
-.storeTags {
+.tags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.storeTag {
+.tag {
   padding: 8px 14px;
   border: 2px solid transparent;
   border-radius: 9999px;
@@ -147,7 +147,7 @@
   opacity: 0.4;
 }
 
-.storeTagSelected {
+.tagSelected {
   opacity: 1;
 }
 

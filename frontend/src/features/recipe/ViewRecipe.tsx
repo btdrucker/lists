@@ -215,7 +215,7 @@ const ViewRecipe = () => {
           unit,
           name,
           isChecked: false,
-          storeTagIds: [],
+          tagIds: [],
           sourceRecipeId: recipe.id,
         });
       }

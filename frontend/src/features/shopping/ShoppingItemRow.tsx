@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { UnitValue } from '../../types';
-import type { ShoppingItem, Store, CombinedItem } from '../../types';
+import type { ShoppingItem, Tag, CombinedItem } from '../../types';
 import Checkbox from '../../common/components/Checkbox';
-import StoreTagDialog from './StoreTagDialog';
+import TagDialog from './TagDialog';
 import styles from './shoppingItemRow.module.css';
 
 // Unit labels for display
@@ -91,12 +91,12 @@ interface ShoppingItemRowProps {
   itemKey: string;
   isIndeterminate: boolean;
   isCombined: boolean;
-  stores: Store[];
-  storeDialogItemKey: string | null;
-  setStoreDialogItemKey: (key: string | null) => void;
+  tags: Tag[];
+  tagDialogItemKey: string | null;
+  setTagDialogItemKey: (key: string | null) => void;
   handleItemClick: (itemId: string, isCombined: boolean) => void;
   handleCheck: (itemIds: string[], isChecked: boolean) => void;
-  handleItemStoreToggle: (itemIds: string[], storeId: string) => void;
+  handleItemTagToggle: (itemIds: string[], tagId: string) => void;
 }
 
 const ShoppingItemRow = ({
@@ -106,21 +106,21 @@ const ShoppingItemRow = ({
   itemKey,
   isIndeterminate,
   isCombined,
-  stores,
-  storeDialogItemKey,
-  setStoreDialogItemKey,
+  tags,
+  tagDialogItemKey,
+  setTagDialogItemKey,
   handleItemClick,
   handleCheck,
-  handleItemStoreToggle,
+  handleItemTagToggle,
 }: ShoppingItemRowProps) => {
-  const isDialogOpen = storeDialogItemKey === itemKey;
-  const storeSectionRef = useRef<HTMLDivElement>(null);
+  const isDialogOpen = tagDialogItemKey === itemKey;
+  const tagSectionRef = useRef<HTMLDivElement>(null);
   const [showDialogAbove, setShowDialogAbove] = useState<boolean | null>(null);
 
   // Calculate dialog position when it opens
   useEffect(() => {
-    if (isDialogOpen && storeSectionRef.current) {
-      const rect = storeSectionRef.current.getBoundingClientRect();
+    if (isDialogOpen && tagSectionRef.current) {
+      const rect = tagSectionRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
       const estimatedDialogHeight = 250; // Rough estimate
       
@@ -151,45 +151,44 @@ const ShoppingItemRow = ({
               {item.name}
             </span>
           </div>
-          <div className={styles.itemStoreSection} ref={storeSectionRef}>
-            {/* Store selection button hidden for cleaner UI - kept for potential reuse
+          <div className={styles.itemTagSection} ref={tagSectionRef}>
+            {/* Tag selection button hidden for cleaner UI - kept for potential reuse
             <div
-              className={`${styles.addStoreButtonWrapper} ${item.isChecked ? styles.addStoreButtonWrapperDisabled : ''}`}
+              className={`${styles.addTagButtonWrapper} ${item.isChecked ? styles.addTagButtonWrapperDisabled : ''}`}
               onClick={(e) => {
                 e.stopPropagation();
                 if (!item.isChecked) {
-                  setStoreDialogItemKey(isDialogOpen ? null : itemKey);
+                  setTagDialogItemKey(isDialogOpen ? null : itemKey);
                 }
               }}
             >
-              <button className={styles.addStoreButton} disabled={item.isChecked}>
+              <button className={styles.addTagButton} disabled={item.isChecked}>
                 <i className="fa-solid fa-bookmark" />
               </button>
             </div>
             */}
-            {item.storeTagIds.length > 0 && (
-              <div className={styles.itemStoreTags}>
-                {item.storeTagIds.map((storeId) => {
-                  const store = stores.find((s) => s.id === storeId);
-                  if (!store) return null;
-                  return (
+            {item.tagIds.length > 0 && (
+              <div className={styles.itemTags}>
+                {[...tags]
+                  .sort((a, b) => a.sortOrder - b.sortOrder)
+                  .filter((tag) => item.tagIds.includes(tag.id))
+                  .map((tag) => (
                     <span
-                      key={storeId}
-                      className={styles.itemStoreTag}
-                      style={{ backgroundColor: store.color }}
+                      key={tag.id}
+                      className={styles.itemTag}
+                      style={{ backgroundColor: tag.color }}
                     >
-                      {store.abbreviation}
+                      {tag.abbreviation}
                     </span>
-                  );
-                })}
+                  ))}
               </div>
             )}
             {isDialogOpen && (
-              <StoreTagDialog
-                stores={stores}
-                selectedStoreIds={item.storeTagIds}
+              <TagDialog
+                tags={tags}
+                selectedTagIds={item.tagIds}
                 itemIds={itemIds}
-                onStoreToggle={handleItemStoreToggle}
+                onTagToggle={handleItemTagToggle}
                 showAbove={showDialogAbove === true}
                 isPositioned={showDialogAbove !== null}
               />

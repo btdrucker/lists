@@ -13,7 +13,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from './config';
-import type { Recipe, ShoppingItem, Store, ShoppingGroup } from '../types/index.ts';
+import type { Recipe, ShoppingItem, Tag, ShoppingGroup } from '../types/index.ts';
 
 // Get all recipes (any user can read any recipe per security rules)
 export const getAllRecipes = async (): Promise<Recipe[]> => {
@@ -115,6 +115,7 @@ export const getShoppingItems = async (familyId: string): Promise<ShoppingItem[]
     return {
       id: docSnap.id,
       ...data,
+      tagIds: data.tagIds ?? [],
       createdAt: (data.createdAt?.toDate?.() || new Date()).toISOString(),
       updatedAt: (data.updatedAt?.toDate?.() || new Date()).toISOString(),
     };
@@ -205,6 +206,7 @@ export const subscribeToShoppingItems = (
         return {
           id: docSnap.id,
           ...data,
+          tagIds: data.tagIds ?? [],
           createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
           updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
         } as ShoppingItem;
@@ -222,13 +224,13 @@ export const subscribeToShoppingItems = (
 };
 
 // ============================================================================
-// Stores
+// Tags (family-specific metadata tags for shopping items)
 // ============================================================================
 
-// Get all stores for a family
-export const getStores = async (familyId: string): Promise<Store[]> => {
-  const storesRef = collection(db, 'stores');
-  const q = query(storesRef, where('familyId', '==', familyId));
+// Get all tags for a family
+export const getTags = async (familyId: string): Promise<Tag[]> => {
+  const tagsRef = collection(db, 'tags');
+  const q = query(tagsRef, where('familyId', '==', familyId));
   const snapshot = await getDocs(q);
 
   return snapshot.docs.map((docSnap) => {
@@ -239,68 +241,74 @@ export const getStores = async (familyId: string): Promise<Store[]> => {
       createdAt: (data.createdAt?.toDate?.() || new Date()).toISOString(),
       updatedAt: (data.updatedAt?.toDate?.() || new Date()).toISOString(),
     };
-  }) as Store[];
+  }) as Tag[];
 };
 
-// Add new store
-export const addStore = async (
-  store: Omit<Store, 'id' | 'createdAt' | 'updatedAt'>
-): Promise<Store> => {
-  const storesRef = collection(db, 'stores');
+// Add new tag
+export const addTag = async (
+  tag: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<Tag> => {
+  const tagsRef = collection(db, 'tags');
   const now = Timestamp.now();
 
-  const docRef = await addDoc(storesRef, {
-    ...store,
+  const docRef = await addDoc(tagsRef, {
+    ...tag,
     createdAt: now,
     updatedAt: now,
   });
 
   return {
-    ...store,
+    ...tag,
     id: docRef.id,
     createdAt: now.toDate().toISOString(),
     updatedAt: now.toDate().toISOString(),
   };
 };
 
-// Update store
-export const updateStore = async (
-  storeId: string,
-  updates: Partial<Store>
+// Update tag
+export const updateTag = async (
+  tagId: string,
+  updates: Partial<Tag>
 ): Promise<void> => {
-  const docRef = doc(db, 'stores', storeId);
+  const docRef = doc(db, 'tags', tagId);
   await updateDoc(docRef, {
     ...updates,
     updatedAt: Timestamp.now(),
   });
 };
 
-// Real-time listener for stores
-export const subscribeToStores = (
+// Delete tag
+export const deleteTag = async (tagId: string): Promise<void> => {
+  const docRef = doc(db, 'tags', tagId);
+  await deleteDoc(docRef);
+};
+
+// Real-time listener for tags
+export const subscribeToTags = (
   familyId: string,
-  callback: (stores: Store[]) => void
+  callback: (tags: Tag[]) => void
 ): (() => void) => {
   const q = query(
-    collection(db, 'stores'),
+    collection(db, 'tags'),
     where('familyId', '==', familyId)
   );
 
   const unsubscribe = onSnapshot(
     q,
     (snapshot) => {
-      const stores = snapshot.docs.map((docSnap) => {
+      const tags = snapshot.docs.map((docSnap) => {
         const data = docSnap.data();
         return {
           id: docSnap.id,
           ...data,
           createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
           updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-        } as Store;
+        } as Tag;
       });
-      callback(stores);
+      callback(tags);
     },
     (error) => {
-      console.error('Error subscribing to stores:', error);
+      console.error('Error subscribing to tags:', error);
       // Return empty array to unblock UI and allow user to see the error
       callback([]);
     }
@@ -309,23 +317,23 @@ export const subscribeToStores = (
   return unsubscribe;
 };
 
-// Initialize default stores for a family (safe to call multiple times)
-export const initializeDefaultStores = async (familyId: string): Promise<void> => {
-  const storesRef = collection(db, 'stores');
-  const q = query(storesRef, where('familyId', '==', familyId));
+// Initialize default tags for a family (safe to call multiple times)
+export const initializeDefaultTags = async (familyId: string): Promise<void> => {
+  const tagsRef = collection(db, 'tags');
+  const q = query(tagsRef, where('familyId', '==', familyId));
   const snapshot = await getDocs(q);
 
   if (!snapshot.empty) return; // Already initialized
 
-  const defaultStores = [
+  const defaultTags = [
     { displayName: 'Fred Meyer', abbreviation: 'FM', color: '#0066CC', sortOrder: 1 },
     { displayName: "Trader Joe's", abbreviation: 'TJ', color: '#D32F2F', sortOrder: 2 },
     { displayName: 'New Seasons', abbreviation: 'NS', color: '#388E3C', sortOrder: 3 },
     { displayName: 'Costco', abbreviation: 'CO', color: '#FF8C00', sortOrder: 4 },
   ];
 
-  for (const store of defaultStores) {
-    await addStore({ familyId, ...store });
+  for (const tag of defaultTags) {
+    await addTag({ familyId, ...tag });
   }
 };
 

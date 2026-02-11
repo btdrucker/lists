@@ -1,22 +1,22 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { ShoppingItem, Store, ShoppingGroup } from '../../types';
+import type { ShoppingItem, Tag, ShoppingGroup } from '../../types';
 
 // localStorage keys for persisted state
 const STORAGE_KEY_VIEW_MODE = 'shopping_viewMode';
-const STORAGE_KEY_STORE_IDS = 'shopping_selectedStoreIds';
+const STORAGE_KEY_TAG_IDS = 'shopping_selectedTagIds';
 
 // Load persisted state from localStorage
 const loadPersistedState = () => {
   try {
     const viewMode = localStorage.getItem(STORAGE_KEY_VIEW_MODE);
-    const storeIds = localStorage.getItem(STORAGE_KEY_STORE_IDS);
+    const tagIds = localStorage.getItem(STORAGE_KEY_TAG_IDS);
     return {
       viewMode: (viewMode === 'simple' || viewMode === 'recipe-grouped') ? viewMode : 'simple',
-      selectedStoreIds: storeIds ? JSON.parse(storeIds) : [],
+      selectedTagIds: tagIds ? JSON.parse(tagIds) : [],
     };
   } catch {
-    return { viewMode: 'simple' as const, selectedStoreIds: [] };
+    return { viewMode: 'simple' as const, selectedTagIds: [] };
   }
 };
 
@@ -24,22 +24,22 @@ const persisted = loadPersistedState();
 
 interface ShoppingState {
   items: ShoppingItem[];
-  stores: Store[];
+  tags: Tag[];
   groups: ShoppingGroup[];
   loading: boolean;
   error: string | null;
   viewMode: 'simple' | 'recipe-grouped';
-  selectedStoreIds: string[];
+  selectedTagIds: string[];
 }
 
 const initialState: ShoppingState = {
   items: [],
-  stores: [],
+  tags: [],
   groups: [],
   loading: true,
   error: null,
   viewMode: persisted.viewMode,
-  selectedStoreIds: persisted.selectedStoreIds,
+  selectedTagIds: persisted.selectedTagIds,
 };
 
 const shoppingSlice = createSlice({
@@ -50,8 +50,8 @@ const shoppingSlice = createSlice({
       state.items = action.payload;
       state.loading = false;
     },
-    setStores: (state, action: PayloadAction<Store[]>) => {
-      state.stores = action.payload;
+    setTags: (state, action: PayloadAction<Tag[]>) => {
+      state.tags = action.payload;
     },
     setShoppingGroups: (state, action: PayloadAction<ShoppingGroup[]>) => {
       state.groups = action.payload;
@@ -95,10 +95,10 @@ const shoppingSlice = createSlice({
         // Ignore localStorage errors
       }
     },
-    setSelectedStoreIds: (state, action: PayloadAction<string[]>) => {
-      state.selectedStoreIds = action.payload;
+    setSelectedTagIds: (state, action: PayloadAction<string[]>) => {
+      state.selectedTagIds = action.payload;
       try {
-        localStorage.setItem(STORAGE_KEY_STORE_IDS, JSON.stringify(action.payload));
+        localStorage.setItem(STORAGE_KEY_TAG_IDS, JSON.stringify(action.payload));
       } catch {
         // Ignore localStorage errors
       }
@@ -108,7 +108,7 @@ const shoppingSlice = createSlice({
 
 export const {
   setShoppingItems,
-  setStores,
+  setTags,
   setShoppingGroups,
   addShoppingGroupToState,
   updateShoppingGroupInState,
@@ -120,7 +120,7 @@ export const {
   setLoading,
   setError,
   setViewMode,
-  setSelectedStoreIds,
+  setSelectedTagIds,
 } = shoppingSlice.actions;
 
 export default shoppingSlice.reducer;

@@ -251,7 +251,7 @@ interface EditRecipe {
 **Normalized Units** (suggested standard set):
 - Volume: `cup`, `tablespoon`, `teaspoon`, `fluid-ounce`, `milliliter`, `liter`
 - Weight: `gram`, `kilogram`, `ounce`, `pound`
-- Count: `piece`, `whole`, `clove`, `slice`
+- Count: `each`, `clove`, `slice`
 - Special: `null` for "to taste", "pinch", "dash", etc.
 
 **Alternative Ingredient Representations Considered**:
@@ -318,7 +318,7 @@ interface EditRecipe {
     },
     {
       "amount": 2,
-      "unit": "whole",
+      "unit": "each",
       "name": "eggs",
       "optional": false,
       "originalText": "2 eggs"

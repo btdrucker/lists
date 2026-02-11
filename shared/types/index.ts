@@ -88,7 +88,7 @@ export interface ShoppingItemBase<DateType = Date> {
   unit: UnitValue | null;
   name: string;
   isChecked: boolean;
-  storeTagIds: string[];
+  tagIds: string[];
   sourceRecipeId?: string; // undefined = manual item
   customGroupId?: string; // Link to custom shopping group
   createdAt: DateType;
@@ -101,8 +101,8 @@ export type ShoppingItem = ShoppingItemBase<string>;
 // Backend: uses Date objects (if needed)
 export type ShoppingItemDoc = ShoppingItemBase<Date>;
 
-// Store entity
-export interface StoreBase<DateType = Date> {
+// Tag entity (family-specific metadata tags for shopping items)
+export interface TagBase<DateType = Date> {
   id: string;
   familyId: string;
   displayName: string;
@@ -113,8 +113,8 @@ export interface StoreBase<DateType = Date> {
   updatedAt: DateType;
 }
 
-export type Store = StoreBase<string>;
-export type StoreDoc = StoreBase<Date>;
+export type Tag = TagBase<string>;
+export type TagDoc = TagBase<Date>;
 
 // Shopping Group (user-created custom groups)
 export interface ShoppingGroupBase<DateType = Date> {
@@ -136,7 +136,7 @@ export interface ItemProfileBase<DateType = Date> {
   name: string; // normalized ingredient name
   recentUsages: Array<{
     timestamp: DateType;
-    storeIds: string[];
+    tagIds: string[];
   }>;
   createdAt: DateType;
   updatedAt: DateType;
@@ -152,7 +152,7 @@ export interface CombinedItem {
   unit: UnitValue | null;
   isChecked: boolean;
   isIndeterminate: boolean; // true when some but not all source items are checked
-  storeTagIds: string[];
+  tagIds: string[];
   sourceItemIds: string[]; // IDs of contributing items
 }
 

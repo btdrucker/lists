@@ -64,7 +64,7 @@ service cloud.firestore {
       // Allow create if authenticated and familyId is 'default-family'
       allow create: if isAuthenticated() &&
                        request.resource.data.familyId == 'default-family' &&
-                       request.resource.data.keys().hasAll(['familyId', 'name', 'isChecked', 'storeTagIds', 'createdAt', 'updatedAt']);
+                       request.resource.data.keys().hasAll(['familyId', 'name', 'isChecked', 'tagIds', 'createdAt', 'updatedAt']);
       
       // Allow update/delete if authenticated and item belongs to 'default-family'
       allow update: if isAuthenticated() &&
@@ -75,9 +75,9 @@ service cloud.firestore {
                        resource.data.familyId == 'default-family';
     }
     
-    // Stores collection
-    // For MVP: All authenticated users share the same 'default-family' stores
-    match /stores/{storeId} {
+    // Tags collection (family-specific metadata tags for shopping items)
+    // For MVP: All authenticated users share the same 'default-family' tags
+    match /tags/{tagId} {
       // Allow read if authenticated
       allow read: if isAuthenticated();
       
@@ -86,7 +86,7 @@ service cloud.firestore {
                        request.resource.data.familyId == 'default-family' &&
                        request.resource.data.keys().hasAll(['familyId', 'displayName', 'abbreviation', 'color', 'sortOrder', 'createdAt', 'updatedAt']);
       
-      // Allow update/delete if authenticated and store belongs to 'default-family'
+      // Allow update/delete if authenticated and tag belongs to 'default-family'
       allow update: if isAuthenticated() &&
                        resource.data.familyId == 'default-family' &&
                        request.resource.data.familyId == 'default-family';

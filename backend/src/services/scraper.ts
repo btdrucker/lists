@@ -14,11 +14,11 @@ const UNIT_ALIAS_PATTERNS: Record<UnitValue, string[]> = {
   [UnitValue.CUP]: ['cups?','c\\.?'],
   [UnitValue.TABLESPOON]: ['tablespoons?', 'Tbsp\\.?', 'tbsp\\.?', 'tbs\\.?', 'T', 'TB'],
   [UnitValue.TEASPOON]: ['teaspoons?', 'tsp\\.?', 't'],
-  [UnitValue.FLUID_OUNCE]: ['fluid ounces?', 'fl\\.?\\s*oz\\.?'],
+  [UnitValue.FLUID_OUNCE]: ['fluid ounces?', 'fl\\.?\\s*ozs?\\.?'],
   [UnitValue.QUART]: ['quarts?', 'qt\\.?'],
   // Weight
   [UnitValue.POUND]: ['pounds?', 'lbs?\\.?'],
-  [UnitValue.WEIGHT_OUNCE]: ['ounces?', 'oz\\.?'],
+  [UnitValue.WEIGHT_OUNCE]: ['ounces?', 'ozs?\\.?'],
   // Count/Pieces
   [UnitValue.EACH]: ['each'],
   [UnitValue.CLOVE]: ['cloves?'],

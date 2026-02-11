@@ -1,7 +1,7 @@
 @import '../../common/styles.css';
 
-/* Store tag dialog */
-.storeDialog {
+/* Tag dialog */
+.tagDialog {
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
@@ -21,17 +21,17 @@
 }
 
 /* Show dialog above button when near bottom of screen */
-.storeDialogAbove {
+.tagDialogAbove {
   top: auto;
   bottom: calc(100% + 4px);
 }
 
 /* Hide dialog until position is calculated to prevent jank */
-.storeDialogHidden {
+.tagDialogHidden {
   visibility: hidden;
 }
 
-.storeDialogOption {
+.tagDialogOption {
   padding: 8px 14px;
   border: 2px solid transparent;
   border-radius: 9999px;
@@ -44,6 +44,6 @@
   opacity: 0.4;
 }
 
-.storeDialogOptionSelected {
+.tagDialogOptionSelected {
   opacity: 1;
 }

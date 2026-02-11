@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../common/hooks';
-import { setShoppingItems, setStores, setShoppingGroups, removeShoppingItems, setViewMode, setSelectedStoreIds } from './slice';
+import { setShoppingItems, setTags, setShoppingGroups, removeShoppingItems, setViewMode, setSelectedTagIds } from './slice';
 import {
   subscribeToShoppingItems,
-  subscribeToStores,
+  subscribeToTags,
   subscribeToShoppingGroups,
-  initializeDefaultStores,
+  initializeDefaultTags,
   addShoppingItem,
   updateShoppingItem,
   bulkDeleteShoppingItems,
@@ -14,11 +14,12 @@ import {
   updateShoppingGroup,
   deleteShoppingGroup,
 } from '../../firebase/firestore';
-import type { ShoppingItem, Store, ShoppingGroup, CombinedItem, GroupedItems, Recipe } from '../../types';
+import type { ShoppingItem, Tag, ShoppingGroup, CombinedItem, GroupedItems, Recipe } from '../../types';
 import { ensureRecipeHasAiParsingAndUpdate, getEffectiveIngredientValues } from '../../common/aiParsing';
 import type { RecipeWithAiMetadata } from '../../common/aiParsing';
 import { getIngredientsNeedingAiIndices } from '../../common/aiParsing';
 import RecipePicker from '../../common/components/RecipePicker';
+import EditTagsDialog from './EditTagsDialog';
 import Checkbox from '../../common/components/Checkbox';
 import CollapseToggle from './CollapseToggle';
 import ShoppingItemRow from './ShoppingItemRow';
@@ -76,9 +77,9 @@ function combineItems(items: ShoppingItem[]): CombinedItem[] {
       const someChecked = sourceItems.some((item) => item.isChecked);
       const isIndeterminate = someChecked && !allChecked;
 
-      // Merge store tags (deduplicate)
-      const allStoreTagIds = [
-        ...new Set(sourceItems.flatMap((item) => item.storeTagIds)),
+      // Merge tags (deduplicate)
+      const allTagIds = [
+        ...new Set(sourceItems.flatMap((item) => item.tagIds)),
       ];
 
       return {
@@ -88,7 +89,7 @@ function combineItems(items: ShoppingItem[]): CombinedItem[] {
         unit: sourceItems[0].unit,
         isChecked: allChecked,
         isIndeterminate,
-        storeTagIds: allStoreTagIds,
+        tagIds: allTagIds,
         sourceItemIds: sourceItems.map((item) => item.id),
       };
     }
@@ -185,20 +186,21 @@ const Shopping = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const items: ShoppingItem[] = useAppSelector((state) => state.shopping?.items || []);
-  const stores: Store[] = useAppSelector((state) => state.shopping?.stores || []);
+  const tags: Tag[] = useAppSelector((state) => state.shopping?.tags || []);
   const groups: ShoppingGroup[] = useAppSelector((state) => state.shopping?.groups || []);
   const loading = useAppSelector((state) => state.shopping?.loading ?? true);
   const recipes: Recipe[] = useAppSelector((state) => state.recipes?.recipes || []);
   const viewMode = useAppSelector((state) => state.shopping?.viewMode || 'simple');
-  const selectedStoreIds = useAppSelector((state) => state.shopping?.selectedStoreIds || []);
+  const selectedTagIds = useAppSelector((state) => state.shopping?.selectedTagIds || []);
   const [showRecipePicker, setShowRecipePicker] = useState(false);
+  const [showEditTags, setShowEditTags] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [loadingRecipes, setLoadingRecipes] = useState<Map<string, string>>(new Map()); // recipeId -> recipeTitle
 
-  // Store tag dialog state
-  const [storeDialogItemKey, setStoreDialogItemKey] = useState<string | null>(null);
+  // Tag dialog state
+  const [tagDialogItemKey, setTagDialogItemKey] = useState<string | null>(null);
 
   // Track checked empty groups (groups with no items that user wants to delete)
   const [checkedEmptyGroupIds, setCheckedEmptyGroupIds] = useState<Set<string>>(new Set());
@@ -206,21 +208,21 @@ const Shopping = () => {
   // Set up real-time listeners
   useEffect(() => {
     let unsubItems: (() => void) | undefined;
-    let unsubStores: (() => void) | undefined;
+    let unsubTags: (() => void) | undefined;
     let unsubGroups: (() => void) | undefined;
 
     const initAndSubscribe = async () => {
       try {
-        // Initialize default stores (safe to call multiple times)
-        await initializeDefaultStores(FAMILY_ID);
+        // Initialize default tags (safe to call multiple times)
+        await initializeDefaultTags(FAMILY_ID);
 
         // Set up real-time listeners
         unsubItems = subscribeToShoppingItems(FAMILY_ID, (newItems) => {
           dispatch(setShoppingItems(newItems));
         });
 
-        unsubStores = subscribeToStores(FAMILY_ID, (newStores) => {
-          dispatch(setStores(newStores));
+        unsubTags = subscribeToTags(FAMILY_ID, (newTags) => {
+          dispatch(setTags(newTags));
         });
 
         unsubGroups = subscribeToShoppingGroups(FAMILY_ID, (newGroups) => {
@@ -230,7 +232,7 @@ const Shopping = () => {
         console.error('Error initializing shopping list:', error);
         // Set loading to false to show empty state instead of infinite loading
         dispatch(setShoppingItems([]));
-        dispatch(setStores([]));
+        dispatch(setTags([]));
         dispatch(setShoppingGroups([]));
       }
     };
@@ -239,7 +241,7 @@ const Shopping = () => {
 
     return () => {
       if (unsubItems) unsubItems();
-      if (unsubStores) unsubStores();
+      if (unsubTags) unsubTags();
       if (unsubGroups) unsubGroups();
     };
   }, [dispatch]);
@@ -260,15 +262,15 @@ const Shopping = () => {
     }
   }, [showMenu]);
 
-  // Filter items by selected stores
+  // Filter items by selected tags
   const filteredItems = useMemo(() => {
-    if (selectedStoreIds.length === 0) return items;
+    if (selectedTagIds.length === 0) return items;
     return items.filter(
       (item) =>
-        item.storeTagIds.length === 0 ||
-        item.storeTagIds.some((id) => selectedStoreIds.includes(id))
+        item.tagIds.length === 0 ||
+        item.tagIds.some((id) => selectedTagIds.includes(id))
     );
-  }, [items, selectedStoreIds]);
+  }, [items, selectedTagIds]);
 
   // Prepare display items based on view mode
   const combinedItems = useMemo(() => {
@@ -334,13 +336,13 @@ const Shopping = () => {
     return itemsToCheck.filter((item) => item.isChecked && !isItemIndeterminate(item)).length;
   }, [viewMode, combinedItems, filteredItems]);
 
-  // Toggle store filter
-  const handleStoreToggle = useCallback((storeId: string) => {
-    const newSelectedStoreIds = selectedStoreIds.includes(storeId)
-      ? selectedStoreIds.filter((id) => id !== storeId)
-      : [...selectedStoreIds, storeId];
-    dispatch(setSelectedStoreIds(newSelectedStoreIds));
-  }, [selectedStoreIds, dispatch]);
+  // Toggle tag filter
+  const handleTagToggle = useCallback((tagId: string) => {
+    const newSelectedTagIds = selectedTagIds.includes(tagId)
+      ? selectedTagIds.filter((id) => id !== tagId)
+      : [...selectedTagIds, tagId];
+    dispatch(setSelectedTagIds(newSelectedTagIds));
+  }, [selectedTagIds, dispatch]);
 
   // Check/uncheck item
   const handleCheck = useCallback(
@@ -558,7 +560,7 @@ const Shopping = () => {
               amount,
               unit,
               isChecked: false,
-              storeTagIds: [],
+              tagIds: [],
               sourceRecipeId: recipeId,
             });
             addedCount++;
@@ -595,24 +597,24 @@ const Shopping = () => {
     [recipes, items, dispatch]
   );
 
-  // Toggle store tag for item(s)
-  const handleItemStoreToggle = useCallback(
-    async (itemIds: string[], storeId: string) => {
+  // Toggle tag for item(s)
+  const handleItemTagToggle = useCallback(
+    async (itemIds: string[], tagId: string) => {
       try {
         for (const id of itemIds) {
           const item = items.find((i) => i.id === id);
           if (!item) continue;
 
-          const newStoreTagIds = item.storeTagIds.includes(storeId)
-            ? item.storeTagIds.filter((sid) => sid !== storeId)
-            : [...item.storeTagIds, storeId];
+          const newTagIds = item.tagIds.includes(tagId)
+            ? item.tagIds.filter((tid) => tid !== tagId)
+            : [...item.tagIds, tagId];
 
-          await updateShoppingItem(id, { storeTagIds: newStoreTagIds });
+          await updateShoppingItem(id, { tagIds: newTagIds });
         }
         // Close dialog after toggle
-        setStoreDialogItemKey(null);
+        setTagDialogItemKey(null);
       } catch (error) {
-        console.error('Error updating store tags:', error);
+        console.error('Error updating tags:', error);
       }
     },
     [items]
@@ -701,12 +703,12 @@ const Shopping = () => {
         itemKey={itemKey}
         isIndeterminate={isIndeterminate}
         isCombined={isCombined}
-        stores={stores}
-        storeDialogItemKey={storeDialogItemKey}
-        setStoreDialogItemKey={setStoreDialogItemKey}
+        tags={tags}
+        tagDialogItemKey={tagDialogItemKey}
+        setTagDialogItemKey={setTagDialogItemKey}
         handleItemClick={handleItemClick}
         handleCheck={handleCheck}
-        handleItemStoreToggle={handleItemStoreToggle}
+        handleItemTagToggle={handleItemTagToggle}
       />
     );
   };
@@ -763,6 +765,15 @@ const Shopping = () => {
                     <i className="fa-solid fa-folder-plus" /> Add Group
                   </button>
                   <button
+                    className={styles.menuItem}
+                    onClick={() => {
+                      setShowEditTags(true);
+                      setShowMenu(false);
+                    }}
+                  >
+                    <i className="fa-solid fa-tag" /> {tags.length === 0 ? 'New Tag' : 'Edit Tags'}
+                  </button>
+                  <button
                     className={`${styles.menuItem} ${checkedItemIds.length === 0 && fullyCheckedCustomGroupIds.length === 0 ? styles.menuItemDisabled : ''}`}
                     onClick={() => {
                       if (checkedItemIds.length > 0 || fullyCheckedCustomGroupIds.length > 0) {
@@ -809,25 +820,25 @@ const Shopping = () => {
             </div>
           </label>
 
-          {stores.length > 0 && (
-            <div className={styles.storeFilter}>
-              {[...stores]
+          {tags.length > 0 && (
+            <div className={styles.tagFilter}>
+              {[...tags]
                 .sort((a, b) => a.sortOrder - b.sortOrder)
-                .map((store) => (
+                .map((tag) => (
                   <div
-                    key={store.id}
-                    className={styles.storeTagWrapper}
-                    onClick={() => handleStoreToggle(store.id)}
+                    key={tag.id}
+                    className={styles.tagWrapper}
+                    onClick={() => handleTagToggle(tag.id)}
                   >
                     <button
-                      className={`${styles.storeTag} ${
-                        selectedStoreIds.includes(store.id)
-                          ? styles.storeTagSelected
+                      className={`${styles.tag} ${
+                        selectedTagIds.includes(tag.id)
+                          ? styles.tagSelected
                           : ''
                       }`}
-                      style={{ backgroundColor: store.color, color: 'white' }}
+                      style={{ backgroundColor: tag.color, color: 'white' }}
                     >
-                      {store.abbreviation}
+                      {tag.abbreviation}
                     </button>
                   </div>
                 ))}
@@ -996,11 +1007,16 @@ const Shopping = () => {
         onSelect={handleRecipesSelected}
       />
 
-      {/* Modal backdrop for store dialog */}
-      {storeDialogItemKey && (
+      <EditTagsDialog
+        isOpen={showEditTags}
+        onClose={() => setShowEditTags(false)}
+      />
+
+      {/* Modal backdrop for tag dialog */}
+      {tagDialogItemKey && (
         <div
           className={styles.modalBackdrop}
-          onClick={() => setStoreDialogItemKey(null)}
+          onClick={() => setTagDialogItemKey(null)}
         />
       )}
     </div>

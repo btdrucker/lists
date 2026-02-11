@@ -19,7 +19,7 @@ const RecipeListItemCompact = ({ recipe, onDelete }: RecipeListItemCompactProps)
         onClick={(e) => onDelete(recipe.id, recipe.title, e)}
         title="Delete recipe"
       >
-        <i className="fa-solid fa-trash-can"></i>
+        <i className="fa-solid fa-trash"></i>
       </button>
       
       {recipe.imageUrl ? (

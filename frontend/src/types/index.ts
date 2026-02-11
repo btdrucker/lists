@@ -7,8 +7,8 @@ export type {
   // Shopping list types
   ShoppingItem,
   ShoppingItemBase,
-  Store,
-  StoreBase,
+  Tag,
+  TagBase,
   ShoppingGroup,
   ShoppingGroupBase,
   ItemProfile,

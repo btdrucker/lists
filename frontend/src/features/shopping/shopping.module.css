@@ -42,42 +42,18 @@
 }
 
 .headerAddButton {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  color: var(--color-text-primary);
-  font-size: 20px;
+  composes: circleIconButton from '../../common/components/shared.module.css';
   font-weight: bold;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background var(--transition-fast);
-}
-
-.headerAddButton:hover {
-  background: var(--color-border-medium);
 }
 
 .menuButton {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: none;
+  composes: circleIconButton from '../../common/components/shared.module.css';
   background: var(--color-bg-light);
   color: var(--color-text-secondary);
   font-size: 18px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .menuButton:hover {
-  background: var(--color-border-medium);
   color: var(--color-text-primary);
 }
 
@@ -206,7 +182,7 @@
   transform: translateX(16px);
 }
 
-.storeFilter {
+.tagFilter {
   display: flex;
   gap: 0;
   flex-wrap: wrap;
@@ -214,7 +190,7 @@
   margin-left: auto;
 }
 
-.storeTagWrapper {
+.tagWrapper {
   /* 48px minimum touch area for accessibility - no overlap */
   min-width: 48px;
   min-height: 48px;
@@ -224,15 +200,16 @@
   cursor: pointer;
 }
 
-.storeTag {
-  min-width: 30px;
+.tag {
+  width: 30px;
   height: 30px;
-  padding: 0 5px;
+  max-width: 30px;
+  padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: 2px solid transparent;
-  border-radius: 15px;
+  border-radius: 50%;
   font-size: 13px;
   font-weight: 600;
   transition: border-color var(--transition-fast), opacity var(--transition-fast);
@@ -240,7 +217,7 @@
   pointer-events: none; /* Wrapper handles clicks */
 }
 
-.storeTagSelected {
+.tagSelected {
   opacity: 1;
 }
 
