@@ -1,16 +1,22 @@
 @import '../styles.css';
 
-/* 48px touch area wrapper for accessibility */
+/* 48px min touch area wrapper for accessibility, stretches to row height */
 .wrapper {
   width: 48px;
-  height: 48px;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
+  align-self: stretch;
   /* Negative margins to maintain visual spacing */
   margin: -13px;
+  transition: background var(--transition-fast);
+}
+
+.wrapper:hover {
+  background: rgba(0, 0, 0, 0.05);
 }
 
 /* 22px Font Awesome icon checkbox */

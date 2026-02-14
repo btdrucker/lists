@@ -623,9 +623,10 @@ const Shopping = () => {
   // Inline editing state for custom group names
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editingGroupName, setEditingGroupName] = useState('');
-  const editingInputRef = useRef<HTMLInputElement>(null);
+  const editingInputRef = useRef<HTMLTextAreaElement>(null);
+  const isCancelingRef = useRef(false);
 
-  // Focus input when entering edit mode
+  // Focus textarea when entering edit mode
   useEffect(() => {
     if (editingGroupId && editingInputRef.current) {
       editingInputRef.current.focus();
@@ -658,6 +659,12 @@ const Shopping = () => {
 
   // Save the edited group name
   const handleSaveGroupName = useCallback(async () => {
+    // Don't save if we're canceling
+    if (isCancelingRef.current) {
+      isCancelingRef.current = false;
+      return;
+    }
+    
     if (!editingGroupId) return;
     
     const trimmedName = editingGroupName.trim();
@@ -680,8 +687,14 @@ const Shopping = () => {
 
   // Cancel editing
   const handleCancelEditGroupName = useCallback(() => {
+    // Set flag to prevent save on blur
+    isCancelingRef.current = true;
     setEditingGroupId(null);
     setEditingGroupName('');
+    // Blur the textarea
+    if (editingInputRef.current) {
+      editingInputRef.current.blur();
+    }
   }, []);
 
   // Render individual item
@@ -904,46 +917,40 @@ const Shopping = () => {
                     onChange={() => handleGroupCheckToggle(group.items, group.groupId)}
                     className={styles.groupCheckboxLeft}
                   />
-                  {editingGroupId === group.groupId ? (
-                    <input
-                      ref={editingInputRef}
-                      type="text"
-                      className={styles.editableGroupNameInput}
-                      value={editingGroupName}
-                      onChange={(e) => setEditingGroupName(e.target.value)}
-                      onBlur={handleSaveGroupName}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => {
+                  <textarea
+                    ref={editingGroupId === group.groupId ? editingInputRef : undefined}
+                    className={`${styles.editableGroupNameInput} ${getGroupCheckedState(group.items, group.groupId) === 'all' ? styles.groupTitleChecked : ''}`}
+                    value={editingGroupId === group.groupId ? editingGroupName : group.groupName}
+                    readOnly={editingGroupId !== group.groupId}
+                    onChange={(e) => setEditingGroupName(e.target.value)}
+                    onFocus={() => {
+                      if (editingGroupId !== group.groupId) {
+                        handleStartEditGroupName(group.groupId, group.groupName);
+                      }
+                    }}
+                    onBlur={editingGroupId === group.groupId ? handleSaveGroupName : undefined}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      if (editingGroupId === group.groupId) {
                         if (e.key === 'Enter') {
+                          e.preventDefault();
                           handleSaveGroupName();
                         } else if (e.key === 'Escape') {
                           handleCancelEditGroupName();
                         }
-                      }}
-                    />
-                  ) : (
-                    <span
-                      className={`${styles.editableGroupName} ${getGroupCheckedState(group.items, group.groupId) === 'all' ? styles.groupTitleChecked : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStartEditGroupName(group.groupId, group.groupName);
-                      }}
-                    >
-                      {group.groupName}
-                    </span>
-                  )}
-                  {editingGroupId !== group.groupId && (
-                    <button
-                      className={styles.groupAddButton}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/shopping/edit/add?groupId=${group.groupId}`);
-                      }}
-                      aria-label="Add item to group"
-                    >
-                      <i className="fa-solid fa-plus" />
-                    </button>
-                  )}
+                      }
+                    }}
+                  />
+                  <button
+                    className={styles.groupAddButton}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/shopping/edit/add?groupId=${group.groupId}`);
+                    }}
+                    aria-label="Add item to group"
+                  >
+                    <i className="fa-solid fa-plus" />
+                  </button>
                   <CollapseToggle
                     collapsed={collapsedGroups.has(group.groupId)}
                     onToggle={() => toggleGroupCollapse(group.groupId)}

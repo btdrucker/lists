@@ -287,40 +287,39 @@
   opacity: 0.9;
 }
 
-/* Editable group name */
-.editableGroupName {
+/* Editable group name - always a textarea for consistent sizing */
+.editableGroupNameInput {
+  display: block;
   flex: 1;
-  cursor: text;
-  padding: 4px 8px;
-  margin: -4px -8px;
-  margin-left: calc(var(--spacing-sm) - 8px);
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1.3;
+  color: var(--color-text-primary);
+  border: 2px solid transparent;
   border-radius: var(--radius-sm);
-  transition: background var(--transition-fast);
-  /* Ensure 48px touch height */
-  min-height: 32px;
-  display: inline-flex;
-  align-items: center;
+  padding: 6px;
+  /* Offset margin by padding+border so text aligns with other titles */
+  margin-left: calc(var(--spacing-sm) - 8px);
+  margin-right: 0;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  cursor: text;
+  background: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  /* Auto-size to content */
+  field-sizing: content;
 }
 
-.editableGroupName:hover {
+.editableGroupNameInput:hover:not(:focus) {
   background: rgba(0, 0, 0, 0.05);
 }
 
-.editableGroupNameInput {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  background: var(--color-bg-white);
-  border: 2px solid var(--color-primary);
-  border-radius: var(--radius-sm);
-  padding: 6px 10px;
-  /* 48px touch target height */
-  min-height: 40px;
-  flex: 1;
-  outline: none;
-}
-
 .editableGroupNameInput:focus {
+  background: var(--color-bg-white);
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 74, 144, 226), 0.2);
 }
 
@@ -394,7 +393,6 @@
   font-size: 16px;
   font-weight: 600;
   color: var(--color-text-primary);
-  /* No horizontal padding - caret touch area extends to left edge */
   padding: 0;
   margin: 0;
   background: #e8e8e8;
@@ -402,7 +400,7 @@
 
 .groupAddButton {
   width: 48px;
-  height: 48px;
+  min-height: 48px;
   border: none;
   background: transparent;
   color: var(--color-text-primary);
@@ -412,6 +410,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  align-self: stretch;
   transition: background var(--transition-fast);
 }
 
@@ -434,16 +433,21 @@
 }
 
 .groupCaretWrapper {
-  /* 48px touch area for accessibility */
+  /* 48px min touch area for accessibility, stretches to row height */
   width: 48px;
-  height: 48px;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  /* Align to left edge */
+  align-self: stretch;
   margin: 0;
+  transition: background var(--transition-fast);
+}
+
+.groupCaretWrapper:hover {
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .groupCaret {
