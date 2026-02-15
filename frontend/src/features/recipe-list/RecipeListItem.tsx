@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigateWithDebug } from '../../common/hooks';
 import styles from './recipe-list.module.css';
 
 interface RecipeListItemProps {
@@ -7,7 +7,7 @@ interface RecipeListItemProps {
 }
 
 const RecipeListItem = ({ recipe, onDelete }: RecipeListItemProps) => {
-  const navigate = useNavigate();
+  const navigate = useNavigateWithDebug();
   const category = recipe.category || [];
   const cuisine = recipe.cuisine || [];
   const keywords = recipe.keywords || [];

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { signOut } from '../../firebase/auth';
+import { appendDebugToPath, useDebugMode } from '../hooks';
 import styles from './appShell.module.css';
 
 interface NavItem {
@@ -20,6 +21,8 @@ interface AppShellProps {
 }
 
 const AppShell = ({ children }: AppShellProps) => {
+  const debugMode = useDebugMode();
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -35,7 +38,7 @@ const AppShell = ({ children }: AppShellProps) => {
           {navItems.map((item) => (
             <NavLink
               key={item.to}
-              to={item.to}
+              to={appendDebugToPath(item.to, debugMode)}
               className={({ isActive }) =>
                 `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
               }

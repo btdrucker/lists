@@ -48,6 +48,55 @@ export const getEffectiveIngredientValues = (ingredient: Ingredient) => {
 export const computeAiParsingStatus = (ingredients: Ingredient[]) =>
   ingredients.some((ingredient) => hasMissingAiFields(ingredient)) ? 'required' : 'done';
 
+/**
+ * Parses a single ingredient text via the backend API.
+ *
+ * The /parse-ingredients endpoint runs:
+ * 1. Regex parsing (parseIngredientTextForApi) - extracts amount, unit, name
+ * 2. AI enrichment (enrichIngredientsWithAI) - improves/extends the parsed fields
+ *
+ * Used when adding or editing shopping items so amount/unit/name come from parsing,
+ * not raw text. The display always uses originalText (what the user typed).
+ *
+ * On parse failure: caller should leave amount/unit/name blank. Retry behavior is TBD.
+ */
+export const parseShoppingItemText = async (
+  text: string
+): Promise<{ amount: number | null; unit: string | null; name: string }> => {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return { amount: null, unit: null, name: '' };
+  }
+
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  const token = await getIdToken();
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const response = await fetch(`${apiUrl}/parse-ingredients`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ ingredientTexts: [trimmed] }),
+  });
+
+  const data = await response.json();
+  if (!response.ok || data.status !== 'ok' || !Array.isArray(data.ingredients)) {
+    throw new Error(data.error || 'Failed to parse ingredient');
+  }
+
+  const parsed = data.ingredients[0] as Ingredient;
+  const { amount, unit, name } = getEffectiveIngredientValues(parsed);
+  return {
+    amount,
+    unit,
+    name: name?.trim() ?? '',
+  };
+};
+
 export const getIngredientsNeedingAiIndices = (
   ingredients: Ingredient[],
   lastAiParsingVersion: number | null | undefined,

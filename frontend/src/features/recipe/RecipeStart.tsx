@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAppDispatch, useOnlineStatus } from '../../common/hooks';
+import { useAppDispatch, useOnlineStatus, useNavigateWithDebug } from '../../common/hooks';
 import { addRecipe } from '../recipe-list/slice.ts';
 import { getIdToken } from '../../firebase/auth';
 import Dialog from '../../common/components/Dialog';
@@ -14,7 +13,7 @@ interface RecipeStartProps {
 }
 
 const RecipeStart = ({ isModal = false, onClose }: RecipeStartProps) => {
-  const navigate = useNavigate();
+  const navigate = useNavigateWithDebug();
   const dispatch = useAppDispatch();
   const isOnline = useOnlineStatus();
 

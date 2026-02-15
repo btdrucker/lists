@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
-import { useAppSelector, useAppDispatch } from '../../common/hooks';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
+import { useAppSelector, useAppDispatch, useDebugMode, useNavigateWithDebug, appendDebugToPath } from '../../common/hooks';
 import { 
   addShoppingItem,
   updateShoppingItem,
@@ -9,6 +9,8 @@ import {
 } from '../../firebase/firestore';
 import { setShoppingItems, setTags } from './slice';
 import IconButton from '../../common/components/IconButton';
+import ParsedFieldsDebug from '../../common/components/ParsedFieldsDebug';
+import { parseShoppingItemText } from '../../common/aiParsing';
 import { UnitValue } from '../../types';
 import type { ShoppingItem, Tag } from '../../types';
 type UnitValueType = typeof UnitValue[keyof typeof UnitValue];
@@ -16,52 +18,30 @@ import styles from './editShoppingItem.module.css';
 
 const FAMILY_ID = 'default-family';
 
-// Unit labels for display
-const UNIT_LABELS: Record<string, string> = {
-  [UnitValue.CUP]: 'cup',
-  [UnitValue.TABLESPOON]: 'tbsp',
-  [UnitValue.TEASPOON]: 'tsp',
-  [UnitValue.FLUID_OUNCE]: 'fl oz',
-  [UnitValue.QUART]: 'qt',
-  [UnitValue.POUND]: 'lb',
-  [UnitValue.WEIGHT_OUNCE]: 'oz',
-  [UnitValue.EACH]: 'each',
-  [UnitValue.CLOVE]: 'clove',
-  [UnitValue.SLICE]: 'slice',
-  [UnitValue.CAN]: 'can',
-  [UnitValue.BUNCH]: 'bunch',
-  [UnitValue.HEAD]: 'head',
-  [UnitValue.STALK]: 'stalk',
-  [UnitValue.SPRIG]: 'sprig',
-  [UnitValue.LEAF]: 'leaf',
-  [UnitValue.PINCH]: 'pinch',
-  [UnitValue.DASH]: 'dash',
-  [UnitValue.HANDFUL]: 'handful',
-  [UnitValue.TO_TASTE]: 'to taste',
-};
-
 // Normalize ingredient name for combining
 function normalizeItemName(name: string): string {
   return name.toLowerCase().trim();
 }
 
-// Get unique key for item grouping
-function getItemKey(item: ShoppingItem): string {
+/**
+ * Grouping key for aggregating items. Returns null when there's no parsed name
+ * (e.g. parse failed) - those items never group with anything.
+ */
+function getItemKey(item: ShoppingItem): string | null {
+  if (!item.name?.trim()) return null;
   return `${normalizeItemName(item.name)}:${item.unit}`;
 }
 
-// Local state for editing an item
+// Local state: single originalText input per item
 interface EditableItem {
   id: string;
-  amount: string;
-  unit: string;
-  name: string;
+  originalText: string;
   tagIds: string[];
   sourceRecipeId?: string;
 }
 
 const EditShoppingItem = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigateWithDebug();
   const dispatch = useAppDispatch();
   const { itemId } = useParams<{ itemId: string }>();
   const [searchParams] = useSearchParams();
@@ -76,6 +56,7 @@ const EditShoppingItem = () => {
   const [editableItems, setEditableItems] = useState<EditableItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const debugMode = useDebugMode();
 
   // Set up real-time listeners (in case user navigates directly to edit page)
   useEffect(() => {
@@ -103,32 +84,22 @@ const EditShoppingItem = () => {
   const relatedItems = useMemo(() => {
     if (isAddMode) return [];
     if (!clickedItem) return [];
-    // If editing single item only (from grouped mode), return just that item
     if (editSingleOnly) return [clickedItem];
-    // Otherwise, return all items with the same name+unit (from simple/combined mode)
     const key = getItemKey(clickedItem);
+    if (key === null) return [clickedItem];
     return allItems.filter((i) => getItemKey(i) === key);
   }, [allItems, clickedItem, editSingleOnly, isAddMode]);
 
   // Initialize editable state from items
   useEffect(() => {
     if (isAddMode) {
-      // Initialize with empty item for add mode
-      setEditableItems([{
-        id: 'new',
-        amount: '',
-        unit: '',
-        name: '',
-        tagIds: [],
-      }]);
+      setEditableItems([{ id: 'new', originalText: '', tagIds: [] }]);
       setHasChanges(false);
     } else if (relatedItems.length > 0) {
       setEditableItems(
         relatedItems.map((item) => ({
           id: item.id,
-          amount: item.amount?.toString() || '',
-          unit: item.unit || '',
-          name: item.name,
+          originalText: item.originalText ?? '',
           tagIds: [...item.tagIds],
           sourceRecipeId: item.sourceRecipeId,
         }))
@@ -137,18 +108,12 @@ const EditShoppingItem = () => {
     }
   }, [relatedItems, isAddMode]);
 
-  // Update a field for an item
-  const handleFieldChange = useCallback(
-    (itemId: string, field: keyof EditableItem, value: string | string[]) => {
-      setEditableItems((prev) =>
-        prev.map((item) =>
-          item.id === itemId ? { ...item, [field]: value } : item
-        )
-      );
-      setHasChanges(true);
-    },
-    []
-  );
+  const handleOriginalTextChange = useCallback((itemId: string, value: string) => {
+    setEditableItems((prev) =>
+      prev.map((item) => (item.id === itemId ? { ...item, originalText: value } : item))
+    );
+    setHasChanges(true);
+  }, []);
 
   // Toggle tag for an item
   const handleTagToggle = useCallback((itemId: string, tagId: string) => {
@@ -164,59 +129,72 @@ const EditShoppingItem = () => {
     setHasChanges(true);
   }, []);
 
-  // Save all changes
+  // Save all changes. Parses originalText via API to get amount/unit/name.
+  // Open question: when to send to AI parsing? (on save, on blur, debounced, etc.)
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
       if (isAddMode) {
-        // Add new item
         const item = editableItems[0];
-        if (!item.name.trim()) {
-          alert('Please enter an item name');
+        const originalText = item.originalText.trim();
+        if (!originalText) {
+          alert('Please enter an item');
           setIsSaving(false);
           return;
         }
-        
+
+        let amount: number | null = null;
+        let unit: UnitValueType | null = null;
+        let name = '';
+        try {
+          const parsed = await parseShoppingItemText(originalText);
+          amount = parsed.amount;
+          unit = parsed.unit as UnitValueType | null;
+          name = parsed.name;
+        } catch (error) {
+          console.error('Error parsing ingredient:', error);
+        }
+
         await addShoppingItem({
           familyId: FAMILY_ID,
-          name: item.name.trim(),
-          amount: item.amount ? parseFloat(item.amount) : null,
-          unit: (item.unit as UnitValueType) || null,
+          originalText,
+          name,
+          amount,
+          unit,
           isChecked: false,
           tagIds: item.tagIds,
           ...(customGroupId && { customGroupId }),
         });
       } else {
-        // Update existing items
         for (const item of editableItems) {
           const original = relatedItems.find((i) => i.id === item.id);
           if (!original) continue;
 
-          // Build updates object only with changed fields
           const updates: Partial<ShoppingItem> = {};
-
-          const newAmount = item.amount ? parseFloat(item.amount) : null;
-          if (newAmount !== original.amount) {
-            updates.amount = newAmount;
-          }
-
-          const newUnit: UnitValueType | null = (item.unit as UnitValueType) || null;
-          if (newUnit !== original.unit) {
-            updates.unit = newUnit;
-          }
-
-          if (item.name !== original.name) {
-            updates.name = item.name;
-          }
-
-          if (
+          const originalTextChanged = item.originalText !== (original.originalText ?? '');
+          const tagIdsChanged =
             JSON.stringify([...item.tagIds].sort()) !==
-            JSON.stringify([...original.tagIds].sort())
-          ) {
-            updates.tagIds = item.tagIds;
-          }
+            JSON.stringify([...original.tagIds].sort());
 
-          // Only update if there are changes
+          if (originalTextChanged) {
+            updates.originalText = item.originalText.trim();
+            let amount: number | null = null;
+            let unit: UnitValueType | null = null;
+            let name = '';
+            try {
+              const parsed = await parseShoppingItemText(item.originalText.trim());
+              amount = parsed.amount;
+              unit = parsed.unit as UnitValueType | null;
+              name = parsed.name;
+            } catch (error) {
+              console.error('Error parsing ingredient:', error);
+            }
+            updates.amount = amount;
+            updates.unit = unit;
+            updates.name = name;
+          }
+          if (tagIdsChanged) updates.tagIds = item.tagIds;
+
           if (Object.keys(updates).length > 0) {
             await updateShoppingItem(item.id, updates);
           }
@@ -230,7 +208,7 @@ const EditShoppingItem = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [editableItems, relatedItems, navigate, isAddMode]);
+  }, [editableItems, relatedItems, navigate, isAddMode, customGroupId]);
 
   // Handle back navigation
   const handleBack = useCallback(() => {
@@ -263,7 +241,7 @@ const EditShoppingItem = () => {
         <div className={styles.error}>
           <p>Item not found</p>
           <p>This item may have been deleted.</p>
-          <Link to="/shopping" className={styles.backLink}>
+          <Link to={appendDebugToPath('/shopping', debugMode)} className={styles.backLink}>
             Back to Shopping List
           </Link>
         </div>
@@ -271,9 +249,8 @@ const EditShoppingItem = () => {
     );
   }
 
-  // Determine if save button should be disabled
-  const isSaveDisabled = isSaving || (isAddMode 
-    ? !editableItems[0]?.name?.trim() 
+  const isSaveDisabled = isSaving || (isAddMode
+    ? !editableItems[0]?.originalText?.trim()
     : !hasChanges);
 
   return (
@@ -299,53 +276,27 @@ const EditShoppingItem = () => {
         </IconButton>
       </header>
 
-      {editableItems.map((item) => (
+      {editableItems.map((item) => {
+        const sourceItem = relatedItems.find((i) => i.id === item.id);
+        return (
           <div key={item.id} className={styles.sourceItem}>
-            <div className={styles.formRow}>
-              <div className={styles.formGroupSmall}>
-                <label className={styles.label}>Amount</label>
-                <input
-                  type="number"
-                  className={styles.input}
-                  value={item.amount}
-                  onChange={(e) =>
-                    handleFieldChange(item.id, 'amount', e.target.value)
-                  }
-                  min="0"
-                  step="any"
-                  placeholder="Qty"
-                />
-              </div>
-              <div className={styles.formGroupMedium}>
-                <label className={styles.label}>Unit</label>
-                <select
-                  className={styles.select}
-                  value={item.unit}
-                  onChange={(e) =>
-                    handleFieldChange(item.id, 'unit', e.target.value)
-                  }
-                >
-                  <option value="">No unit</option>
-                  {Object.entries(UNIT_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Name</label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={item.name}
-                  onChange={(e) =>
-                    handleFieldChange(item.id, 'name', e.target.value)
-                  }
-                  placeholder="Item name"
-                />
-              </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Item</label>
+              <input
+                type="text"
+                className={styles.input}
+                value={item.originalText}
+                onChange={(e) => handleOriginalTextChange(item.id, e.target.value)}
+                placeholder="e.g. 2 cups flour, 3 carrots"
+              />
             </div>
+            {debugMode && sourceItem && (
+              <ParsedFieldsDebug
+                amount={sourceItem.amount}
+                unit={sourceItem.unit}
+                name={sourceItem.name ?? ''}
+              />
+            )}
 
             <div className={styles.tagsSection}>
               <div className={styles.tags}>
@@ -356,9 +307,7 @@ const EditShoppingItem = () => {
                       key={tag.id}
                       type="button"
                       className={`${styles.tag} ${
-                        item.tagIds.includes(tag.id)
-                          ? styles.tagSelected
-                          : ''
+                        item.tagIds.includes(tag.id) ? styles.tagSelected : ''
                       }`}
                       style={{ backgroundColor: tag.color }}
                       onClick={() => handleTagToggle(item.id, tag.id)}
@@ -375,7 +324,8 @@ const EditShoppingItem = () => {
               </div>
             )}
           </div>
-        ))}
+        );
+      })}
     </div>
   );
 };

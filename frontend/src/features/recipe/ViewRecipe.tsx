@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useAppSelector, useAppDispatch, useAutoHeight, useWakeLock } from '../../common/hooks';
+import { useParams } from 'react-router-dom';
+import { useAppSelector, useAppDispatch, useAutoHeight, useDebugMode, useWakeLock, useNavigateWithDebug } from '../../common/hooks';
 import { updateRecipeInState } from '../recipe-list/slice';
 import { updateRecipe, addShoppingItem } from '../../firebase/firestore';
 import IconButton from '../../common/components/IconButton';
-import { ensureRecipeHasAiParsingAndUpdate, getEffectiveIngredientValues } from '../../common/aiParsing';
+import { ensureRecipeHasAiParsingAndUpdate, getEffectiveIngredientValues, getIngredientText } from '../../common/aiParsing';
+import ParsedFieldsDebug from '../../common/components/ParsedFieldsDebug';
 import type { RecipeWithAiMetadata } from '../../common/aiParsing';
 import styles from './viewRecipe.module.css';
 
@@ -19,7 +20,7 @@ const extractDomain = (url: string): string => {
 };
 
 const ViewRecipe = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigateWithDebug();
   const dispatch = useAppDispatch();
   const { id } = useParams<{ id: string }>();
   const recipes = useAppSelector((state) => state.recipes?.recipes || []);
@@ -34,6 +35,7 @@ const ViewRecipe = () => {
   const notesRef = useAutoHeight<HTMLTextAreaElement>(notes);
   const menuRef = useRef<HTMLDivElement>(null);
   const { isSupported: wakeLockSupported, isActive: cookModeActive, toggle: toggleCookMode } = useWakeLock();
+  const debugMode = useDebugMode();
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -208,9 +210,11 @@ const ViewRecipe = () => {
       // Create shopping item for each ingredient
       for (const ingredient of ingredientsToAdd) {
         const { amount, unit, name } = getEffectiveIngredientValues(ingredient);
-        
+        const originalText = getIngredientText(ingredient);
+
         await addShoppingItem({
           familyId,
+          originalText,
           amount,
           unit,
           name,
@@ -412,13 +416,23 @@ const ViewRecipe = () => {
               <div key={sectionIndex} className={styles.ingredientSection}>
                 {sectionName && <h3 className={styles.ingredientSectionTitle}>{sectionName}</h3>}
                 <ul className={styles.ingredientList}>
-                  {ingredients.map((ingredient: any, index: number) => (
-                    <li key={index}>
-                      {ingredient.originalText ||
-                        ingredient.aiName ||
-                        ingredient.name}
-                    </li>
-                  ))}
+                  {ingredients.map((ingredient: any, index: number) => {
+                    const { amount, unit, name } = getEffectiveIngredientValues(ingredient);
+                    return (
+                      <li key={index}>
+                        {ingredient.originalText ||
+                          ingredient.aiName ||
+                          ingredient.name}
+                        {debugMode && (
+                          <ParsedFieldsDebug
+                            amount={amount}
+                            unit={unit}
+                            name={name ?? ''}
+                          />
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ));

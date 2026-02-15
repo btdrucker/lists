@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useAppSelector, useAppDispatch } from '../../common/hooks';
+import { useAppSelector, useAppDispatch, useNavigateWithDebug } from '../../common/hooks';
 import { setShoppingItems, setTags, setShoppingGroups, removeShoppingItems, setViewMode, setSelectedTagIds, addShoppingItemToState } from './slice';
 import {
   subscribeToShoppingItems,
@@ -13,8 +13,10 @@ import {
   updateShoppingGroup,
   deleteShoppingGroup,
 } from '../../firebase/firestore';
+import { UnitValue } from '../../types';
 import type { ShoppingItem, Tag, ShoppingGroup, CombinedItem, GroupedItems, Recipe } from '../../types';
-import { ensureRecipeHasAiParsingAndUpdate, getEffectiveIngredientValues } from '../../common/aiParsing';
+import { ensureRecipeHasAiParsingAndUpdate, getEffectiveIngredientValues, getIngredientText, parseShoppingItemText } from '../../common/aiParsing';
+import { buildAggregatedDisplayString } from '../../common/ingredientDisplay';
 import type { RecipeWithAiMetadata } from '../../common/aiParsing';
 import { getIngredientsNeedingAiIndices } from '../../common/aiParsing';
 import RecipePicker from '../../common/components/RecipePicker';
@@ -48,58 +50,77 @@ function isPantryItem(ingredientName: string): boolean {
   return PANTRY_ITEMS.has(normalized);
 }
 
-// Get unique key for item grouping
-function getItemKey(item: ShoppingItem): string {
+/**
+ * Grouping key for aggregating items. Returns null when there's no parsed name
+ * (e.g. parse failed) - those items never group with anything.
+ * Match rule: two items group only when getItemKey(a) === getItemKey(b) and both are non-null.
+ */
+function getItemKey(item: ShoppingItem): string | null {
+  if (!item.name?.trim()) return null;
   return `${normalizeItemName(item.name)}:${item.unit}`;
 }
 
-// Combine items with same name + exact unit match
+// Combine items with same name + exact unit match. Items with null key never group.
 function combineItems(items: ShoppingItem[]): CombinedItem[] {
   const grouped = new Map<string, ShoppingItem[]>();
+  const ungroupable: ShoppingItem[] = [];
 
-  // Group items by normalized name + unit
   items.forEach((item) => {
     const key = getItemKey(item);
-    if (!grouped.has(key)) {
-      grouped.set(key, []);
+    if (key === null) {
+      ungroupable.push(item);
+    } else {
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(item);
     }
-    grouped.get(key)!.push(item);
   });
 
-  // Combine grouped items; track newest createdAt for sort
-  const combined = Array.from(grouped.entries()).map(
-    ([key, sourceItems]) => {
-      const totalAmount = sourceItems.reduce(
-        (sum, item) => sum + (item.amount || 0),
-        0
-      );
-      const allChecked = sourceItems.every((item) => item.isChecked);
-      const someChecked = sourceItems.some((item) => item.isChecked);
-      const isIndeterminate = someChecked && !allChecked;
-      const allTagIds = [
-        ...new Set(sourceItems.flatMap((item) => item.tagIds)),
-      ];
-      const newestCreatedAt = sourceItems.reduce(
-        (max, item) =>
-          (item.createdAt > max ? item.createdAt : max) as string,
-        sourceItems[0].createdAt
-      );
+  const toCombined = (key: string, sourceItems: ShoppingItem[]) => {
+    const totalAmount = sourceItems.reduce(
+      (sum, item) => sum + (item.amount || 0),
+      0
+    );
+    const allChecked = sourceItems.every((item) => item.isChecked);
+    const someChecked = sourceItems.some((item) => item.isChecked);
+    const isIndeterminate = someChecked && !allChecked;
+    const allTagIds = [
+      ...new Set(sourceItems.flatMap((item) => item.tagIds)),
+    ];
+    const newestCreatedAt = sourceItems.reduce(
+      (max, item) =>
+        (item.createdAt > max ? item.createdAt : max) as string,
+      sourceItems[0].createdAt
+    );
+    const isAggregated = sourceItems.length > 1;
+    const name = sourceItems[0].name;
+    const originalText = isAggregated
+      ? buildAggregatedDisplayString(totalAmount || null, sourceItems[0].unit, name ?? '')
+      : sourceItems[0].originalText;
 
-      return {
-        key,
-        name: sourceItems[0].name,
-        amount: totalAmount || null,
-        unit: sourceItems[0].unit,
-        isChecked: allChecked,
-        isIndeterminate,
-        tagIds: allTagIds,
-        sourceItemIds: sourceItems.map((item) => item.id),
-        newestCreatedAt,
-      };
-    }
+    return {
+      key,
+      originalText,
+      name,
+      amount: totalAmount || null,
+      unit: sourceItems[0].unit,
+      isChecked: allChecked,
+      isIndeterminate,
+      tagIds: allTagIds,
+      sourceItemIds: sourceItems.map((item) => item.id),
+      newestCreatedAt,
+    };
+  };
+
+  const combinedFromGroups = Array.from(grouped.entries()).map(([key, sourceItems]) =>
+    toCombined(key, sourceItems)
+  );
+  const combinedFromUngroupable = ungroupable.map((item) =>
+    toCombined(item.id, [item])
   );
 
-  return combined
+  return [...combinedFromGroups, ...combinedFromUngroupable]
     .sort((a, b) => b.newestCreatedAt.localeCompare(a.newestCreatedAt))
     .map(({ newestCreatedAt: _, ...item }) => item);
 }
@@ -196,6 +217,7 @@ function getItemIds(item: CombinedItem | ShoppingItem): string[] {
 }
 
 const Shopping = () => {
+  const navigate = useNavigateWithDebug();
   const dispatch = useAppDispatch();
   const items: ShoppingItem[] = useAppSelector((state) => state.shopping?.items || []);
   const tags: Tag[] = useAppSelector((state) => state.shopping?.tags || []);
@@ -281,15 +303,21 @@ const Shopping = () => {
     }
   }, [showMenu]);
 
+  // Items with no originalText are invalid - exclude from display and grouping
+  const itemsWithOriginalText = useMemo(
+    () => items.filter((i) => (i.originalText ?? '').trim().length > 0),
+    [items]
+  );
+
   // Filter items by selected tags
   const filteredItems = useMemo(() => {
-    if (selectedTagIds.length === 0) return items;
-    return items.filter(
+    if (selectedTagIds.length === 0) return itemsWithOriginalText;
+    return itemsWithOriginalText.filter(
       (item) =>
         item.tagIds.length === 0 ||
         item.tagIds.some((id) => selectedTagIds.includes(id))
     );
-  }, [items, selectedTagIds]);
+  }, [itemsWithOriginalText, selectedTagIds]);
 
   // Prepare display items based on view mode
   const combinedItems = useMemo(() => {
@@ -306,7 +334,7 @@ const Shopping = () => {
   // Auto-delete custom groups only when their last item is removed
   useEffect(() => {
     const currentGroupIdsWithItems = new Set(
-      items
+      itemsWithOriginalText
         .filter((item) => item.customGroupId)
         .map((item) => item.customGroupId as string)
     );
@@ -339,7 +367,7 @@ const Shopping = () => {
     if (groupsThatBecameEmpty.length > 0) {
       deleteEmptyGroups();
     }
-  }, [items, groups]);
+  }, [itemsWithOriginalText, groups]);
 
   // Count checked items for bulk delete - only fully checked items in current view
   const checkedItemIds = useMemo(() => {
@@ -552,6 +580,7 @@ const Shopping = () => {
           // Add ingredients to shopping list one by one
           for (const ingredient of ingredientsToAdd) {
             const { amount, unit, name } = getEffectiveIngredientValues(ingredient);
+            const originalText = getIngredientText(ingredient);
 
             // Skip pantry items (water, salt, pepper, etc.)
             if (isPantryItem(name)) {
@@ -565,6 +594,7 @@ const Shopping = () => {
 
             await addShoppingItem({
               familyId: FAMILY_ID,
+              originalText,
               name,
               amount,
               unit,
@@ -705,7 +735,7 @@ const Shopping = () => {
     }
   }, []);
 
-  // Save inline-edited item name
+  // Save inline-edited item - store originalText, reparse for amount/unit/name
   const handleSaveItemText = useCallback(async () => {
     if (isItemEditCancelingRef.current) {
       isItemEditCancelingRef.current = false;
@@ -713,24 +743,42 @@ const Shopping = () => {
     }
     if (!editingItemId) return;
 
-    const trimmed = editingItemText.trim();
-    if (!trimmed) {
+    const originalText = editingItemText.trim();
+    if (!originalText) {
       setEditingItemId(null);
       setEditingItemText('');
       return;
     }
 
     const item = items.find((i) => i.id === editingItemId);
-    if (!item || item.name === trimmed) {
+    if (!item || item.originalText === originalText) {
       setEditingItemId(null);
       setEditingItemText('');
       return;
     }
 
+    let amount: number | null = null;
+    let unit: typeof UnitValue[keyof typeof UnitValue] | null = null;
+    let name = '';
     try {
-      await updateShoppingItem(editingItemId, { name: trimmed });
+      const parsed = await parseShoppingItemText(originalText);
+      amount = parsed.amount;
+      unit = parsed.unit as typeof UnitValue[keyof typeof UnitValue] | null;
+      name = parsed.name;
     } catch (error) {
-      console.error('Error updating item name:', error);
+      console.error('Error parsing ingredient:', error);
+      // Leave amount/unit/name blank - parsing still required (retry TBD)
+    }
+
+    try {
+      await updateShoppingItem(editingItemId, {
+        originalText,
+        name,
+        amount,
+        unit,
+      });
+    } catch (error) {
+      console.error('Error updating item:', error);
     }
     setEditingItemId(null);
     setEditingItemText('');
@@ -744,11 +792,18 @@ const Shopping = () => {
     if (itemEditInputRef.current) itemEditInputRef.current.blur();
   }, []);
 
-  // Start inline editing an item
-  const handleStartEditItem = useCallback((itemId: string, currentText: string) => {
-    setEditingItemId(itemId);
-    setEditingItemText(currentText);
-  }, []);
+  // Start inline editing an item. Aggregated items → EditShoppingItem (can't inline-edit multiple).
+  const handleStartEditItem = useCallback(
+    (itemId: string, currentText: string, itemIds: string[]) => {
+      if (itemIds.length > 1) {
+        navigate(`/shopping/edit/${itemIds[0]}`);
+      } else {
+        setEditingItemId(itemId);
+        setEditingItemText(currentText);
+      }
+    },
+    [navigate]
+  );
 
   // Save new item (from add row)
   const handleSaveNewItem = useCallback(async () => {
@@ -757,8 +812,8 @@ const Shopping = () => {
       return;
     }
 
-    const trimmed = newItemText.trim();
-    if (!trimmed) {
+    const originalText = newItemText.trim();
+    if (!originalText) {
       setAddingNewItem(false);
       setNewItemText('');
       setNewItemGroupId(null);
@@ -766,13 +821,31 @@ const Shopping = () => {
     }
 
     const groupIdToAdd = newItemGroupId;
+    setAddingNewItem(false);
+    setNewItemText('');
+    setNewItemGroupId(null);
+
+    let amount: number | null = null;
+    let unit: typeof UnitValue[keyof typeof UnitValue] | null = null;
+    let name = '';
+    try {
+      const parsed = await parseShoppingItemText(originalText);
+      amount = parsed.amount;
+      unit = parsed.unit as typeof UnitValue[keyof typeof UnitValue] | null;
+      name = parsed.name;
+    } catch (error) {
+      console.error('Error parsing ingredient:', error);
+      // Leave amount/unit/name blank - parsing still required (retry TBD)
+    }
+
     const now = new Date().toISOString();
     const optimisticItem: ShoppingItem = {
       id: `opt-${Date.now()}`,
       familyId: FAMILY_ID,
-      name: trimmed,
-      amount: null,
-      unit: null,
+      originalText,
+      name,
+      amount,
+      unit,
       isChecked: false,
       tagIds: [],
       createdAt: now,
@@ -780,16 +853,14 @@ const Shopping = () => {
       ...(groupIdToAdd && { customGroupId: groupIdToAdd }),
     };
     dispatch(addShoppingItemToState(optimisticItem));
-    setAddingNewItem(false);
-    setNewItemText('');
-    setNewItemGroupId(null);
 
     try {
       await addShoppingItem({
         familyId: FAMILY_ID,
-        name: trimmed,
-        amount: null,
-        unit: null,
+        originalText,
+        name,
+        amount,
+        unit,
         isChecked: false,
         tagIds: [],
         ...(groupIdToAdd && { customGroupId: groupIdToAdd }),
@@ -809,10 +880,17 @@ const Shopping = () => {
     if (itemEditInputRef.current) itemEditInputRef.current.blur();
   }, []);
 
-  // Open edit dialog for item(s)
-  const handleOpenEditDialog = useCallback((itemIds: string[]) => {
-    setEditDialogItemIds(itemIds);
-  }, []);
+  // Open edit dialog for item(s). Aggregated items → EditShoppingItem (all contributing items); single → ItemTagDialog (tags).
+  const handleOpenEditDialog = useCallback(
+    (itemIds: string[]) => {
+      if (itemIds.length > 1) {
+        navigate(`/shopping/edit/${itemIds[0]}`);
+      } else {
+        setEditDialogItemIds(itemIds);
+      }
+    },
+    [navigate]
+  );
 
   // Close edit dialog
   const handleCloseEditDialog = useCallback(() => {

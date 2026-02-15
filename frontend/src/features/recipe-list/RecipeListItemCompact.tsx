@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigateWithDebug } from '../../common/hooks';
 import styles from './recipe-list-compact.module.css';
 
 interface RecipeListItemCompactProps {
@@ -7,7 +7,7 @@ interface RecipeListItemCompactProps {
 }
 
 const RecipeListItemCompact = ({ recipe, onDelete }: RecipeListItemCompactProps) => {
-  const navigate = useNavigate();
+  const navigate = useNavigateWithDebug();
 
   return (
     <div

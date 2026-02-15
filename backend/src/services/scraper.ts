@@ -22,7 +22,7 @@ const UNIT_ALIAS_PATTERNS: Record<UnitValue, string[]> = {
   // Count/Pieces
   [UnitValue.EACH]: ['each'],
   [UnitValue.CLOVE]: ['cloves?'],
-  [UnitValue.SLICE]: ['slices?'],
+  [UnitValue.PIECE]: ['pieces?', 'slices?'],
   [UnitValue.CAN]: ['cans?'],
   [UnitValue.BUNCH]: ['bunches?'],
   [UnitValue.HEAD]: ['heads?'],

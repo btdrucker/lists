@@ -1,51 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { useAppSelector, useAppDispatch, useAutoHeight } from '../../common/hooks';
+import { useParams, useLocation } from 'react-router-dom';
+import { useAppSelector, useAppDispatch, useAutoHeight, useDebugMode, useNavigateWithDebug } from '../../common/hooks';
 import { addRecipe, updateRecipeInState } from '../recipe-list/slice.ts';
 import { addRecipe as saveRecipe, updateRecipe, deleteRecipe } from '../../firebase/firestore';
 import { getIdToken } from '../../firebase/auth';
 import IconButton from '../../common/components/IconButton.tsx';
-import { UnitValue } from '../../types';
 import type { Ingredient, Recipe } from '../../types';
 import {
   ensureRecipeHasAiParsingForSave,
+  getEffectiveIngredientValues,
   getIngredientText,
   sanitizeIngredientForSave,
 } from '../../common/aiParsing';
 import type { RecipeWithAiMetadata } from '../../common/aiParsing';
+import ParsedFieldsDebug from '../../common/components/ParsedFieldsDebug';
 import styles from './recipe.module.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const IS_DEV = import.meta.env.DEV;
-const UNIT_LABELS: Record<UnitValue, string> = {
-  [UnitValue.CUP]: 'cup',
-  [UnitValue.TABLESPOON]: 'tablespoon',
-  [UnitValue.TEASPOON]: 'teaspoon',
-  [UnitValue.FLUID_OUNCE]: 'fluid ounce',
-  [UnitValue.QUART]: 'quart',
-  [UnitValue.POUND]: 'pound',
-  [UnitValue.WEIGHT_OUNCE]: 'ounce',
-  [UnitValue.EACH]: 'piece',
-  [UnitValue.CLOVE]: 'clove',
-  [UnitValue.SLICE]: 'slice',
-  [UnitValue.CAN]: 'can',
-  [UnitValue.BUNCH]: 'bunch',
-  [UnitValue.HEAD]: 'head',
-  [UnitValue.STALK]: 'stalk',
-  [UnitValue.SPRIG]: 'sprig',
-  [UnitValue.LEAF]: 'leaf',
-  [UnitValue.PINCH]: 'pinch',
-  [UnitValue.DASH]: 'dash',
-  [UnitValue.HANDFUL]: 'handful',
-  [UnitValue.TO_TASTE]: 'to taste',
-};
-
-const UNIT_OPTIONS = Object.values(UnitValue).map((value) => ({
-  value,
-  label: UNIT_LABELS[value],
-}));
-
-const UNIT_VALUE_SET = new Set(Object.values(UnitValue));
 
 const applyAiIngredientDefaults = (items: Ingredient[]) =>
   items.map((ingredient) => {
@@ -105,7 +77,7 @@ const InstructionRow = ({
 };
 
 const EditRecipe = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigateWithDebug();
   const dispatch = useAppDispatch();
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
@@ -137,8 +109,9 @@ const EditRecipe = () => {
   ]);
   const [instructions, setInstructions] = useState<string[]>(['']);
   const [focusIngredientIndex, setFocusIngredientIndex] = useState<number | null>(null);
+  const debugMode = useDebugMode();
   const [focusInstructionIndex, setFocusInstructionIndex] = useState<number | null>(null);
-  const ingredientAmountRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const ingredientInputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const instructionInputRefs = useRef<Array<HTMLTextAreaElement | null>>([]);
 
   // Track original state for deep comparison
@@ -487,18 +460,12 @@ const EditRecipe = () => {
 
   useEffect(() => {
     if (focusIngredientIndex === null) return;
-    const input = ingredientAmountRefs.current[focusIngredientIndex];
+    const input = ingredientInputRefs.current[focusIngredientIndex];
     if (input) {
       input.focus();
     }
     setFocusIngredientIndex(null);
   }, [focusIngredientIndex, ingredients.length]);
-
-  const updateIngredient = (index: number, updates: Partial<Ingredient>) => {
-    const updated = [...ingredients];
-    updated[index] = { ...updated[index], ...updates };
-    setIngredients(updated);
-  };
 
   const handleOriginalTextChange = (index: number, value: string) => {
     const updated = [...ingredients];
@@ -827,66 +794,29 @@ const EditRecipe = () => {
 
         <div className={styles.section}>
           <h3>Ingredients *</h3>
-          {ingredients.map((ingredient, index) => {
-            const unitOptions = ingredient.unit
-              && !UNIT_VALUE_SET.has(ingredient.unit as UnitValue)
-              ? [{ value: ingredient.unit, label: String(ingredient.unit) }, ...UNIT_OPTIONS]
-              : UNIT_OPTIONS;
-
-            return (
+          {ingredients.map((ingredient, index) => (
               <div key={index} className={styles.ingredientRow}>
                 <div className={styles.ingredientGroup}>
                   <input
                     type="text"
+                    ref={(el) => {
+                      ingredientInputRefs.current[index] = el;
+                    }}
                     value={ingredient.originalText || ''}
                     onChange={(e) => handleOriginalTextChange(index, e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && index === ingredients.length - 1) {
+                        e.preventDefault();
+                        addIngredient();
+                      }
+                    }}
                     placeholder="Original text"
                     className={styles.ingredientOriginalInput}
                   />
-                  <div className={styles.ingredientGroupRow}>
-                    <input
-                      type="number"
-                      step="any"
-                      ref={(el) => {
-                        ingredientAmountRefs.current[index] = el;
-                      }}
-                      value={ingredient.amount ?? ''}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        const parsed = value === '' ? null : parseFloat(value);
-                        updateIngredient(index, {
-                          amount: parsed !== null && Number.isNaN(parsed) ? null : parsed,
-                        });
-                      }}
-                      placeholder="Amt"
-                      className={styles.ingredientAmountInput}
-                    />
-                  <select
-                    value={ingredient.unit || ''}
-                    onChange={(e) => updateIngredient(index, { unit: (e.target.value || null) as UnitValue | null })}
-                    className={`${styles.ingredientUnitSelect} ${ingredient.unit ? '' : styles.ingredientUnitPlaceholder}`}
-                  >
-                    <option value="">--</option>
-                      {unitOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="text"
-                      value={ingredient.name}
-                      onChange={(e) => updateIngredient(index, { name: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && index === ingredients.length - 1) {
-                          e.preventDefault();
-                          addIngredient();
-                        }
-                      }}
-                      placeholder="Ingredient"
-                      className={styles.ingredientNameInput}
-                    />
-                  </div>
+                  {debugMode && (() => {
+                    const { amount, unit, name } = getEffectiveIngredientValues(ingredient);
+                    return <ParsedFieldsDebug amount={amount} unit={unit} name={name ?? ''} />;
+                  })()}
                 </div>
                 <button
                   onClick={() => removeIngredient(index)}
@@ -896,8 +826,7 @@ const EditRecipe = () => {
                   ×
                 </button>
               </div>
-            );
-          })}
+          ))}
           <button onClick={addIngredient} className={styles.addButton}>
             + Add Ingredient
           </button>

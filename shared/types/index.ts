@@ -30,7 +30,7 @@ export const UnitValue = {
   // Count/Pieces
   EACH: 'EACH',
   CLOVE: 'CLOVE',
-  SLICE: 'SLICE',
+  PIECE: 'PIECE',
   CAN: 'CAN',
   BUNCH: 'BUNCH',
   HEAD: 'HEAD',
@@ -84,6 +84,9 @@ export type ExtractionMethod = 'WPRM' | 'DataAttributes' | 'JSON-LD' | 'HTML';
 export interface ShoppingItemBase<DateType = Date> {
   id: string;
   familyId: string; // For multi-family future
+  /** Raw text the user typed - ALWAYS displayed as-is */
+  originalText: string;
+  /** Parsed by API (regex + AI); blank when parse fails or not yet run */
   amount: number | null;
   unit: UnitValue | null;
   name: string;
@@ -147,6 +150,7 @@ export type ItemProfile = ItemProfileBase<string>;
 // Display-only types for UI (not stored in Firestore)
 export interface CombinedItem {
   key: string; // normalized name + unit for grouping
+  originalText: string; // displayed as-is (from first source item)
   name: string;
   amount: number | null;
   unit: UnitValue | null;
