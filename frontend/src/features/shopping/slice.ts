@@ -12,7 +12,7 @@ const loadPersistedState = () => {
     const viewMode = localStorage.getItem(STORAGE_KEY_VIEW_MODE);
     const tagIds = localStorage.getItem(STORAGE_KEY_TAG_IDS);
     return {
-      viewMode: (viewMode === 'simple' || viewMode === 'recipe-grouped') ? viewMode : 'simple',
+      viewMode: ((viewMode === 'simple' || viewMode === 'recipe-grouped') ? viewMode : 'simple') as 'simple' | 'recipe-grouped',
       selectedTagIds: tagIds ? JSON.parse(tagIds) : [],
     };
   } catch {

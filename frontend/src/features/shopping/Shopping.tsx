@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../common/hooks';
-import { setShoppingItems, setTags, setShoppingGroups, removeShoppingItems, setViewMode, setSelectedTagIds } from './slice';
+import { setShoppingItems, setTags, setShoppingGroups, removeShoppingItems, setViewMode, setSelectedTagIds, addShoppingItemToState } from './slice';
 import {
   subscribeToShoppingItems,
   subscribeToTags,
@@ -20,9 +19,11 @@ import type { RecipeWithAiMetadata } from '../../common/aiParsing';
 import { getIngredientsNeedingAiIndices } from '../../common/aiParsing';
 import RecipePicker from '../../common/components/RecipePicker';
 import EditTagsDialog from './EditTagsDialog';
+import ItemTagDialog from './ItemTagDialog';
 import Checkbox from '../../common/components/Checkbox';
 import CollapseToggle from './CollapseToggle';
 import ShoppingItemRow from './ShoppingItemRow';
+import NewItemRow from './NewItemRow';
 import { signOut } from '../../firebase/auth';
 import styles from './shopping.module.css';
 
@@ -65,10 +66,9 @@ function combineItems(items: ShoppingItem[]): CombinedItem[] {
     grouped.get(key)!.push(item);
   });
 
-  // Combine grouped items
-  const combined: CombinedItem[] = Array.from(grouped.entries()).map(
+  // Combine grouped items; track newest createdAt for sort
+  const combined = Array.from(grouped.entries()).map(
     ([key, sourceItems]) => {
-      // Sum amounts, all must be checked to show as checked
       const totalAmount = sourceItems.reduce(
         (sum, item) => sum + (item.amount || 0),
         0
@@ -76,11 +76,14 @@ function combineItems(items: ShoppingItem[]): CombinedItem[] {
       const allChecked = sourceItems.every((item) => item.isChecked);
       const someChecked = sourceItems.some((item) => item.isChecked);
       const isIndeterminate = someChecked && !allChecked;
-
-      // Merge tags (deduplicate)
       const allTagIds = [
         ...new Set(sourceItems.flatMap((item) => item.tagIds)),
       ];
+      const newestCreatedAt = sourceItems.reduce(
+        (max, item) =>
+          (item.createdAt > max ? item.createdAt : max) as string,
+        sourceItems[0].createdAt
+      );
 
       return {
         key,
@@ -91,14 +94,14 @@ function combineItems(items: ShoppingItem[]): CombinedItem[] {
         isIndeterminate,
         tagIds: allTagIds,
         sourceItemIds: sourceItems.map((item) => item.id),
+        newestCreatedAt,
       };
     }
   );
 
-  // Sort alphabetically by name
-  return combined.sort((a, b) =>
-    normalizeItemName(a.name).localeCompare(normalizeItemName(b.name))
-  );
+  return combined
+    .sort((a, b) => b.newestCreatedAt.localeCompare(a.newestCreatedAt))
+    .map(({ newestCreatedAt: _, ...item }) => item);
 }
 
 // Group items by recipe source and custom groups
@@ -133,21 +136,31 @@ function groupItems(
     }
   });
 
-  // Build recipe groups with titles
-  const recipeGroups = Array.from(recipeMap.entries()).map(
+  // Build recipe groups with titles; preserve ingredient order (no sort)
+  const recipeGroupsBuilt = Array.from(recipeMap.entries()).map(
     ([recipeId, groupItems]) => {
       const recipe = recipes.find((r) => r.id === recipeId);
+      const newestCreatedAt =
+        groupItems.length > 0
+          ? groupItems.reduce(
+              (max, item) =>
+                (item.createdAt > max ? item.createdAt : max) as string,
+              groupItems[0].createdAt
+            )
+          : '';
       return {
         recipeId,
         recipeTitle: recipe?.title || 'Unknown Recipe',
-        items: [...groupItems].sort((a, b) =>
-          normalizeItemName(a.name).localeCompare(normalizeItemName(b.name))
-        ),
+        items: [...groupItems],
+        newestCreatedAt,
       };
     }
   );
+  const recipeGroups = recipeGroupsBuilt
+    .sort((a, b) => b.newestCreatedAt.localeCompare(a.newestCreatedAt))
+    .map(({ newestCreatedAt: _, ...g }) => g);
 
-  // Build custom groups with names, sorted by sortOrder (creation time)
+  // Build custom groups with names; sort items newest-first
   // Include ALL groups from Firestore, even empty ones
   const customGroups = groups
     .map((group) => {
@@ -156,17 +169,17 @@ function groupItems(
         groupId: group.id,
         groupName: group.displayName,
         sortOrder: group.sortOrder,
-        items: [...groupItemsList].sort((a, b) =>
-          normalizeItemName(a.name).localeCompare(normalizeItemName(b.name))
+        items: [...groupItemsList].sort(
+          (a, b) => (b.createdAt as string).localeCompare(a.createdAt as string)
         ),
       };
     })
-    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .sort((a, b) => b.sortOrder - a.sortOrder)
     .map(({ groupId, groupName, items }) => ({ groupId, groupName, items }));
 
-  // Sort manual items alphabetically (create copy to avoid mutating)
-  const sortedManualItems = [...manualItems].sort((a, b) =>
-    normalizeItemName(a.name).localeCompare(normalizeItemName(b.name))
+  // Sort manual items newest-first
+  const sortedManualItems = [...manualItems].sort(
+    (a, b) => (b.createdAt as string).localeCompare(a.createdAt as string)
   );
 
   return { recipeGroups, customGroups, manualItems: sortedManualItems };
@@ -184,7 +197,6 @@ function getItemIds(item: CombinedItem | ShoppingItem): string[] {
 
 const Shopping = () => {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const items: ShoppingItem[] = useAppSelector((state) => state.shopping?.items || []);
   const tags: Tag[] = useAppSelector((state) => state.shopping?.tags || []);
   const groups: ShoppingGroup[] = useAppSelector((state) => state.shopping?.groups || []);
@@ -198,9 +210,16 @@ const Shopping = () => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [loadingRecipes, setLoadingRecipes] = useState<Map<string, string>>(new Map()); // recipeId -> recipeTitle
+  const itemEditInputRef = useRef<HTMLTextAreaElement>(null);
+  const isItemEditCancelingRef = useRef(false);
 
-  // Tag dialog state
-  const [tagDialogItemKey, setTagDialogItemKey] = useState<string | null>(null);
+  // Inline item editing state
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingItemText, setEditingItemText] = useState('');
+  const [addingNewItem, setAddingNewItem] = useState(false);
+  const [newItemText, setNewItemText] = useState('');
+  const [newItemGroupId, setNewItemGroupId] = useState<string | null>(null);
+  const [editDialogItemIds, setEditDialogItemIds] = useState<string[]>([]);
 
   // Track checked empty groups (groups with no items that user wants to delete)
   const [checkedEmptyGroupIds, setCheckedEmptyGroupIds] = useState<Set<string>>(new Set());
@@ -481,16 +500,6 @@ const Shopping = () => {
     }
   }, [checkedItemIds, fullyCheckedCustomGroupIds, dispatch]);
 
-  // Navigate to edit screen
-  const handleItemClick = useCallback(
-    (itemId: string, isCombined: boolean) => {
-      // In simple mode (combined), edit all related items
-      // In grouped mode (not combined), edit only this specific item
-      navigate(`/shopping/edit/${itemId}${isCombined ? '' : '?single=true'}`);
-    },
-    [navigate]
-  );
-
   // Toggle group collapsed state
   const toggleGroupCollapse = useCallback((groupId: string) => {
     setCollapsedGroups((prev) => {
@@ -597,29 +606,6 @@ const Shopping = () => {
     [recipes, items, dispatch]
   );
 
-  // Toggle tag for item(s)
-  const handleItemTagToggle = useCallback(
-    async (itemIds: string[], tagId: string) => {
-      try {
-        for (const id of itemIds) {
-          const item = items.find((i) => i.id === id);
-          if (!item) continue;
-
-          const newTagIds = item.tagIds.includes(tagId)
-            ? item.tagIds.filter((tid) => tid !== tagId)
-            : [...item.tagIds, tagId];
-
-          await updateShoppingItem(id, { tagIds: newTagIds });
-        }
-        // Close dialog after toggle
-        setTagDialogItemKey(null);
-      } catch (error) {
-        console.error('Error updating tags:', error);
-      }
-    },
-    [items]
-  );
-
   // Inline editing state for custom group names
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editingGroupName, setEditingGroupName] = useState('');
@@ -697,6 +683,142 @@ const Shopping = () => {
     }
   }, []);
 
+  // Focus item edit textarea when entering edit mode
+  useEffect(() => {
+    if ((editingItemId || addingNewItem) && itemEditInputRef.current) {
+      itemEditInputRef.current.focus();
+      itemEditInputRef.current.select();
+    }
+  }, [editingItemId, addingNewItem]);
+
+  // Add new item (plus icon) - show inline row
+  const handleAddNewItem = useCallback((groupId?: string) => {
+    setAddingNewItem(true);
+    setNewItemText('');
+    setNewItemGroupId(groupId ?? null);
+    if (groupId) {
+      setCollapsedGroups((prev) => {
+        const next = new Set(prev);
+        next.delete(groupId);
+        return next;
+      });
+    }
+  }, []);
+
+  // Save inline-edited item name
+  const handleSaveItemText = useCallback(async () => {
+    if (isItemEditCancelingRef.current) {
+      isItemEditCancelingRef.current = false;
+      return;
+    }
+    if (!editingItemId) return;
+
+    const trimmed = editingItemText.trim();
+    if (!trimmed) {
+      setEditingItemId(null);
+      setEditingItemText('');
+      return;
+    }
+
+    const item = items.find((i) => i.id === editingItemId);
+    if (!item || item.name === trimmed) {
+      setEditingItemId(null);
+      setEditingItemText('');
+      return;
+    }
+
+    try {
+      await updateShoppingItem(editingItemId, { name: trimmed });
+    } catch (error) {
+      console.error('Error updating item name:', error);
+    }
+    setEditingItemId(null);
+    setEditingItemText('');
+  }, [editingItemId, editingItemText, items]);
+
+  // Cancel inline item edit
+  const handleCancelItemEdit = useCallback(() => {
+    isItemEditCancelingRef.current = true;
+    setEditingItemId(null);
+    setEditingItemText('');
+    if (itemEditInputRef.current) itemEditInputRef.current.blur();
+  }, []);
+
+  // Start inline editing an item
+  const handleStartEditItem = useCallback((itemId: string, currentText: string) => {
+    setEditingItemId(itemId);
+    setEditingItemText(currentText);
+  }, []);
+
+  // Save new item (from add row)
+  const handleSaveNewItem = useCallback(async () => {
+    if (isItemEditCancelingRef.current) {
+      isItemEditCancelingRef.current = false;
+      return;
+    }
+
+    const trimmed = newItemText.trim();
+    if (!trimmed) {
+      setAddingNewItem(false);
+      setNewItemText('');
+      setNewItemGroupId(null);
+      return;
+    }
+
+    const groupIdToAdd = newItemGroupId;
+    const now = new Date().toISOString();
+    const optimisticItem: ShoppingItem = {
+      id: `opt-${Date.now()}`,
+      familyId: FAMILY_ID,
+      name: trimmed,
+      amount: null,
+      unit: null,
+      isChecked: false,
+      tagIds: [],
+      createdAt: now,
+      updatedAt: now,
+      ...(groupIdToAdd && { customGroupId: groupIdToAdd }),
+    };
+    dispatch(addShoppingItemToState(optimisticItem));
+    setAddingNewItem(false);
+    setNewItemText('');
+    setNewItemGroupId(null);
+
+    try {
+      await addShoppingItem({
+        familyId: FAMILY_ID,
+        name: trimmed,
+        amount: null,
+        unit: null,
+        isChecked: false,
+        tagIds: [],
+        ...(groupIdToAdd && { customGroupId: groupIdToAdd }),
+      });
+    } catch (error) {
+      console.error('Error adding item:', error);
+      dispatch(removeShoppingItems([optimisticItem.id]));
+    }
+  }, [newItemText, newItemGroupId]);
+
+  // Cancel new item
+  const handleCancelNewItem = useCallback(() => {
+    isItemEditCancelingRef.current = true;
+    setAddingNewItem(false);
+    setNewItemText('');
+    setNewItemGroupId(null);
+    if (itemEditInputRef.current) itemEditInputRef.current.blur();
+  }, []);
+
+  // Open edit dialog for item(s)
+  const handleOpenEditDialog = useCallback((itemIds: string[]) => {
+    setEditDialogItemIds(itemIds);
+  }, []);
+
+  // Close edit dialog
+  const handleCloseEditDialog = useCallback(() => {
+    setEditDialogItemIds([]);
+  }, []);
+
   // Render individual item
   const renderItem = (
     item: CombinedItem | ShoppingItem,
@@ -706,6 +828,7 @@ const Shopping = () => {
     const itemId = itemIds[0];
     const itemKey = isCombined ? (item as CombinedItem).key : (item as ShoppingItem).id;
     const isIndeterminate = isItemIndeterminate(item);
+    const isEditingThis = editingItemId === itemId;
 
     return (
       <ShoppingItemRow
@@ -717,11 +840,15 @@ const Shopping = () => {
         isIndeterminate={isIndeterminate}
         isCombined={isCombined}
         tags={tags}
-        tagDialogItemKey={tagDialogItemKey}
-        setTagDialogItemKey={setTagDialogItemKey}
-        handleItemClick={handleItemClick}
         handleCheck={handleCheck}
-        handleItemTagToggle={handleItemTagToggle}
+        editingItemId={editingItemId}
+        editingItemText={editingItemText}
+        setEditingItemText={setEditingItemText}
+        onStartEdit={handleStartEditItem}
+        onSaveEdit={handleSaveItemText}
+        onCancelEdit={handleCancelItemEdit}
+        itemEditInputRef={isEditingThis ? itemEditInputRef : undefined}
+        onOpenEditDialog={handleOpenEditDialog}
       />
     );
   };
@@ -738,7 +865,7 @@ const Shopping = () => {
           <div className={styles.headerButtons}>
             <button
               className={styles.headerAddButton}
-              onClick={() => navigate('/shopping/edit/add')}
+              onClick={() => handleAddNewItem()}
               aria-label="Add item"
             >
               <i className="fa-solid fa-plus" />
@@ -784,7 +911,7 @@ const Shopping = () => {
                       setShowMenu(false);
                     }}
                   >
-                    <i className="fa-solid fa-tag" /> {tags.length === 0 ? 'New Tag' : 'Edit Tags'}
+                    <i className="fa-solid fa-tags" /> {tags.length === 0 ? 'New Tag' : 'Edit Tags'}
                   </button>
                   <button
                     className={`${styles.menuItem} ${checkedItemIds.length === 0 && fullyCheckedCustomGroupIds.length === 0 ? styles.menuItemDisabled : ''}`}
@@ -861,16 +988,16 @@ const Shopping = () => {
 
       </div>
 
-      {/* Empty state - Simple view: show when no items (groups don't matter) */}
-      {items.length === 0 && viewMode === 'simple' && (
+      {/* Empty state - Simple view: show when no items and not adding */}
+      {items.length === 0 && !addingNewItem && viewMode === 'simple' && (
         <div className={styles.empty}>
           <p>No items yet</p>
           <p>Add items manually or from your recipes</p>
         </div>
       )}
 
-      {/* Empty state - Grouped view: show when no items AND no groups */}
-      {items.length === 0 && groups.length === 0 && viewMode === 'recipe-grouped' && (
+      {/* Empty state - Grouped view: show when no items AND no groups and not adding */}
+      {items.length === 0 && groups.length === 0 && !addingNewItem && viewMode === 'recipe-grouped' && (
         <div className={styles.empty}>
           <p>No items yet</p>
           <p>Add items manually or from your recipes</p>
@@ -878,8 +1005,20 @@ const Shopping = () => {
       )}
 
       {/* Item list - Simple view */}
-      {items.length > 0 && viewMode === 'simple' && (
+      {((items.length > 0 || addingNewItem) && viewMode === 'simple') && (
         <div className={styles.itemList}>
+          {addingNewItem && !newItemGroupId && (
+            <NewItemRow
+              value={newItemText}
+              onChange={setNewItemText}
+              onBlur={handleSaveNewItem}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLElement).blur(); }
+                else if (e.key === 'Escape') handleCancelNewItem();
+              }}
+              inputRef={itemEditInputRef}
+            />
+          )}
           {combinedItems.map((item) => renderItem(item, true))}
         </div>
       )}
@@ -889,9 +1028,21 @@ const Shopping = () => {
         <div>
 
           {/* Manual items - shown directly without a header */}
-          {groupedItems.manualItems.length > 0 && (
+          {(groupedItems.manualItems.length > 0 || (addingNewItem && !newItemGroupId)) && (
             <div className={styles.manualItemsSection}>
               <div className={styles.itemList}>
+                {addingNewItem && !newItemGroupId && (
+                  <NewItemRow
+                    value={newItemText}
+                    onChange={setNewItemText}
+                    onBlur={handleSaveNewItem}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLElement).blur(); }
+                      else if (e.key === 'Escape') handleCancelNewItem();
+                    }}
+                    inputRef={itemEditInputRef}
+                  />
+                )}
                 {groupedItems.manualItems.map((item) =>
                   renderItem(item, false)
                 )}
@@ -945,7 +1096,7 @@ const Shopping = () => {
                     className={styles.groupAddButton}
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/shopping/edit/add?groupId=${group.groupId}`);
+                      handleAddNewItem(group.groupId);
                     }}
                     aria-label="Add item to group"
                   >
@@ -959,6 +1110,18 @@ const Shopping = () => {
               </div>
               {!collapsedGroups.has(group.groupId) && (
                 <div className={styles.itemList}>
+                  {addingNewItem && newItemGroupId === group.groupId && (
+                    <NewItemRow
+                      value={newItemText}
+                      onChange={setNewItemText}
+                      onBlur={handleSaveNewItem}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLElement).blur(); }
+                        else if (e.key === 'Escape') handleCancelNewItem();
+                      }}
+                      inputRef={itemEditInputRef}
+                    />
+                  )}
                   {group.items.map((item) => renderItem(item, false))}
                 </div>
               )}
@@ -1026,13 +1189,11 @@ const Shopping = () => {
         onClose={() => setShowEditTags(false)}
       />
 
-      {/* Modal backdrop for tag dialog */}
-      {tagDialogItemKey && (
-        <div
-          className={styles.modalBackdrop}
-          onClick={() => setTagDialogItemKey(null)}
-        />
-      )}
+      <ItemTagDialog
+        itemIds={editDialogItemIds}
+        isOpen={editDialogItemIds.length > 0}
+        onClose={handleCloseEditDialog}
+      />
     </div>
   );
 };

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../common/hooks';
 import { setRecipes, setLoading, removeRecipe } from './slice.ts';
 import { clearAuth } from '../auth/slice';
@@ -7,15 +6,12 @@ import { getAllRecipes, deleteRecipe } from '../../firebase/firestore';
 import { signOut } from '../../firebase/auth';
 import { InstallButton } from '../../common/components/InstallButton';
 import RecipeStart from '../recipe/RecipeStart';
-import RecipeListItem from './RecipeListItem';
 import RecipeListItemCompact from './RecipeListItemCompact';
 import styles from './recipe-list.module.css';
 
-// Toggle between RecipeListItem and RecipeListItemCompact
 const ItemComponent = RecipeListItemCompact;
 
 const RecipeList = () => {
-  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { recipes, loading } = useAppSelector((state) => state.recipes || { recipes: [], loading: false, error: null });
   const user = useAppSelector((state) => state.auth?.user);

@@ -1,4 +1,5 @@
-import { ReactNode, useEffect, useCallback } from 'react';
+import type { ReactNode } from 'react';
+import { useEffect, useCallback } from 'react';
 import styles from './dialog.module.css';
 
 interface DialogProps {

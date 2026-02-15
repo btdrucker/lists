@@ -1,8 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
 import { UnitValue } from '../../types';
 import type { ShoppingItem, Tag, CombinedItem } from '../../types';
 import Checkbox from '../../common/components/Checkbox';
-import TagDialog from './TagDialog';
 import styles from './shoppingItemRow.module.css';
 
 // Unit labels for display
@@ -92,50 +90,65 @@ interface ShoppingItemRowProps {
   isIndeterminate: boolean;
   isCombined: boolean;
   tags: Tag[];
-  tagDialogItemKey: string | null;
-  setTagDialogItemKey: (key: string | null) => void;
-  handleItemClick: (itemId: string, isCombined: boolean) => void;
   handleCheck: (itemIds: string[], isChecked: boolean) => void;
-  handleItemTagToggle: (itemIds: string[], tagId: string) => void;
+  editingItemId: string | null;
+  editingItemText: string;
+  setEditingItemText: (text: string) => void;
+  onStartEdit: (itemId: string, currentText: string) => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+  itemEditInputRef?: React.RefObject<HTMLTextAreaElement | null>;
+  onOpenEditDialog: (itemIds: string[]) => void;
 }
 
 const ShoppingItemRow = ({
   item,
   itemId,
   itemIds,
-  itemKey,
+  itemKey: _itemKey,
   isIndeterminate,
   isCombined,
   tags,
-  tagDialogItemKey,
-  setTagDialogItemKey,
-  handleItemClick,
   handleCheck,
-  handleItemTagToggle,
+  editingItemId,
+  editingItemText,
+  setEditingItemText,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+  itemEditInputRef,
+  onOpenEditDialog,
 }: ShoppingItemRowProps) => {
-  const isDialogOpen = tagDialogItemKey === itemKey;
-  const tagSectionRef = useRef<HTMLDivElement>(null);
-  const [showDialogAbove, setShowDialogAbove] = useState<boolean | null>(null);
+  const isEditingThis = editingItemId === itemId;
+  const amountPrefix = formatAmount(item.amount, item.unit);
 
-  // Calculate dialog position when it opens
-  useEffect(() => {
-    if (isDialogOpen && tagSectionRef.current) {
-      const rect = tagSectionRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const estimatedDialogHeight = 250; // Rough estimate
-      
-      // Show above if not enough space below and there's more space above
-      setShowDialogAbove(spaceBelow < estimatedDialogHeight && rect.top > spaceBelow);
-    } else if (!isDialogOpen) {
-      // Reset when dialog closes
-      setShowDialogAbove(null);
+  const handleTextareaFocus = () => {
+    if (!isEditingThis) {
+      onStartEdit(itemId, item.name);
     }
-  }, [isDialogOpen]);
+  };
+
+  const handleTextareaBlur = () => {
+    if (isEditingThis) {
+      onSaveEdit();
+    }
+  };
+
+  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isEditingThis) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.currentTarget.blur();
+      } else if (e.key === 'Escape') {
+        onCancelEdit();
+      }
+    }
+  };
 
   return (
     <div
       className={`${styles.item} ${item.isChecked ? styles.itemChecked : ''}`}
-      onClick={() => handleItemClick(itemId, isCombined)}
+      onClick={(e) => e.stopPropagation()}
     >
       <Checkbox
         checked={item.isChecked}
@@ -146,53 +159,19 @@ const ShoppingItemRow = ({
       <div className={styles.itemDetails}>
         <div className={styles.itemMainRow}>
           <div className={styles.itemNameRow}>
-            <span className={styles.itemText}>
-              {formatAmount(item.amount, item.unit) && `${formatAmount(item.amount, item.unit)} `}
-              {item.name}
-            </span>
-          </div>
-          <div className={styles.itemTagSection} ref={tagSectionRef}>
-            {/* Tag selection button hidden for cleaner UI - kept for potential reuse
-            <div
-              className={`${styles.addTagButtonWrapper} ${item.isChecked ? styles.addTagButtonWrapperDisabled : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!item.isChecked) {
-                  setTagDialogItemKey(isDialogOpen ? null : itemKey);
-                }
-              }}
-            >
-              <button className={styles.addTagButton} disabled={item.isChecked}>
-                <i className="fa-solid fa-bookmark" />
-              </button>
-            </div>
-            */}
-            {item.tagIds.length > 0 && (
-              <div className={styles.itemTags}>
-                {[...tags]
-                  .sort((a, b) => a.sortOrder - b.sortOrder)
-                  .filter((tag) => item.tagIds.includes(tag.id))
-                  .map((tag) => (
-                    <span
-                      key={tag.id}
-                      className={styles.itemTag}
-                      style={{ backgroundColor: tag.color }}
-                    >
-                      {tag.abbreviation}
-                    </span>
-                  ))}
-              </div>
-            )}
-            {isDialogOpen && (
-              <TagDialog
-                tags={tags}
-                selectedTagIds={item.tagIds}
-                itemIds={itemIds}
-                onTagToggle={handleItemTagToggle}
-                showAbove={showDialogAbove === true}
-                isPositioned={showDialogAbove !== null}
-              />
-            )}
+            {amountPrefix && <span className={styles.itemAmountPrefix}>{amountPrefix} </span>}
+            <textarea
+              ref={isEditingThis ? itemEditInputRef : undefined}
+              className={`${styles.itemTextarea} ${item.isChecked ? styles.itemTextareaChecked : ''}`}
+              value={isEditingThis ? editingItemText : item.name}
+              readOnly={!isEditingThis}
+              onChange={(e) => isEditingThis && setEditingItemText(e.target.value)}
+              onFocus={handleTextareaFocus}
+              onBlur={handleTextareaBlur}
+              onKeyDown={handleTextareaKeyDown}
+              rows={1}
+              aria-label="Item name"
+            />
           </div>
         </div>
         {isCombined && (item as CombinedItem).sourceItemIds.length > 1 && (
@@ -201,6 +180,33 @@ const ShoppingItemRow = ({
           </div>
         )}
       </div>
+      <button
+        className={styles.itemEditButton}
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenEditDialog(itemIds);
+        }}
+        aria-label="Edit item tags and details"
+        type="button"
+      >
+        <i className="fa-solid fa-tag" />
+      </button>
+      {item.tagIds.length > 0 && (
+        <div className={styles.itemTags}>
+          {[...tags]
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+            .filter((tag) => item.tagIds.includes(tag.id))
+            .map((tag) => (
+              <span
+                key={tag.id}
+                className={styles.itemTag}
+                style={{ backgroundColor: tag.color }}
+              >
+                {tag.abbreviation}
+              </span>
+            ))}
+        </div>
+      )}
     </div>
   );
 };
