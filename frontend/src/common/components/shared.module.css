@@ -56,3 +56,14 @@
   padding: var(--spacing-lg);
   min-height: 100vh;
 }
+
+/* Shared sticky header layout for recipe list and shopping list */
+.stickyPageHeader {
+  position: sticky;
+  top: 0;
+  background: var(--color-bg-lighter);
+  z-index: 100;
+  padding: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  padding-bottom: var(--spacing-lg);
+}

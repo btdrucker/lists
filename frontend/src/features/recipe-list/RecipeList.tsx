@@ -214,9 +214,6 @@ const RecipeList = () => {
         </div>
       )}
 
-      <footer className={styles.footer}>
-        <p>Logged in as {user?.email}</p>
-      </footer>
 
       {/* Backdrop for menu */}
       {showMenu && (

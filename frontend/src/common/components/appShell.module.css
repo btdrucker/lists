@@ -80,7 +80,6 @@
 
 .content {
   min-width: 0;
-  padding: 0 var(--spacing-lg);
   /* Offset for fixed nav */
   margin-left: var(--nav-width);
 }
