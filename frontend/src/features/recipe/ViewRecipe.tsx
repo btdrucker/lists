@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAppSelector, useAppDispatch, useAutoHeight, useDebugMode, useWakeLock, useNavigateWithDebug } from '../../common/hooks';
-import { updateRecipeInState } from '../recipe-list/slice';
-import { updateRecipe, addShoppingItem } from '../../firebase/firestore';
+import { useAppSelector, useAppDispatch, useAutoHeight, useDebugMode, useWakeLock, useNavigateWithDebug, useAddRecipeToCart } from '../../common/hooks';
+import { updateRecipeInState, removeRecipe } from '../recipe-list/slice';
+import { updateRecipe, deleteRecipe } from '../../firebase/firestore';
 import CircleIconButton from '../../common/components/CircleIconButton';
-import { ensureRecipeHasAiParsingAndUpdate, getEffectiveIngredientValues, getIngredientText } from '../../common/aiParsing';
+import { getEffectiveIngredientValues } from '../../common/aiParsing';
 import ParsedFieldsDebug from '../../common/components/ParsedFieldsDebug';
-import type { RecipeWithAiMetadata } from '../../common/aiParsing';
 import styles from './viewRecipe.module.css';
 
 // Helper function to extract domain from URL
@@ -22,6 +21,7 @@ const extractDomain = (url: string): string => {
 const ViewRecipe = () => {
   const navigate = useNavigateWithDebug();
   const dispatch = useAppDispatch();
+  const addRecipeToCart = useAddRecipeToCart();
   const { id } = useParams<{ id: string }>();
   const recipes = useAppSelector((state) => state.recipes?.recipes || []);
   
@@ -30,6 +30,7 @@ const ViewRecipe = () => {
   const [notes, setNotes] = useState(recipe?.notes || '');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [addToCartState, setAddToCartState] = useState<'idle' | 'loading' | 'success'>('idle');
   const [isAnimatingIn, setIsAnimatingIn] = useState(false);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const notesRef = useAutoHeight<HTMLTextAreaElement>(notes);
@@ -142,6 +143,23 @@ const ViewRecipe = () => {
     navigate(`/edit-recipe/${id}`);
   };
 
+  const handleDeleteRecipe = async () => {
+    if (!recipe) return;
+    setShowMenu(false);
+
+    const confirmed = window.confirm(`Are you sure you want to delete "${recipe.title}"?`);
+    if (!confirmed) return;
+
+    try {
+      await deleteRecipe(recipe.id);
+      dispatch(removeRecipe(recipe.id));
+      navigate('/recipe-list');
+    } catch (error) {
+      console.error('Error deleting recipe:', error);
+      alert('Failed to delete recipe');
+    }
+  };
+
   const handleShareClick = async () => {
     setShowMenu(false);
     if (!recipe || !id) return;
@@ -194,39 +212,25 @@ const ViewRecipe = () => {
   };
 
   const handleAddToShoppingList = async () => {
-    if (!recipe) return;
-    setShowMenu(false);
+    if (!recipe || addToCartState !== 'idle') return;
+    setAddToCartState('loading');
 
     try {
-      const familyId = 'default-family';
-      
-      // Ensure AI parsing is done before adding to shopping list
-      const recipeWithMetadata = recipe as RecipeWithAiMetadata;
-      const ingredientsToAdd = await ensureRecipeHasAiParsingAndUpdate(
-        recipeWithMetadata,
-        dispatch
-      );
+      const result = await addRecipeToCart(recipe);
 
-      // Create shopping item for each ingredient
-      for (const ingredient of ingredientsToAdd) {
-        const { amount, unit, name } = getEffectiveIngredientValues(ingredient);
-        const originalText = getIngredientText(ingredient);
-
-        await addShoppingItem({
-          familyId,
-          originalText,
-          amount,
-          unit,
-          name,
-          isChecked: false,
-          tagIds: [],
-          sourceRecipeId: recipe.id,
-        });
+      if (result.addedCount === 0 && result.totalCount > 0) {
+        setAddToCartState('idle');
+        alert(`"${recipe.title}" is already on your shopping list.`);
+      } else {
+        setAddToCartState('success');
+        setTimeout(() => {
+          setAddToCartState('idle');
+          setShowMenu(false);
+        }, 1200);
       }
-
-      // Show success feedback
-      alert(`Added ${ingredientsToAdd.length} items to shopping list`);
     } catch (error) {
+      setAddToCartState('idle');
+      setShowMenu(false);
       console.error('Error adding to shopping list:', error);
       alert('Failed to add items to shopping list');
     }
@@ -295,8 +299,12 @@ const ViewRecipe = () => {
           </button>
           {showMenu && (
             <div className={styles.contextMenu}>
-              <button onClick={handleAddToShoppingList} className={styles.menuItem}>
-                <i className="fa-solid fa-cart-shopping"></i>
+              <button onClick={handleAddToShoppingList} className={styles.menuItem} disabled={addToCartState !== 'idle'}>
+                <i className={
+                  addToCartState === 'loading' ? "fa-solid fa-circle-notch fa-spin fa-fw" :
+                  addToCartState === 'success' ? `fa-solid fa-check fa-fw ${styles.successIcon}` :
+                  "fa-solid fa-cart-plus fa-fw"
+                }></i>
                 <span>Add to Shopping List</span>
               </button>
               <button onClick={handleShareClick} className={styles.menuItem}>
@@ -315,6 +323,10 @@ const ViewRecipe = () => {
               <button onClick={handleEditClick} className={styles.menuItem}>
                 <i className="fa-solid fa-pen"></i>
                 <span>Edit</span>
+              </button>
+              <button onClick={handleDeleteRecipe} className={`${styles.menuItem} ${styles.menuItemDanger}`}>
+                <i className="fa-solid fa-trash"></i>
+                <span>Delete</span>
               </button>
             </div>
           )}

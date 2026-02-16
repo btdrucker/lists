@@ -15,7 +15,7 @@ const CircleIconButton = ({ onClick, icon, className, ariaLabel, title, disabled
     className={`${styles.circleIconButton} ${className || ''}`}
     onClick={onClick}
     aria-label={ariaLabel}
-    title={title}
+    title={title ?? ariaLabel}
     disabled={disabled}
     type="button"
   >

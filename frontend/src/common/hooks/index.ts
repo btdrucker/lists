@@ -11,3 +11,5 @@ export { useNavigateWithDebug, appendDebugToPath } from './useNavigateWithDebug.
 export { useOnlineStatus } from './useOnlineStatus.ts';
 export { usePWAInstall } from './usePWAInstall.ts';
 export { useWakeLock } from './useWakeLock.ts';
+export { useAddRecipeToCart } from './useAddRecipeToCart.ts';
+export type { AddRecipeToCartResult } from './useAddRecipeToCart.ts';

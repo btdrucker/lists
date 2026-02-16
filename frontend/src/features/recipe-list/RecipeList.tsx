@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { useAppSelector, useAppDispatch } from '../../common/hooks';
-import { setRecipes, setLoading, removeRecipe } from './slice.ts';
+import { useAppSelector, useAppDispatch, useAddRecipeToCart } from '../../common/hooks';
+import { setRecipes, setLoading } from './slice.ts';
 import { clearAuth } from '../auth/slice';
-import { getAllRecipes, deleteRecipe } from '../../firebase/firestore';
+import { getAllRecipes } from '../../firebase/firestore';
 import { signOut } from '../../firebase/auth';
 import { InstallButton } from '../../common/components/InstallButton';
 import CircleIconButton from '../../common/components/CircleIconButton';
@@ -14,29 +14,52 @@ const ItemComponent = RecipeListItemCompact;
 
 const RecipeList = () => {
   const dispatch = useAppDispatch();
+  const addRecipeToCart = useAddRecipeToCart();
   const { recipes, loading } = useAppSelector((state) => state.recipes || { recipes: [], loading: false, error: null });
   const hasLoadedRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMenu, setShowMenu] = useState(false);
   const [showAddRecipe, setShowAddRecipe] = useState(false);
+  const [cartState, setCartState] = useState<Record<string, 'loading' | 'success'>>({});
 
   const handleSignOut = async () => {
     await signOut();
     dispatch(clearAuth());
   };
 
-  const handleDelete = async (recipeId: string, recipeTitle: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click navigation
+  const handleAddToCart = async (recipe: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (cartState[recipe.id]) return;
 
-    const confirmed = window.confirm(`Are you sure you want to delete "${recipeTitle}"?`);
-    if (!confirmed) return;
-
+    setCartState(prev => ({ ...prev, [recipe.id]: 'loading' }));
     try {
-      await deleteRecipe(recipeId);
-      dispatch(removeRecipe(recipeId));
+      const result = await addRecipeToCart(recipe);
+
+      if (result.addedCount === 0 && result.totalCount > 0) {
+        setCartState(prev => {
+          const next = { ...prev };
+          delete next[recipe.id];
+          return next;
+        });
+        alert(`"${recipe.title}" is already on your shopping list.`);
+      } else {
+        setCartState(prev => ({ ...prev, [recipe.id]: 'success' }));
+        setTimeout(() => {
+          setCartState(prev => {
+            const next = { ...prev };
+            delete next[recipe.id];
+            return next;
+          });
+        }, 1200);
+      }
     } catch (error) {
-      console.error('Error deleting recipe:', error);
-      alert('Failed to delete recipe');
+      setCartState(prev => {
+        const next = { ...prev };
+        delete next[recipe.id];
+        return next;
+      });
+      console.error('Error adding to shopping list:', error);
+      alert('Failed to add items to shopping list');
     }
   };
 
@@ -131,7 +154,7 @@ const RecipeList = () => {
             <CircleIconButton
               icon="fa-plus"
               onClick={() => setShowAddRecipe(true)}
-              title="Add Recipe"
+              ariaLabel="New Recipe"
             />
 
             {/* Mobile: Menu */}
@@ -143,16 +166,6 @@ const RecipeList = () => {
               />
               {showMenu && (
                 <div className={styles.menuDropdown}>
-                  <button
-                    className={styles.menuItem}
-                    onClick={() => {
-                      setShowAddRecipe(true);
-                      setShowMenu(false);
-                    }}
-                  >
-                    <i className="fa-solid fa-plus" /> Add Recipe
-                  </button>
-                  <div className={styles.menuDivider} />
                   <button
                     className={styles.menuItem}
                     onClick={async () => {
@@ -203,7 +216,8 @@ const RecipeList = () => {
             <ItemComponent
               key={recipe.id}
               recipe={recipe}
-              onDelete={handleDelete}
+              onAddToCart={handleAddToCart}
+              cartState={cartState[recipe.id] || 'idle'}
             />
           ))}
         </div>

@@ -3,10 +3,11 @@ import styles from './recipe-list.module.css';
 
 interface RecipeListItemProps {
   recipe: any;
-  onDelete: (recipeId: string, recipeTitle: string, e: React.MouseEvent) => void;
+  onAddToCart: (recipe: any, e: React.MouseEvent) => void;
+  cartState: 'idle' | 'loading' | 'success';
 }
 
-const RecipeListItem = ({ recipe, onDelete }: RecipeListItemProps) => {
+const RecipeListItem = ({ recipe, onAddToCart, cartState }: RecipeListItemProps) => {
   const navigate = useNavigateWithDebug();
   const category = recipe.category || [];
   const cuisine = recipe.cuisine || [];
@@ -18,11 +19,16 @@ const RecipeListItem = ({ recipe, onDelete }: RecipeListItemProps) => {
       onClick={() => navigate(`/recipe/${recipe.id}`)}
     >
       <button
-        className={styles.deleteButton}
-        onClick={(e) => onDelete(recipe.id, recipe.title, e)}
-        title="Delete recipe"
+        className={`${styles.addToCartButton} ${cartState === 'success' ? styles.addToCartSuccess : ''}`}
+        onClick={(e) => onAddToCart(recipe, e)}
+        title="Add to shopping list"
+        disabled={cartState !== 'idle'}
       >
-        <i className="fa-solid fa-trash"></i>
+        <i className={
+          cartState === 'loading' ? "fa-solid fa-circle-notch fa-spin" :
+          cartState === 'success' ? `fa-solid fa-check ${styles.successIcon}` :
+          "fa-solid fa-cart-plus"
+        }></i>
       </button>
       {recipe.imageUrl && (
         <img

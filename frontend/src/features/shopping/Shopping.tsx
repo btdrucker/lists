@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useAppSelector, useAppDispatch, useNavigateWithDebug } from '../../common/hooks';
+import { useAppSelector, useAppDispatch, useNavigateWithDebug, useAddRecipeToCart } from '../../common/hooks';
 import { setShoppingItems, setTags, setShoppingGroups, removeShoppingItems, setViewMode, setSelectedTagIds, addShoppingItemToState } from './slice';
 import {
   subscribeToShoppingItems,
@@ -15,10 +15,8 @@ import {
 } from '../../firebase/firestore';
 import { UnitValue } from '../../types';
 import type { ShoppingItem, Tag, ShoppingGroup, CombinedItem, GroupedItems, Recipe } from '../../types';
-import { ensureRecipeHasAiParsingAndUpdate, getEffectiveIngredientValues, getIngredientText, parseShoppingItemText } from '../../common/aiParsing';
+import { parseShoppingItemText } from '../../common/aiParsing';
 import { buildAggregatedDisplayString } from '../../common/ingredientDisplay';
-import type { RecipeWithAiMetadata } from '../../common/aiParsing';
-import { getIngredientsNeedingAiIndices } from '../../common/aiParsing';
 import RecipePicker from '../../common/components/RecipePicker';
 import EditTagsDialog from './EditTagsDialog';
 import ItemTagDialog from './ItemTagDialog';
@@ -32,23 +30,9 @@ import styles from './shopping.module.css';
 
 const FAMILY_ID = 'default-family';
 
-// Pantry items that users typically always have - skip adding to shopping list
-const PANTRY_ITEMS = new Set([
-  'water',
-  'salt',
-  'pepper',
-  'black pepper',
-]);
-
 // Normalize ingredient name for combining
 function normalizeItemName(name: string): string {
   return name.toLowerCase().trim();
-}
-
-// Check if ingredient is a pantry item that should be skipped
-function isPantryItem(ingredientName: string): boolean {
-  const normalized = normalizeItemName(ingredientName);
-  return PANTRY_ITEMS.has(normalized);
 }
 
 /**
@@ -220,6 +204,7 @@ function getItemIds(item: CombinedItem | ShoppingItem): string[] {
 const Shopping = () => {
   const navigate = useNavigateWithDebug();
   const dispatch = useAppDispatch();
+  const addRecipeToCart = useAddRecipeToCart();
   const items: ShoppingItem[] = useAppSelector((state) => state.shopping?.items || []);
   const tags: Tag[] = useAppSelector((state) => state.shopping?.tags || []);
   const groups: ShoppingGroup[] = useAppSelector((state) => state.shopping?.groups || []);
@@ -231,8 +216,8 @@ const Shopping = () => {
   const [showEditTags, setShowEditTags] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [showMenu, setShowMenu] = useState(false);
+  const [loadingRecipeIds, setLoadingRecipeIds] = useState<Map<string, string>>(new Map());
   const menuRef = useRef<HTMLDivElement>(null);
-  const [loadingRecipes, setLoadingRecipes] = useState<Map<string, string>>(new Map()); // recipeId -> recipeTitle
   const itemEditInputRef = useRef<HTMLTextAreaElement>(null);
   const isItemEditCancelingRef = useRef(false);
 
@@ -550,91 +535,27 @@ const Shopping = () => {
           const recipe = recipes.find((r) => r.id === recipeId);
           if (!recipe) continue;
 
-          // Check if this recipe needs AI parsing
-          const recipeWithMetadata = recipe as RecipeWithAiMetadata;
-          const needsAiParsing = getIngredientsNeedingAiIndices(
-            recipeWithMetadata.ingredients,
-            recipeWithMetadata.lastAiParsingVersion
-          ).length > 0;
+          setLoadingRecipeIds(prev => new Map(prev).set(recipeId, recipe.title));
 
-          // Only show loading state if AI parsing is needed
-          if (needsAiParsing) {
-            setLoadingRecipes((prev) => new Map(prev).set(recipeId, recipe.title));
-          }
+          const result = await addRecipeToCart(recipe);
 
-          // Ensure AI parsing is done before adding to shopping list
-          const ingredientsToAdd = await ensureRecipeHasAiParsingAndUpdate(
-            recipeWithMetadata,
-            dispatch
-          );
-
-          // Get existing items from this recipe to avoid duplicates
-          const existingRecipeItems = items.filter(
-            (item) => item.sourceRecipeId === recipeId
-          );
-          const existingNames = new Set(
-            existingRecipeItems.map((item) => normalizeItemName(item.name))
-          );
-
-          let addedCount = 0;
-
-          // Add ingredients to shopping list one by one
-          for (const ingredient of ingredientsToAdd) {
-            const { amount, unit, name } = getEffectiveIngredientValues(ingredient);
-            const originalText = getIngredientText(ingredient);
-
-            // Skip pantry items (water, salt, pepper, etc.)
-            if (isPantryItem(name)) {
-              continue;
-            }
-
-            // Skip if already exists from this recipe
-            if (existingNames.has(normalizeItemName(name))) {
-              continue;
-            }
-
-            await addShoppingItem({
-              familyId: FAMILY_ID,
-              originalText,
-              name,
-              amount,
-              unit,
-              isChecked: false,
-              tagIds: [],
-              sourceRecipeId: recipeId,
-            });
-            addedCount++;
-
-            // Remove loading state after first item is added
-            if (addedCount === 1) {
-              setLoadingRecipes((prev) => {
-                const next = new Map(prev);
-                next.delete(recipeId);
-                return next;
-              });
-            }
-          }
-
-          // Remove loading state if no items were added
-          setLoadingRecipes((prev) => {
+          setLoadingRecipeIds(prev => {
             const next = new Map(prev);
             next.delete(recipeId);
             return next;
           });
 
-          // Notify user if nothing was added (recipe already fully on list)
-          if (addedCount === 0 && ingredientsToAdd.length > 0) {
+          if (result.addedCount === 0 && result.totalCount > 0) {
             alert(`"${recipe.title}" is already on your shopping list.`);
           }
         }
       } catch (error) {
         console.error('Error adding recipes:', error);
         alert('Failed to add recipes');
-        // Clear all loading states on error
-        setLoadingRecipes(new Map());
+        setLoadingRecipeIds(new Map());
       }
     },
-    [recipes, items, dispatch]
+    [recipes, addRecipeToCart]
   );
 
   // Inline editing state for custom group names
@@ -954,6 +875,7 @@ const Shopping = () => {
                   e.stopPropagation();
                   setShowMenu(!showMenu);
                 }}
+                ariaLabel="Menu"
               />
               {showMenu && (
                 <div className={styles.menuDropdown}>
@@ -1203,23 +1125,6 @@ const Shopping = () => {
             </div>
           ))}
           
-          {/* Loading recipe groups (shown while AI parsing / adding items) */}
-          {Array.from(loadingRecipes.entries()).map(([recipeId, recipeTitle]) => (
-            <div key={`loading-${recipeId}`} className={styles.recipeGroup}>
-              <div className={styles.recipeGroupHeader}>
-                <div className={styles.recipeGroupHeaderContent}>
-                  <i className="fa-solid fa-caret-down" style={{ opacity: 0.3 }} />
-                  From "{recipeTitle}"
-                </div>
-              </div>
-              <div className={styles.itemList}>
-                <div className={styles.loadingItem}>
-                  <i className="fa-solid fa-spinner fa-spin" />
-                  <span>Loading ingredients...</span>
-                </div>
-              </div>
-            </div>
-          ))}
 
           {/* Recipe groups */}
           {groupedItems.recipeGroups.map((group) => (
@@ -1229,12 +1134,16 @@ const Shopping = () => {
                   className={styles.recipeGroupHeaderContent}
                   onClick={() => toggleGroupCollapse(group.recipeId)}
                 >
-                  <Checkbox
-                    checked={getGroupCheckedState(group.items) === 'all'}
-                    indeterminate={getGroupCheckedState(group.items) === 'some'}
-                    onChange={() => handleGroupCheckToggle(group.items)}
-                    className={styles.groupCheckboxLeft}
-                  />
+                  {loadingRecipeIds.has(group.recipeId) ? (
+                    <i className={`fa-solid fa-circle-notch fa-spin ${styles.groupCheckboxLeft} ${getGroupCheckedState(group.items) !== 'none' ? styles.groupSpinnerChecked : ''}`}></i>
+                  ) : (
+                    <Checkbox
+                      checked={getGroupCheckedState(group.items) === 'all'}
+                      indeterminate={getGroupCheckedState(group.items) === 'some'}
+                      onChange={() => handleGroupCheckToggle(group.items)}
+                      className={styles.groupCheckboxLeft}
+                    />
+                  )}
                   <span className={`${styles.groupTitle} ${getGroupCheckedState(group.items) === 'all' ? styles.groupTitleChecked : ''}`}>From "{group.recipeTitle}"</span>
                   <CollapseToggle
                     collapsed={collapsedGroups.has(group.recipeId)}
@@ -1249,6 +1158,7 @@ const Shopping = () => {
               )}
             </div>
           ))}
+
         </div>
       )}
 
