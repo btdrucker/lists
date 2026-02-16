@@ -13,7 +13,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { to: '/recipe-list', label: 'Recipes', icon: 'fa-list' },
   { to: '/shopping', label: 'Shopping', icon: 'fa-cart-shopping' },
-  { to: '/calendar', label: 'Calendar', icon: 'fa-calendar' },
+  { to: '/mealplan', label: 'Meal Plan', icon: 'fa-calendar' },
 ];
 
 interface AppShellProps {

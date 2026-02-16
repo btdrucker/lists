@@ -15,7 +15,7 @@ import AiDebug from './features/ai-debug/AiDebug';
 import AppShell from './common/components/AppShell';
 import Shopping from './features/shopping/Shopping';
 import EditShoppingItem from './features/shopping/EditShoppingItem';
-import Calendar from './features/calendar/Calendar';
+import MealPlan from './features/mealplan/MealPlan';
 import { InstallBanner } from './common/components/InstallBanner';
 import { OfflineIndicator } from './common/components/OfflineIndicator';
 import { UpdatePrompt } from './common/components/UpdatePrompt';
@@ -75,10 +75,10 @@ function AppContent() {
               }
             />
             <Route
-              path="/calendar"
+              path="/mealplan"
               element={
                 <AppShell>
-                  <Calendar />
+                  <MealPlan />
                 </AppShell>
               }
             />
