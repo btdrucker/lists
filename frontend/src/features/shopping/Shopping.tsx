@@ -27,6 +27,7 @@ import CollapseToggle from './CollapseToggle';
 import ShoppingItemRow from './ShoppingItemRow';
 import NewItemRow from './NewItemRow';
 import { signOut } from '../../firebase/auth';
+import CircleIconButton from '../../common/components/CircleIconButton';
 import styles from './shopping.module.css';
 
 const FAMILY_ID = 'default-family';
@@ -941,23 +942,19 @@ const Shopping = () => {
         <div className={styles.header}>
           <h1>Shopping List</h1>
           <div className={styles.headerButtons}>
-            <button
-              className={styles.headerAddButton}
+            <CircleIconButton
+              icon="fa-plus"
               onClick={() => handleAddNewItem()}
-              aria-label="Add item"
-            >
-              <i className="fa-solid fa-plus" />
-            </button>
+              ariaLabel="Add item"
+            />
             <div className={styles.menuContainer} ref={menuRef}>
-              <button
-                className={styles.menuButton}
+              <CircleIconButton
+                icon="fa-ellipsis-vertical"
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowMenu(!showMenu);
                 }}
-              >
-                <i className="fa-solid fa-ellipsis-vertical" />
-              </button>
+              />
               {showMenu && (
                 <div className={styles.menuDropdown}>
                   <button

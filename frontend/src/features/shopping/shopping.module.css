@@ -38,25 +38,6 @@
   position: relative;
 }
 
-.headerAddButton {
-  composes: circleIconButton from '../../common/components/shared.module.css';
-  font-weight: bold;
-}
-
-.menuButton {
-  composes: circleIconButton from '../../common/components/shared.module.css';
-  background: var(--color-bg-light);
-}
-
-.menuButton:hover {
-  background: var(--color-bg-white);
-  color: var(--color-text-primary);
-  box-shadow: var(--shadow-sm);
-}
-
-.menuButton:active {
-  transform: scale(0.95);
-}
 
 .menuDropdown {
   position: absolute;

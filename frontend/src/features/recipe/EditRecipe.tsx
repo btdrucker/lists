@@ -4,7 +4,7 @@ import { useAppSelector, useAppDispatch, useAutoHeight, useDebugMode, useNavigat
 import { addRecipe, updateRecipeInState } from '../recipe-list/slice.ts';
 import { addRecipe as saveRecipe, updateRecipe, deleteRecipe } from '../../firebase/firestore';
 import { getIdToken } from '../../firebase/auth';
-import IconButton from '../../common/components/IconButton.tsx';
+import CircleIconButton from '../../common/components/CircleIconButton';
 import type { Ingredient, Recipe } from '../../types';
 import {
   ensureRecipeHasAiParsingForSave,
@@ -552,14 +552,11 @@ const EditRecipe = () => {
     return (
       <div className={styles.container}>
         <header className={styles.header}>
-          <IconButton
-            onClick={() => navigate('/recipe-list')}
+          <CircleIconButton
             icon="fa-angle-left"
-            hideTextOnMobile={true}
-            className={styles.backButton}
-          >
-            All recipes
-          </IconButton>
+            onClick={() => navigate('/recipe-list')}
+            ariaLabel="Back to all recipes"
+          />
         </header>
         <div className={styles.form}>
           <div className={styles.notFound}>
@@ -573,24 +570,18 @@ const EditRecipe = () => {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <IconButton
-          onClick={handleCancel}
+        <CircleIconButton
           icon="fa-angle-left"
-          hideTextOnMobile={true}
-          className={styles.backButton}
-        >
-          Done
-        </IconButton>
-        <h1>Edit recipe</h1>
-        <IconButton
+          onClick={handleCancel}
+          ariaLabel="Back"
+        />
+        <h1>Edit Recipe</h1>
+        <CircleIconButton
+          icon={isSaving ? "fa-circle-notch fa-spin" : "fa-check"}
           onClick={handleSave}
           disabled={isSaving || !hasActualChanges()}
-          icon="fa-floppy-disk"
-          hideTextOnMobile={true}
-          className={styles.saveButton}
-        >
-          {isSaving ? 'Saving...' : 'Save'}
-        </IconButton>
+          ariaLabel="Save"
+        />
       </header>
 
       {error && <div className={styles.error}>{error}</div>}

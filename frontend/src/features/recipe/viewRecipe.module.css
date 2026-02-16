@@ -67,13 +67,13 @@
 
 .floatingBackButton,
 .floatingMenuButton {
-  width: 44px;
-  height: 44px;
+  width: var(--size-circle-button);
+  height: var(--size-circle-button);
   border-radius: 50%;
   border: none;
   background: rgba(0, 0, 0, 0.5);
   color: white;
-  font-size: 20px;
+  font-size: var(--size-circle-button-icon);
   cursor: pointer;
   display: flex;
   align-items: center;

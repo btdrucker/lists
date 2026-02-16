@@ -23,32 +23,6 @@
   background: var(--color-primary-hover);
 }
 
-/* Shared circular icon button - 40x40 touch area with hover highlight */
-.circleIconButton {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  color: var(--color-text-primary);
-  font-size: 20px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.circleIconButton:hover:not(:disabled) {
-  background: var(--color-border-medium);
-}
-
-.circleIconButton:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
 /* Shared container layout - standard 800px centered container */
 .standardContainer {
   max-width: 800px;

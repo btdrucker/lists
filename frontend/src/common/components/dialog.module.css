@@ -68,16 +68,6 @@
   color: var(--color-text-primary);
 }
 
-.closeButton {
-  composes: circleIconButton from './shared.module.css';
-  font-size: 18px;
-  color: var(--color-text-secondary);
-}
-
-.closeButton:hover {
-  color: var(--color-text-primary);
-}
-
 .content {
   flex: 1;
   min-height: 0;

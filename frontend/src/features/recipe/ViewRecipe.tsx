@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useAppSelector, useAppDispatch, useAutoHeight, useDebugMode, useWakeLock, useNavigateWithDebug } from '../../common/hooks';
 import { updateRecipeInState } from '../recipe-list/slice';
 import { updateRecipe, addShoppingItem } from '../../firebase/firestore';
-import IconButton from '../../common/components/IconButton';
+import CircleIconButton from '../../common/components/CircleIconButton';
 import { ensureRecipeHasAiParsingAndUpdate, getEffectiveIngredientValues, getIngredientText } from '../../common/aiParsing';
 import ParsedFieldsDebug from '../../common/components/ParsedFieldsDebug';
 import type { RecipeWithAiMetadata } from '../../common/aiParsing';
@@ -236,14 +236,11 @@ const ViewRecipe = () => {
     return (
       <div className={styles.container}>
         <header className={styles.header}>
-          <IconButton
-            onClick={() => navigate('/recipe-list')}
+          <CircleIconButton
             icon="fa-angle-left"
-            hideTextOnMobile={true}
-            className={styles.backButton}
-          >
-            All recipes
-          </IconButton>
+            onClick={() => navigate('/recipe-list')}
+            ariaLabel="Back to all recipes"
+          />
         </header>
         <div className={styles.content}>
           <div className={styles.notFound}>

@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useAppSelector } from '../../common/hooks';
 import Dialog from '../../common/components/Dialog';
+import CircleIconButton from '../../common/components/CircleIconButton';
 import { addTag, updateTag, deleteTag, updateShoppingItem } from '../../firebase/firestore';
 import type { Tag, ShoppingItem } from '../../types';
 import styles from './editTagsDialog.module.css';
@@ -177,24 +178,18 @@ const EditTagsDialog = ({ isOpen, onClose }: EditTagsDialogProps) => {
   const dialogTitle = mode.kind === 'new' ? 'New Tag' : mode.kind === 'edit' ? 'Edit Tag' : 'Edit Tags';
 
   const headerActions = isFormMode ? (
-    <button
-      type="button"
-      className={styles.headerActionButton}
+    <CircleIconButton
+      icon="fa-check"
       onClick={handleSave}
       disabled={!isFormValid}
-      aria-label="Save"
-    >
-      <i className="fa-solid fa-check" />
-    </button>
+      ariaLabel="Save"
+    />
   ) : (
-    <button
-      type="button"
-      className={styles.headerActionButton}
+    <CircleIconButton
+      icon="fa-plus"
       onClick={() => setMode({ kind: 'new' })}
-      aria-label="New tag"
-    >
-      <i className="fa-solid fa-plus" />
-    </button>
+      ariaLabel="New tag"
+    />
   );
 
   return (

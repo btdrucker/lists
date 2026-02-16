@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useEffect, useCallback } from 'react';
+import CircleIconButton from './CircleIconButton';
 import styles from './dialog.module.css';
 
 interface DialogProps {
@@ -51,9 +52,11 @@ const Dialog = ({ isOpen, onClose, onDismiss, title, children, maxWidth = 'md', 
           <h2 className={styles.title}>{title}</h2>
           <div className={styles.headerActions}>
             {headerActions}
-            <button className={styles.closeButton} onClick={onClose} aria-label="Close">
-              <i className="fa-solid fa-xmark" />
-            </button>
+            <CircleIconButton
+              icon="fa-xmark"
+              onClick={onClose}
+              ariaLabel="Close"
+            />
           </div>
         </header>
         {toolbar && <div className={styles.toolbar}>{toolbar}</div>}

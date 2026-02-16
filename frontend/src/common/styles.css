@@ -38,6 +38,8 @@
 
   /* Layout */
   --nav-width: 160px;
+  --size-circle-button: 40px;
+  --size-circle-button-icon: 18px;
   
   /* Border radius */
   --radius-sm: 6px;

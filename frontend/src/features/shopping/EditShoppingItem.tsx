@@ -8,7 +8,7 @@ import {
   subscribeToTags,
 } from '../../firebase/firestore';
 import { setShoppingItems, setTags } from './slice';
-import IconButton from '../../common/components/IconButton';
+import CircleIconButton from '../../common/components/CircleIconButton';
 import ParsedFieldsDebug from '../../common/components/ParsedFieldsDebug';
 import { parseShoppingItemText } from '../../common/aiParsing';
 import { UnitValue } from '../../types';
@@ -256,24 +256,18 @@ const EditShoppingItem = () => {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <IconButton
-          onClick={handleBack}
+        <CircleIconButton
           icon="fa-angle-left"
-          hideTextOnMobile={true}
-          className={styles.backButton}
-        >
-          Done
-        </IconButton>
+          onClick={handleBack}
+          ariaLabel="Back"
+        />
         <h1>{isAddMode ? 'Add Item' : 'Edit Item'}</h1>
-        <IconButton
+        <CircleIconButton
+          icon={isSaving ? "fa-circle-notch fa-spin" : "fa-check"}
           onClick={handleSave}
-          icon="fa-floppy-disk"
           disabled={isSaveDisabled}
-          hideTextOnMobile={true}
-          className={styles.saveButton}
-        >
-          {isSaving ? 'Saving...' : 'Save'}
-        </IconButton>
+          ariaLabel="Save"
+        />
       </header>
 
       {editableItems.map((item) => {
@@ -281,7 +275,6 @@ const EditShoppingItem = () => {
         return (
           <div key={item.id} className={styles.sourceItem}>
             <div className={styles.formGroup}>
-              <label className={styles.label}>Item</label>
               <input
                 type="text"
                 className={styles.input}

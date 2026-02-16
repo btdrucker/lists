@@ -34,10 +34,6 @@
   color: var(--color-text-primary);
 }
 
-.backButton {
-  composes: secondaryButton from '../../common/components/shared.module.css';
-}
-
 .modeToggle {
   display: flex;
   gap: 0;
@@ -226,8 +222,8 @@
 }
 
 .rescrapeButton {
-  width: 40px;
-  height: 40px;
+  width: var(--size-circle-button);
+  height: var(--size-circle-button);
   padding: 0;
   background: var(--color-bg-lighter);
   border: 1px solid var(--color-border-light);

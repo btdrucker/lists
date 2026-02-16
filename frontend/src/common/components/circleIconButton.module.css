@@ -1,0 +1,26 @@
+@import '../styles.css';
+
+.circleIconButton {
+  width: var(--size-circle-button);
+  height: var(--size-circle-button);
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--size-circle-button-icon);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.circleIconButton:hover:not(:disabled) {
+  background: var(--color-border-medium);
+}
+
+.circleIconButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

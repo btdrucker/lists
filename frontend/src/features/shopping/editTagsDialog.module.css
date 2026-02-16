@@ -1,10 +1,6 @@
 @import '../../common/styles.css';
 
 /* Header action buttons - composes shared circular icon button */
-.headerActionButton {
-  composes: circleIconButton from '../../common/components/shared.module.css';
-  font-weight: bold;
-}
 
 .tagList {
   flex: 1;

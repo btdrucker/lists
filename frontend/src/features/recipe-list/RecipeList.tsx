@@ -5,6 +5,7 @@ import { clearAuth } from '../auth/slice';
 import { getAllRecipes, deleteRecipe } from '../../firebase/firestore';
 import { signOut } from '../../firebase/auth';
 import { InstallButton } from '../../common/components/InstallButton';
+import CircleIconButton from '../../common/components/CircleIconButton';
 import RecipeStart from '../recipe/RecipeStart';
 import RecipeListItemCompact from './RecipeListItemCompact';
 import styles from './recipe-list.module.css';
@@ -14,7 +15,6 @@ const ItemComponent = RecipeListItemCompact;
 const RecipeList = () => {
   const dispatch = useAppDispatch();
   const { recipes, loading } = useAppSelector((state) => state.recipes || { recipes: [], loading: false, error: null });
-  const user = useAppSelector((state) => state.auth?.user);
   const hasLoadedRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMenu, setShowMenu] = useState(false);
@@ -128,24 +128,19 @@ const RecipeList = () => {
           <div className={styles.headerButtons}>
             <InstallButton />
             
-            {/* Desktop: Plus button */}
-            <button
-              className={styles.addButtonDesktop}
+            <CircleIconButton
+              icon="fa-plus"
               onClick={() => setShowAddRecipe(true)}
               title="Add Recipe"
-            >
-              <i className="fa-solid fa-plus" />
-            </button>
+            />
 
             {/* Mobile: Menu */}
             <div className={styles.menuContainer}>
-              <button
-                className={styles.menuButton}
+              <CircleIconButton
+                icon="fa-ellipsis-vertical"
                 onClick={() => setShowMenu(!showMenu)}
-                aria-label="Menu"
-              >
-                <i className="fa-solid fa-ellipsis-vertical" />
-              </button>
+                ariaLabel="Menu"
+              />
               {showMenu && (
                 <div className={styles.menuDropdown}>
                   <button
