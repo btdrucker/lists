@@ -51,7 +51,7 @@ function formatDateKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-function formatDayLabel(date: Date, today: Date): string {
+function formatDayLabel(date: Date): string {
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return `${dayNames[date.getDay()]}, ${monthNames[date.getMonth()]} ${date.getDate()}`;
@@ -372,7 +372,7 @@ const MealPlan = () => {
             <DaySection
               key={dateKey}
               dateKey={dateKey}
-              label={formatDayLabel(date, today)}
+              label={formatDayLabel(date)}
               items={dayItems}
               isToday={isToday}
               isPast={isPast}

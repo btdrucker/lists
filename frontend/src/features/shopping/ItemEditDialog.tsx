@@ -18,7 +18,6 @@ const UNIT_LABELS: Record<string, string> = {
   [UnitValue.WEIGHT_OUNCE]: 'oz',
   [UnitValue.EACH]: 'each',
   [UnitValue.CLOVE]: 'clove',
-  [UnitValue.SLICE]: 'slice',
   [UnitValue.CAN]: 'can',
   [UnitValue.BUNCH]: 'bunch',
   [UnitValue.HEAD]: 'head',

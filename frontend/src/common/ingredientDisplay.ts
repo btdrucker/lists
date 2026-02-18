@@ -99,7 +99,7 @@ export function buildAggregatedDisplayString(
   const amountStr = amount != null ? decimalToFraction(amount) : '';
   const unitStr =
     unit && unit !== UnitValue.EACH ? getUnitLabel(unit, amount) : '';
-  const isCountUnit = unit != null && COUNT_UNITS.has(unit);
+  const isCountUnit = unit != null && (COUNT_UNITS as Set<string>).has(unit);
   const shouldPluralize =
     isCountUnit &&
     (amount ?? 0) > 1 &&
