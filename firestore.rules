@@ -115,6 +115,26 @@ service cloud.firestore {
                        resource.data.familyId == 'default-family';
     }
     
+    // Meal Plan Items collection
+    // For MVP: All authenticated users share the same 'default-family' meal plan
+    match /mealPlanItems/{itemId} {
+      // Allow read if authenticated
+      allow read: if isAuthenticated();
+      
+      // Allow create if authenticated and familyId is 'default-family'
+      allow create: if isAuthenticated() &&
+                       request.resource.data.familyId == 'default-family' &&
+                       request.resource.data.keys().hasAll(['familyId', 'type', 'date', 'sortOrder', 'createdAt', 'updatedAt']);
+      
+      // Allow update/delete if authenticated and item belongs to 'default-family'
+      allow update: if isAuthenticated() &&
+                       resource.data.familyId == 'default-family' &&
+                       request.resource.data.familyId == 'default-family';
+      
+      allow delete: if isAuthenticated() &&
+                       resource.data.familyId == 'default-family';
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;

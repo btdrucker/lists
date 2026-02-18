@@ -275,6 +275,7 @@ const EditTagsDialog = ({ isOpen, onClose }: EditTagsDialogProps) => {
                 className={styles.deleteButton}
                 onClick={(e) => { e.stopPropagation(); handleDeleteTag(tag.id); }}
                 aria-label={`Delete ${tag.displayName}`}
+                title={`Delete ${tag.displayName}`}
               >
                 <i className="fa-solid fa-trash" />
               </button>

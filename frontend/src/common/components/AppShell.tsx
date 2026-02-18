@@ -11,7 +11,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { to: '/recipe-list', label: 'Recipes', icon: 'fa-list' },
+  { to: '/recipe-list', label: 'Recipes', icon: 'fa-utensils' },
   { to: '/shopping', label: 'Shopping', icon: 'fa-cart-shopping' },
   { to: '/mealplan', label: 'Meal Plan', icon: 'fa-calendar' },
 ];

@@ -21,6 +21,7 @@ const RecipeListItem = ({ recipe, onAddToCart, cartState }: RecipeListItemProps)
       <button
         className={`${styles.addToCartButton} ${cartState === 'success' ? styles.addToCartSuccess : ''}`}
         onClick={(e) => onAddToCart(recipe, e)}
+        aria-label="Add to shopping list"
         title="Add to shopping list"
         disabled={cartState !== 'idle'}
       >

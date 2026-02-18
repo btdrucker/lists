@@ -4,11 +4,13 @@ import storage from 'redux-persist/lib/storage';
 import authReducer from '../features/auth/slice';
 import recipesReducer from '../features/recipe-list/slice.ts';
 import shoppingReducer from '../features/shopping/slice.ts';
+import mealplanReducer from '../features/mealplan/slice.ts';
 
 const rootReducer = combineReducers({
   auth: authReducer,
   recipes: recipesReducer,
   shopping: shoppingReducer,
+  mealplan: mealplanReducer,
 });
 
 // Transform to exclude loading and error states from persistence

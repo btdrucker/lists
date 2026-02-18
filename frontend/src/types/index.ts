@@ -14,6 +14,9 @@ export type {
   ItemProfile,
   CombinedItem,
   GroupedItems,
+  // Meal plan types
+  MealPlanItem,
+  MealPlanItemBase,
 } from '../../../shared/types/index.js';
 export { UnitValue } from '../../../shared/types/index.js';
 import type { RecipeBase } from '../../../shared/types';

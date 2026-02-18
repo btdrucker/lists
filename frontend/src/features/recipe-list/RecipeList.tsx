@@ -162,7 +162,7 @@ const RecipeList = () => {
               <CircleIconButton
                 icon="fa-ellipsis-vertical"
                 onClick={() => setShowMenu(!showMenu)}
-                ariaLabel="Menu"
+                ariaLabel="Recipe list options"
               />
               {showMenu && (
                 <div className={styles.menuDropdown}>

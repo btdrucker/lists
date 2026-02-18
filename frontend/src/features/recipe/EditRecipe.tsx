@@ -573,7 +573,7 @@ const EditRecipe = () => {
         <CircleIconButton
           icon="fa-angle-left"
           onClick={handleCancel}
-          ariaLabel="Back"
+          ariaLabel="Back to all recipes"
         />
         <h1>Edit Recipe</h1>
         <CircleIconButton
@@ -614,6 +614,7 @@ const EditRecipe = () => {
                   onClick={handleRescrape}
                   disabled={isRescraping}
                   className={styles.rescrapeButton}
+                  aria-label="Re-scrape recipe from source"
                   title="Re-scrape recipe from source"
                 >
                   <i className="fa-solid fa-rotate-right"></i>

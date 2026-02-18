@@ -116,7 +116,8 @@ const ShoppingItemRow = ({
           e.stopPropagation();
           onOpenEditDialog(itemIds);
         }}
-        aria-label="Edit item tags and details"
+        aria-label="Add tag"
+        title="Add tag"
         type="button"
       >
         <i className="fa-solid fa-tag" />

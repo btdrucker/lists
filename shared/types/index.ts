@@ -147,6 +147,29 @@ export interface ItemProfileBase<DateType = Date> {
 
 export type ItemProfile = ItemProfileBase<string>;
 
+// ============================================================================
+// Meal Plan Types
+// ============================================================================
+
+export interface MealPlanItemBase<DateType = Date> {
+  id: string;
+  familyId: string;
+  type: 'recipe' | 'note';
+  recipeId?: string;       // For type='recipe'
+  recipeTitle?: string;    // Denormalized for display
+  text?: string;           // For type='note'
+  date: string | null;     // 'YYYY-MM-DD', null = Ideas (unassigned)
+  sortOrder: number;       // Ordering within a day/ideas
+  createdAt: DateType;
+  updatedAt: DateType;
+}
+
+// Frontend: uses string dates (Redux serialization)
+export type MealPlanItem = MealPlanItemBase<string>;
+
+// Backend: uses Date objects (if needed)
+export type MealPlanItemDoc = MealPlanItemBase<Date>;
+
 // Display-only types for UI (not stored in Firestore)
 export interface CombinedItem {
   key: string; // normalized name + unit for grouping

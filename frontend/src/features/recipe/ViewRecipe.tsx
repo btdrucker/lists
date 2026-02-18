@@ -285,6 +285,7 @@ const ViewRecipe = () => {
           onClick={handleBackClick}
           className={styles.floatingBackButton}
           aria-label="Back to all recipes"
+          title="Back to all recipes"
         >
           <i className="fa-solid fa-angle-left"></i>
         </button>
@@ -293,6 +294,7 @@ const ViewRecipe = () => {
             onClick={() => setShowMenu(!showMenu)}
             className={styles.floatingMenuButton}
             aria-label="Recipe options"
+            title="Recipe options"
             aria-expanded={showMenu}
           >
             <i className="fa-solid fa-ellipsis-vertical"></i>

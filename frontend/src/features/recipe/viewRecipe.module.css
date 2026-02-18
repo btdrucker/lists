@@ -11,7 +11,7 @@
   position: relative;
   width: 100%;
   height: 400px;
-  overflow: hidden;
+  overflow: visible;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
@@ -489,6 +489,11 @@
   }
 
   .heroSection {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+
+  .heroImage,
+  .heroNoImage {
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   }
 

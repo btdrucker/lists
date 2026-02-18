@@ -259,7 +259,7 @@ const EditShoppingItem = () => {
         <CircleIconButton
           icon="fa-angle-left"
           onClick={handleBack}
-          ariaLabel="Back"
+          ariaLabel="Back to shopping list"
         />
         <h1>{isAddMode ? 'Add Item' : 'Edit Item'}</h1>
         <CircleIconButton

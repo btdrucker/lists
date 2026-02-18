@@ -866,7 +866,7 @@ const Shopping = () => {
             <CircleIconButton
               icon="fa-plus"
               onClick={() => handleAddNewItem()}
-              ariaLabel="Add item"
+              ariaLabel="New item"
             />
             <div className={styles.menuContainer} ref={menuRef}>
               <CircleIconButton
@@ -875,7 +875,7 @@ const Shopping = () => {
                   e.stopPropagation();
                   setShowMenu(!showMenu);
                 }}
-                ariaLabel="Menu"
+                ariaLabel="Shopping list options"
               />
               {showMenu && (
                 <div className={styles.menuDropdown}>
@@ -886,7 +886,7 @@ const Shopping = () => {
                       setShowMenu(false);
                     }}
                   >
-                    <i className="fa-solid fa-plus" /> Add Recipe
+                    <i className="fa-solid fa-utensils" /> Add Recipe
                   </button>
                   <button
                     className={styles.menuItem}
@@ -899,7 +899,7 @@ const Shopping = () => {
                       setShowMenu(false);
                     }}
                   >
-                    <i className="fa-solid fa-folder-plus" /> Add Group
+                    <i className="fa-solid fa-folder-plus" /> New Group
                   </button>
                   <button
                     className={styles.menuItem}
@@ -1095,7 +1095,8 @@ const Shopping = () => {
                       e.stopPropagation();
                       handleAddNewItem(group.groupId);
                     }}
-                    aria-label="Add item to group"
+                    aria-label="New item"
+                    title="New item"
                   >
                     <i className="fa-solid fa-plus" />
                   </button>
