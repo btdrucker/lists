@@ -6,7 +6,6 @@
   min-height: 100vh;
 }
 
-/* Sticky page header */
 .stickyHeader {
   composes: stickyPageHeader from '../../common/components/shared.module.css';
 }
@@ -467,6 +466,12 @@
   padding: var(--spacing-xl);
   text-align: center;
   color: var(--color-text-tertiary);
+}
+
+@media (min-width: 641px) {
+  .container {
+    padding: var(--spacing-lg);
+  }
 }
 
 /* Mobile responsive */

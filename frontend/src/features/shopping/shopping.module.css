@@ -8,9 +8,6 @@
 
 .stickyHeader {
   composes: stickyPageHeader from '../../common/components/shared.module.css';
-  /* Desktop: no horizontal padding — content aligns with item rows */
-  padding-left: 0;
-  padding-right: 0;
 }
 
 .header {
@@ -476,10 +473,15 @@ i.groupCheckboxLeft.groupSpinnerChecked {
   margin-bottom: var(--spacing-sm);
 }
 
+@media (min-width: 641px) {
+  .container {
+    padding: var(--spacing-lg);
+  }
+}
+
 /* Mobile responsive */
 @media (max-width: 640px) {
   .stickyHeader {
-    /* Mobile: restore horizontal padding so title doesn't touch screen edge */
     padding-left: var(--spacing-lg);
     padding-right: var(--spacing-lg);
   }

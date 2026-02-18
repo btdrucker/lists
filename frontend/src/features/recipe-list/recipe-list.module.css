@@ -8,6 +8,8 @@
 
 .stickyHeader {
   composes: stickyPageHeader from '../../common/components/shared.module.css';
+  padding-left: var(--spacing-lg);
+  padding-right: var(--spacing-lg);
 }
 
 .header {
