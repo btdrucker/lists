@@ -6,7 +6,7 @@
   border-radius: 50%;
   border: none;
   background: transparent;
-  color: var(--color-text-primary);
+  color: var(--color-header-icon);
   font-size: var(--size-circle-button-icon);
   cursor: pointer;
   display: flex;

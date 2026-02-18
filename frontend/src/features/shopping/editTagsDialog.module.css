@@ -60,8 +60,8 @@
 }
 
 .tagRowName {
-  font-size: 15px;
-  font-weight: 500;
+  font-size: var(--font-item-size);
+  font-weight: var(--font-item-weight);
   color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -69,12 +69,12 @@
 }
 
 .deleteButton {
-  width: 36px;
-  height: 36px;
+  width: 48px;
+  min-height: 48px;
   border-radius: 50%;
   border: none;
   background: transparent;
-  color: var(--color-text-tertiary);
+  color: var(--color-item-icon);
   font-size: 16px;
   cursor: pointer;
   display: flex;

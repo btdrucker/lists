@@ -1,7 +1,7 @@
 import type { ShoppingItem, Tag, CombinedItem } from '../../types';
 import Checkbox from '../../common/components/Checkbox';
+import InlineEditableTextarea from '../../common/components/InlineEditableTextarea';
 import ParsedFieldsDebug from '../../common/components/ParsedFieldsDebug';
-import { formatAmount } from '../../common/ingredientDisplay';
 import { useDebugMode } from '../../common/hooks';
 import styles from './shoppingItemRow.module.css';
 
@@ -46,26 +46,15 @@ const ShoppingItemRow = ({
   const displayText = item.originalText;
   const debugMode = useDebugMode();
 
-  const handleTextareaFocus = () => {
+  const handleFocus = () => {
     if (!isEditingThis) {
       onStartEdit(itemId, displayText, itemIds);
     }
   };
 
-  const handleTextareaBlur = () => {
+  const handleBlur = () => {
     if (isEditingThis) {
       onSaveEdit();
-    }
-  };
-
-  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (isEditingThis) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        e.currentTarget.blur();
-      } else if (e.key === 'Escape') {
-        onCancelEdit();
-      }
     }
   };
 
@@ -83,17 +72,16 @@ const ShoppingItemRow = ({
       <div className={styles.itemDetails}>
         <div className={styles.itemMainRow}>
           <div className={styles.itemNameRow}>
-            <textarea
+            <InlineEditableTextarea
               ref={isEditingThis ? itemEditInputRef : undefined}
-              className={`${styles.itemTextarea} ${item.isChecked ? styles.itemTextareaChecked : ''}`}
               value={isEditingThis ? editingItemText : displayText}
+              onChange={(v) => isEditingThis && setEditingItemText(v)}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              onCancel={onCancelEdit}
               readOnly={!isEditingThis}
-              onChange={(e) => isEditingThis && setEditingItemText(e.target.value)}
-              onFocus={handleTextareaFocus}
-              onBlur={handleTextareaBlur}
-              onKeyDown={handleTextareaKeyDown}
-              rows={1}
-              aria-label="Item name"
+              ariaLabel="Item name"
+              checked={item.isChecked}
             />
           </div>
         </div>

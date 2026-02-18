@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import type { MealPlanItem } from '../../types';
+import InlineEditableTextarea from '../../common/components/InlineEditableTextarea';
 import styles from './mealplan.module.css';
 
 interface MealPlanItemRowProps {
@@ -40,14 +41,9 @@ const MealPlanItemRow = ({ item, isDragOverlay, onDelete, onNoteSave }: MealPlan
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      (e.target as HTMLElement).blur();
-    } else if (e.key === 'Escape') {
-      setEditText(originalText.current);
-      setIsEditing(false);
-    }
+  const handleCancel = () => {
+    setEditText(originalText.current);
+    setIsEditing(false);
   };
 
   const rowClassName = [
@@ -69,15 +65,16 @@ const MealPlanItemRow = ({ item, isDragOverlay, onDelete, onNoteSave }: MealPlan
             <span className={styles.itemText}>{item.recipeTitle}</span>
           </>
         ) : (
-          <input
-            className={styles.noteInput}
+          <InlineEditableTextarea
             value={isEditing ? editText : (item.text || '')}
-            readOnly={!isEditing}
-            onChange={(e) => isEditing && setEditText(e.target.value)}
+            onChange={(v) => isEditing && setEditText(v)}
             onFocus={handleFocus}
             onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
+            onCancel={handleCancel}
             placeholder="Write a note..."
+            readOnly={!isEditing}
+            ariaLabel="Note"
+            variant="note"
           />
         )}
       </div>
@@ -89,7 +86,7 @@ const MealPlanItemRow = ({ item, isDragOverlay, onDelete, onNoteSave }: MealPlan
         title="Remove item"
         type="button"
       >
-        <i className="fa-solid fa-xmark" />
+        <i className="fa-solid fa-trash" />
       </button>
     </div>
   );

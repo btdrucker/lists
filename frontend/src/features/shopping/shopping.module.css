@@ -18,9 +18,10 @@
 }
 
 .header h1 {
-  font-size: 28px;
+  font-size: var(--font-header-size);
+  font-weight: var(--font-header-weight);
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--color-header-text);
 }
 
 .headerButtons {
@@ -56,9 +57,9 @@
   padding: var(--spacing-sm) var(--spacing-md);
   border: none;
   background: transparent;
-  color: var(--color-text-primary);
-  font-size: 15px;
-  font-weight: 500;
+  color: var(--color-header-text);
+  font-size: var(--font-item-size);
+  font-weight: var(--font-item-weight);
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition: background var(--transition-fast);
@@ -72,6 +73,14 @@
 .menuItem i {
   width: 16px;
   text-align: center;
+}
+
+.menuItemDanger {
+  color: var(--color-delete);
+}
+
+.menuItemDanger i {
+  color: var(--color-delete);
 }
 
 .menuItemDisabled {
@@ -104,9 +113,9 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-primary);
+  font-size: var(--font-header-size-label);
+  font-weight: var(--font-item-weight);
+  color: var(--color-header-text);
   cursor: pointer;
   user-select: none;
 }
@@ -136,7 +145,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--color-border-light);
+  background-color: var(--color-border-medium);
   transition: background-color var(--transition-fast);
   border-radius: 12px;
 }
@@ -272,11 +281,11 @@
   display: block;
   flex: 1;
   min-width: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--font-header-size-section);
+  font-weight: var(--font-header-weight);
   font-family: inherit;
-  line-height: 1.3;
-  color: var(--color-text-primary);
+  line-height: var(--font-item-line-height);
+  color: var(--color-header-text);
   border: 2px solid transparent;
   border-radius: var(--radius-sm);
   padding: 6px;
@@ -357,9 +366,9 @@
   align-items: center;
   justify-content: space-between;
   min-height: 48px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-size: var(--font-header-size-section);
+  font-weight: var(--font-header-weight);
+  color: var(--color-header-text);
   padding: 0;
   margin: 0;
   background: #e8e8e8;
@@ -370,7 +379,7 @@
   min-height: 48px;
   border: none;
   background: transparent;
-  color: var(--color-text-primary);
+  color: var(--color-header-icon);
   font-size: 18px;
   font-weight: bold;
   cursor: pointer;
@@ -419,12 +428,22 @@
 
 .groupCaret {
   font-size: 16px;
+  color: var(--color-header-icon);
   transition: transform var(--transition-fast);
 }
 
-/* Group checkbox aligned to left edge */
+/* Group checkbox aligned to left edge - darker grey to match header */
 .groupCheckboxLeft {
   margin: 0 !important;
+}
+
+.groupCheckboxLeft i {
+  color: var(--color-header-icon);
+}
+
+.groupCheckboxLeft i.fa-square-check,
+.groupCheckboxLeft i.fa-square-minus {
+  color: var(--color-primary);
 }
 
 i.groupCheckboxLeft {
@@ -434,7 +453,7 @@ i.groupCheckboxLeft {
   align-items: center;
   justify-content: center;
   font-size: 22px;
-  color: var(--color-border-medium);
+  color: var(--color-header-icon);
 }
 
 i.groupCheckboxLeft.groupSpinnerChecked {
@@ -487,7 +506,7 @@ i.groupCheckboxLeft.groupSpinnerChecked {
   }
 
   .header h1 {
-    font-size: 24px;
+    font-size: var(--font-header-size-mobile);
   }
 
   .menuItemSignOut {

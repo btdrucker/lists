@@ -1,0 +1,52 @@
+@import '../styles.css';
+
+/* Shared inline-editable textarea for shopping items and meal plan notes */
+.textarea {
+  flex: 1;
+  display: block;
+  min-width: 0;
+  font-size: var(--font-item-size);
+  font-weight: var(--font-item-weight);
+  font-family: inherit;
+  line-height: var(--font-item-line-height);
+  color: var(--color-item-text);
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 4px 0;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  cursor: text;
+  background: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  field-sizing: content;
+}
+
+.textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.textarea:hover:not(:focus) {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.textarea:focus {
+  background: var(--color-bg-white);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 74, 144, 226), 0.2);
+}
+
+.textareaChecked {
+  text-decoration: line-through;
+  color: var(--color-text-tertiary);
+}
+
+/* Note variant: italic, secondary color (for meal plan notes) */
+.textareaNote {
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+
+.textareaNote:focus {
+  color: var(--color-item-text);
+}

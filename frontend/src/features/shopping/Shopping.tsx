@@ -946,7 +946,7 @@ const Shopping = () => {
                     <i className="fa-solid fa-tags" /> {tags.length === 0 ? 'New Tag' : 'Edit Tags'}
                   </button>
                   <button
-                    className={`${styles.menuItem} ${checkedItemIds.length === 0 && fullyCheckedCustomGroupIds.length === 0 ? styles.menuItemDisabled : ''}`}
+                    className={`${styles.menuItem} ${styles.menuItemDanger} ${checkedItemIds.length === 0 && fullyCheckedCustomGroupIds.length === 0 ? styles.menuItemDisabled : ''}`}
                     onClick={() => {
                       if (checkedItemIds.length > 0 || fullyCheckedCustomGroupIds.length > 0) {
                         handleBulkDelete();

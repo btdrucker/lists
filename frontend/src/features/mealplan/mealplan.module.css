@@ -18,9 +18,10 @@
 }
 
 .header h1 {
-  font-size: 28px;
+  font-size: var(--font-header-size);
+  font-weight: var(--font-header-weight);
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--color-header-text);
 }
 
 .headerButtons {
@@ -55,8 +56,8 @@
   padding: 10px 12px;
   border: none;
   background: transparent;
-  color: var(--color-text-primary);
-  font-size: 14px;
+  color: var(--color-header-text);
+  font-size: var(--font-header-size-label);
   text-align: left;
   cursor: pointer;
   border-radius: var(--radius-sm);
@@ -100,9 +101,9 @@
   display: flex;
   align-items: center;
   min-height: 48px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-size: var(--font-header-size-section);
+  font-weight: var(--font-header-weight);
+  color: var(--color-header-text);
   padding: 0 0 0 var(--spacing-sm);
   background: #e8e8e8;
   user-select: none;
@@ -122,10 +123,10 @@
 }
 
 .todayBadge {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--font-header-size-badge);
+  font-weight: var(--font-header-weight);
   text-transform: uppercase;
-  color: var(--color-primary);
+  color: var(--color-header-text);
   margin-right: var(--spacing-xs);
 }
 
@@ -140,8 +141,8 @@
   min-height: 48px;
   border: none;
   background: transparent;
-  color: var(--color-text-secondary);
-  font-size: 16px;
+  color: var(--color-header-icon);
+  font-size: var(--font-header-size-section);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -151,7 +152,7 @@
 
 .sectionActionButton:hover {
   background: rgba(0, 0, 0, 0.05);
-  color: var(--color-text-primary);
+  color: var(--color-header-text);
 }
 
 /* Item list within a section */
@@ -199,7 +200,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-tertiary);
+  color: var(--color-item-icon);
   cursor: grab;
   flex-shrink: 0;
   touch-action: none;
@@ -221,7 +222,7 @@
 }
 
 .itemIcon {
-  color: var(--color-primary);
+  color: var(--color-item-icon);
   font-size: 14px;
   flex-shrink: 0;
 }
@@ -232,51 +233,37 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 15px;
-  color: var(--color-text-primary);
+  font-size: var(--font-item-size);
+  font-weight: var(--font-item-weight);
+  color: var(--color-item-text);
 }
 
 .itemTextNote {
+  font-size: var(--font-item-size);
+  font-weight: var(--font-item-weight);
   color: var(--color-text-secondary);
   font-style: italic;
-}
-
-/* Editable note input */
-.noteInput {
-  flex: 1;
-  min-width: 0;
-  font-size: 15px;
-  font-family: inherit;
-  font-style: italic;
-  color: var(--color-text-secondary);
-  border: none;
-  outline: none;
-  background: transparent;
-  padding: var(--spacing-xs) 0;
-  width: 100%;
-}
-
-.noteInput::placeholder {
-  color: var(--color-text-tertiary);
 }
 
 /* Delete button */
 .deleteButton {
   width: 48px;
   min-height: 48px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
   background: transparent;
-  color: var(--color-text-tertiary);
+  color: var(--color-item-icon);
+  font-size: 16px;
   cursor: pointer;
   flex-shrink: 0;
-  font-size: 14px;
-  transition: color var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .deleteButton:hover {
+  background: var(--color-error-bg);
   color: var(--color-delete);
 }
 
@@ -292,6 +279,7 @@
 .newNoteRow {
   display: flex;
   align-items: center;
+  gap: var(--spacing-xs);
   min-height: 48px;
   background: var(--color-bg-white);
   border-bottom: 1px solid var(--color-border-light);
@@ -303,26 +291,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-tertiary);
+  color: var(--color-item-icon);
   font-size: 14px;
   flex-shrink: 0;
-}
-
-.newNoteInput {
-  flex: 1;
-  min-width: 0;
-  font-size: 15px;
-  font-family: inherit;
-  font-style: italic;
-  color: var(--color-text-secondary);
-  border: none;
-  outline: none;
-  background: transparent;
-  padding: var(--spacing-xs) var(--spacing-xs) var(--spacing-xs) 0;
-}
-
-.newNoteInput::placeholder {
-  color: var(--color-text-tertiary);
 }
 
 /* Loading state */
@@ -333,66 +304,12 @@
   color: var(--color-text-secondary);
 }
 
-/* Recipe dialog */
-.dialogBackdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--modal-backdrop);
-  z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-lg);
-}
-
-.dialog {
-  background: var(--color-bg-white);
-  border-radius: var(--radius-xl);
-  width: 100%;
-  max-width: 500px;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: var(--shadow-lg);
-}
-
-.dialogHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--spacing-lg);
-  border-bottom: 1px solid var(--color-border-light);
-}
-
-.dialogHeader h2 {
-  margin: 0;
-  font-size: 20px;
-  color: var(--color-text-primary);
-}
-
-.dialogCloseButton {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  font-size: 18px;
-  transition: background var(--transition-fast);
-}
-
-.dialogCloseButton:hover {
-  background: var(--color-bg-light);
-}
-
+/* Recipe dialog (AddRecipeDialog content - uses shared Dialog component) */
 .dialogSearch {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-bg-white);
   padding: var(--spacing-md) var(--spacing-lg);
 }
 
@@ -434,7 +351,8 @@
   background: transparent;
   width: 100%;
   text-align: left;
-  font-size: 15px;
+  font-size: var(--font-item-size);
+  font-weight: var(--font-item-weight);
   color: var(--color-text-primary);
   transition: background var(--transition-fast);
   border-bottom: 1px solid var(--color-border-light);
@@ -482,7 +400,7 @@
   }
 
   .header h1 {
-    font-size: 24px;
+    font-size: var(--font-header-size-mobile);
   }
 
   .menuContainer {

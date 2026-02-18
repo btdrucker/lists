@@ -1,6 +1,6 @@
-import { useRef } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import type { MealPlanItem } from '../../types';
+import InlineEditableTextarea from '../../common/components/InlineEditableTextarea';
 import MealPlanItemRow from './MealPlanItemRow';
 import styles from './mealplan.module.css';
 
@@ -41,8 +41,6 @@ const DaySection = ({
   onDeleteItem,
   onNoteSave,
 }: DaySectionProps) => {
-  const noteInputRef = useRef<HTMLInputElement>(null);
-
   const { setNodeRef } = useDroppable({
     id: dateKey,
   });
@@ -58,15 +56,6 @@ const DaySection = ({
     isToday ? styles.sectionHeaderToday : '',
     isIdeas ? styles.sectionHeaderIdeas : '',
   ].filter(Boolean).join(' ');
-
-  const handleNoteKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      onSaveNote();
-    } else if (e.key === 'Escape') {
-      onCancelNote();
-    }
-  };
 
   return (
     <div
@@ -106,14 +95,15 @@ const DaySection = ({
             <div className={styles.dragHandle}>
               <i className="fa-solid fa-grip-vertical" />
             </div>
-            <input
-              ref={noteInputRef}
-              className={styles.newNoteInput}
+            <InlineEditableTextarea
               value={newNoteText}
-              onChange={(e) => onNewNoteTextChange(e.target.value)}
+              onChange={onNewNoteTextChange}
               onBlur={onSaveNote}
-              onKeyDown={handleNoteKeyDown}
+              onCancel={onCancelNote}
               placeholder="Write a note..."
+              readOnly={false}
+              ariaLabel="New note"
+              variant="note"
               autoFocus
             />
           </div>

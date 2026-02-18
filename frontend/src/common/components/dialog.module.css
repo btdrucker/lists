@@ -63,9 +63,9 @@
 
 .title {
   margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-size: var(--font-header-size-dialog);
+  font-weight: var(--font-header-weight);
+  color: var(--color-header-text);
 }
 
 .content {
@@ -105,7 +105,7 @@
   }
 
   .title {
-    font-size: 20px;
+    font-size: var(--font-header-size-section);
   }
 
   .header {

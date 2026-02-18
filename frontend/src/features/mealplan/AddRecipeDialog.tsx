@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAppSelector } from '../../common/hooks';
 import type { Recipe } from '../../types';
+import Dialog from '../../common/components/Dialog';
 import styles from './mealplan.module.css';
 
 interface AddRecipeDialogProps {
@@ -22,60 +23,39 @@ const AddRecipeDialog = ({ onSelect, onClose }: AddRecipeDialogProps) => {
     return recipe.title.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
   return (
-    <div className={styles.dialogBackdrop} onClick={handleBackdropClick}>
-      <div className={styles.dialog}>
-        <div className={styles.dialogHeader}>
-          <h2>Add Recipe</h2>
-          <button
-            className={styles.dialogCloseButton}
-            onClick={onClose}
-            aria-label="Close"
-            title="Close"
-            type="button"
-          >
-            <i className="fa-solid fa-xmark" />
-          </button>
-        </div>
-
-        <div className={styles.dialogSearch}>
-          <input
-            ref={searchInputRef}
-            className={styles.dialogSearchInput}
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search recipes..."
-          />
-        </div>
-
-        <div className={styles.dialogList}>
-          {filteredRecipes.length === 0 ? (
-            <div className={styles.dialogEmpty}>
-              {searchQuery ? 'No recipes found' : 'No recipes available'}
-            </div>
-          ) : (
-            filteredRecipes.map((recipe: Recipe) => (
-              <button
-                key={recipe.id}
-                className={styles.dialogRecipeItem}
-                onClick={() => onSelect(recipe)}
-                type="button"
-              >
-                <i className={`fa-solid fa-utensils ${styles.dialogRecipeIcon}`} />
-                <span className={styles.dialogRecipeTitle}>{recipe.title}</span>
-              </button>
-            ))
-          )}
-        </div>
+    <Dialog isOpen={true} title="Add Recipe" onClose={onClose} maxWidth="md">
+      <div className={styles.dialogSearch}>
+        <input
+          ref={searchInputRef}
+          className={styles.dialogSearchInput}
+          type="search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search recipes..."
+        />
       </div>
-    </div>
+
+      <div className={styles.dialogList}>
+        {filteredRecipes.length === 0 ? (
+          <div className={styles.dialogEmpty}>
+            {searchQuery ? 'No recipes found' : 'No recipes available'}
+          </div>
+        ) : (
+          filteredRecipes.map((recipe: Recipe) => (
+            <button
+              key={recipe.id}
+              className={styles.dialogRecipeItem}
+              onClick={() => onSelect(recipe)}
+              type="button"
+            >
+              <i className={`fa-solid fa-utensils ${styles.dialogRecipeIcon}`} />
+              <span className={styles.dialogRecipeTitle}>{recipe.title}</span>
+            </button>
+          ))
+        )}
+      </div>
+    </Dialog>
   );
 };
 
