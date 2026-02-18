@@ -9,8 +9,6 @@
 /* Sticky page header */
 .stickyHeader {
   composes: stickyPageHeader from '../../common/components/shared.module.css';
-  padding-left: 0;
-  padding-right: 0;
 }
 
 .header {

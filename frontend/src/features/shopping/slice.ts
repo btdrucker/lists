@@ -24,6 +24,8 @@ const persisted = loadPersistedState();
 
 interface ShoppingState {
   items: ShoppingItem[];
+  /** IDs of optimistic items still being written to Firestore (not to be overwritten by subscription) */
+  pendingOptimisticIds: string[];
   tags: Tag[];
   groups: ShoppingGroup[];
   loading: boolean;
@@ -34,6 +36,7 @@ interface ShoppingState {
 
 const initialState: ShoppingState = {
   items: [],
+  pendingOptimisticIds: [],
   tags: [],
   groups: [],
   loading: true,
@@ -49,6 +52,25 @@ const shoppingSlice = createSlice({
     setShoppingItems: (state, action: PayloadAction<ShoppingItem[]>) => {
       state.items = action.payload;
       state.loading = false;
+    },
+    /** Merge Firestore snapshot with pending optimistic items so they persist until write completes */
+    mergeShoppingItemsFromFirestore: (state, action: PayloadAction<ShoppingItem[]>) => {
+      const firestoreItems = action.payload;
+      const pendingItems = state.items.filter((i) =>
+        state.pendingOptimisticIds.includes(i.id)
+      );
+      state.items = [...firestoreItems, ...pendingItems];
+      state.loading = false;
+    },
+    addPendingOptimisticId: (state, action: PayloadAction<string>) => {
+      if (!state.pendingOptimisticIds.includes(action.payload)) {
+        state.pendingOptimisticIds.push(action.payload);
+      }
+    },
+    removePendingOptimisticId: (state, action: PayloadAction<string>) => {
+      state.pendingOptimisticIds = state.pendingOptimisticIds.filter(
+        (id) => id !== action.payload
+      );
     },
     setTags: (state, action: PayloadAction<Tag[]>) => {
       state.tags = action.payload;
@@ -108,6 +130,9 @@ const shoppingSlice = createSlice({
 
 export const {
   setShoppingItems,
+  mergeShoppingItemsFromFirestore,
+  addPendingOptimisticId,
+  removePendingOptimisticId,
   setTags,
   setShoppingGroups,
   addShoppingGroupToState,

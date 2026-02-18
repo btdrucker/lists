@@ -11,7 +11,13 @@ import {
 } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent, DragOverEvent, DropAnimation } from '@dnd-kit/core';
 import { useAppSelector, useAppDispatch } from '../../common/hooks';
-import { setMealPlanItems } from './slice';
+import {
+  mergeMealPlanItemsFromFirestore,
+  addPendingOptimisticId,
+  removePendingOptimisticId,
+  addMealPlanItemToState,
+  removeMealPlanItem,
+} from './slice';
 import { clearAuth } from '../auth/slice';
 import { signOut } from '../../firebase/auth';
 import {
@@ -92,7 +98,7 @@ const MealPlan = () => {
   // Real-time subscription
   useEffect(() => {
     const unsubscribe = subscribeToMealPlanItems(FAMILY_ID, (newItems) => {
-      dispatch(setMealPlanItems(newItems));
+      dispatch(mergeMealPlanItemsFromFirestore(newItems));
     });
     return () => unsubscribe();
   }, [dispatch]);
@@ -126,29 +132,53 @@ const MealPlan = () => {
     setNewNoteText('');
   }, []);
 
-  const handleSaveNote = useCallback(async () => {
+  const handleSaveNote = useCallback(() => {
     const text = newNoteText.trim();
-    if (!text || !addingNoteForDate) {
+    const dateKey = addingNoteForDate;
+
+    if (!text || !dateKey) {
       setAddingNoteForDate(null);
       setNewNoteText('');
       return;
     }
 
-    try {
-      await addMealPlanItem({
-        familyId: FAMILY_ID,
-        type: 'note',
-        text,
-        date: addingNoteForDate === IDEAS_KEY ? null : addingNoteForDate,
-        sortOrder: Date.now(),
-      });
-    } catch (error) {
-      console.error('Error adding note:', error);
-    }
+    // New items sort to the top: one below the current minimum sortOrder for this day
+    const dayItems = itemsByDate.get(dateKey) || [];
+    const minSortOrder = dayItems.length > 0 ? Math.min(...dayItems.map((i) => i.sortOrder)) : 0;
+    const sortOrder = minSortOrder - 1;
+    const optimisticId = `opt-${Date.now()}`;
+    const now = new Date().toISOString();
+
+    // Add optimistic item first so the inline input can be replaced instantly with no gap
+    dispatch(addMealPlanItemToState({
+      id: optimisticId,
+      familyId: FAMILY_ID,
+      type: 'note',
+      text,
+      date: dateKey === IDEAS_KEY ? null : dateKey,
+      sortOrder,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    dispatch(addPendingOptimisticId(optimisticId));
 
     setAddingNoteForDate(null);
     setNewNoteText('');
-  }, [newNoteText, addingNoteForDate]);
+
+    addMealPlanItem({
+      familyId: FAMILY_ID,
+      type: 'note',
+      text,
+      date: dateKey === IDEAS_KEY ? null : dateKey,
+      sortOrder,
+    }).then(() => {
+      dispatch(removePendingOptimisticId(optimisticId));
+      dispatch(removeMealPlanItem(optimisticId));
+    }).catch((error) => {
+      console.error('Error adding note:', error);
+      // Keep item in Redux — offline persistence will sync when connectivity returns
+    });
+  }, [newNoteText, addingNoteForDate, itemsByDate, dispatch]);
 
   const handleCancelNote = useCallback(() => {
     setAddingNoteForDate(null);
@@ -156,21 +186,45 @@ const MealPlan = () => {
   }, []);
 
   // Add recipe
-  const handleAddRecipe = useCallback(async (recipe: Recipe, dateKey: string) => {
-    try {
-      await addMealPlanItem({
-        familyId: FAMILY_ID,
-        type: 'recipe',
-        recipeId: recipe.id,
-        recipeTitle: recipe.title,
-        date: dateKey === IDEAS_KEY ? null : dateKey,
-        sortOrder: Date.now(),
-      });
-    } catch (error) {
-      console.error('Error adding recipe:', error);
-    }
+  const handleAddRecipe = useCallback((recipe: Recipe, dateKey: string) => {
+    // New items sort to the top: one below the current minimum sortOrder for this day
+    const dayItems = itemsByDate.get(dateKey) || [];
+    const minSortOrder = dayItems.length > 0 ? Math.min(...dayItems.map((i) => i.sortOrder)) : 0;
+    const sortOrder = minSortOrder - 1;
+    const optimisticId = `opt-${Date.now()}`;
+    const now = new Date().toISOString();
+
+    // Add optimistic item before closing dialog so there is no gap in the UI
+    dispatch(addMealPlanItemToState({
+      id: optimisticId,
+      familyId: FAMILY_ID,
+      type: 'recipe',
+      recipeId: recipe.id,
+      recipeTitle: recipe.title,
+      date: dateKey === IDEAS_KEY ? null : dateKey,
+      sortOrder,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    dispatch(addPendingOptimisticId(optimisticId));
+
     setRecipeDialogDate(null);
-  }, []);
+
+    addMealPlanItem({
+      familyId: FAMILY_ID,
+      type: 'recipe',
+      recipeId: recipe.id,
+      recipeTitle: recipe.title,
+      date: dateKey === IDEAS_KEY ? null : dateKey,
+      sortOrder,
+    }).then(() => {
+      dispatch(removePendingOptimisticId(optimisticId));
+      dispatch(removeMealPlanItem(optimisticId));
+    }).catch((error) => {
+      console.error('Error adding recipe:', error);
+      // Keep item in Redux — offline persistence will sync when connectivity returns
+    });
+  }, [itemsByDate, dispatch]);
 
   // Delete item
   const handleDeleteItem = useCallback(async (itemId: string) => {

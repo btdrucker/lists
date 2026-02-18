@@ -1,6 +1,18 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAppSelector, useAppDispatch, useNavigateWithDebug, useAddRecipeToCart } from '../../common/hooks';
-import { setShoppingItems, setTags, setShoppingGroups, removeShoppingItems, setViewMode, setSelectedTagIds, addShoppingItemToState } from './slice';
+import {
+  setShoppingItems,
+  mergeShoppingItemsFromFirestore,
+  addPendingOptimisticId,
+  removePendingOptimisticId,
+  setTags,
+  setShoppingGroups,
+  removeShoppingItems,
+  setViewMode,
+  setSelectedTagIds,
+  addShoppingItemToState,
+  updateShoppingItemInState,
+} from './slice';
 import {
   subscribeToShoppingItems,
   subscribeToTags,
@@ -245,7 +257,7 @@ const Shopping = () => {
 
         // Set up real-time listeners
         unsubItems = subscribeToShoppingItems(FAMILY_ID, (newItems) => {
-          dispatch(setShoppingItems(newItems));
+          dispatch(mergeShoppingItemsFromFirestore(newItems));
         });
 
         unsubTags = subscribeToTags(FAMILY_ID, (newTags) => {
@@ -727,8 +739,10 @@ const Shopping = () => {
     [navigate]
   );
 
-  // Save new item (from add row)
-  const handleSaveNewItem = useCallback(async () => {
+  // Save new item (from add row).
+  // Optimistic: item appears immediately; parse + Firestore run in background.
+  // On failure: item stays in Redux for potential retry later.
+  const handleSaveNewItem = useCallback(() => {
     if (isItemEditCancelingRef.current) {
       isItemEditCancelingRef.current = false;
       return;
@@ -743,31 +757,17 @@ const Shopping = () => {
     }
 
     const groupIdToAdd = newItemGroupId;
-    setAddingNewItem(false);
-    setNewItemText('');
-    setNewItemGroupId(null);
-
-    let amount: number | null = null;
-    let unit: typeof UnitValue[keyof typeof UnitValue] | null = null;
-    let name = '';
-    try {
-      const parsed = await parseShoppingItemText(originalText);
-      amount = parsed.amount;
-      unit = parsed.unit as typeof UnitValue[keyof typeof UnitValue] | null;
-      name = parsed.name;
-    } catch (error) {
-      console.error('Error parsing ingredient:', error);
-      // Leave amount/unit/name blank - parsing still required (retry TBD)
-    }
-
     const now = new Date().toISOString();
+    const optimisticId = `opt-${Date.now()}`;
+
+    // 1. Add optimistic item immediately so it stays visible (no disappear/reappear)
     const optimisticItem: ShoppingItem = {
-      id: `opt-${Date.now()}`,
+      id: optimisticId,
       familyId: FAMILY_ID,
       originalText,
-      name,
-      amount,
-      unit,
+      name: originalText, // Use raw text until parse completes; display uses originalText
+      amount: null,
+      unit: null,
       isChecked: false,
       tagIds: [],
       createdAt: now,
@@ -775,23 +775,58 @@ const Shopping = () => {
       ...(groupIdToAdd && { customGroupId: groupIdToAdd }),
     };
     dispatch(addShoppingItemToState(optimisticItem));
+    dispatch(addPendingOptimisticId(optimisticId));
 
-    try {
-      await addShoppingItem({
-        familyId: FAMILY_ID,
-        originalText,
-        name,
-        amount,
-        unit,
-        isChecked: false,
-        tagIds: [],
-        ...(groupIdToAdd && { customGroupId: groupIdToAdd }),
-      });
-    } catch (error) {
-      console.error('Error adding item:', error);
-      dispatch(removeShoppingItems([optimisticItem.id]));
-    }
-  }, [newItemText, newItemGroupId]);
+    // 2. Clear add row right away
+    setAddingNewItem(false);
+    setNewItemText('');
+    setNewItemGroupId(null);
+
+    // 3. Parse + Firestore in background
+    const persistItem = async () => {
+      let amount: number | null = null;
+      let unit: typeof UnitValue[keyof typeof UnitValue] | null = null;
+      let name = originalText;
+      try {
+        const parsed = await parseShoppingItemText(originalText);
+        amount = parsed.amount;
+        unit = parsed.unit as typeof UnitValue[keyof typeof UnitValue] | null;
+        name = parsed.name;
+        dispatch(
+          updateShoppingItemInState({
+            ...optimisticItem,
+            amount,
+            unit,
+            name,
+            id: optimisticId,
+          })
+        );
+      } catch (error) {
+        console.error('Error parsing ingredient:', error);
+        name = originalText;
+      }
+
+      try {
+        await addShoppingItem({
+          familyId: FAMILY_ID,
+          originalText,
+          name,
+          amount,
+          unit,
+          isChecked: false,
+          tagIds: [],
+          ...(groupIdToAdd && { customGroupId: groupIdToAdd }),
+        });
+        dispatch(removePendingOptimisticId(optimisticId));
+        dispatch(removeShoppingItems([optimisticId]));
+        // Subscription delivers real item; removing optimistic avoids duplicate if subscription fired first
+      } catch (error) {
+        console.error('Error adding item to Firestore:', error);
+        // Keep item in Redux (stays in pending so merge preserves it); retry later TBD
+      }
+    };
+    persistItem();
+  }, [newItemText, newItemGroupId, dispatch]);
 
   // Cancel new item
   const handleCancelNewItem = useCallback(() => {
