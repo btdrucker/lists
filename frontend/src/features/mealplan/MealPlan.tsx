@@ -299,47 +299,48 @@ const MealPlan = () => {
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={pointerWithin}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-    >
-      <div className={styles.container}>
-        <div className={styles.stickyHeader}>
-          <header className={styles.header}>
-            <h1>Meal Plan</h1>
-            <div className={styles.headerButtons}>
-              {/* Mobile: Menu */}
-              <div className={styles.menuContainer}>
-                <CircleIconButton
-                  icon="fa-ellipsis-vertical"
-                  onClick={() => setShowMenu(!showMenu)}
-                  ariaLabel="Meal plan options"
-                />
-                {showMenu && (
-                  <div className={styles.menuDropdown}>
-                    <button
-                      className={styles.menuItem}
-                      onClick={async () => {
-                        try {
-                          await handleSignOut();
-                          setShowMenu(false);
-                        } catch (error) {
-                          console.error('Error signing out:', error);
-                        }
-                      }}
-                    >
-                      <i className="fa-solid fa-arrow-right-from-bracket" /> Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
+    <div className={`${styles.container} ${styles.pageWithFixedHeader}`}>
+      <div className={styles.stickyHeader}>
+        <header className={styles.header}>
+          <h1>Meal Plan</h1>
+          <div className={styles.headerButtons}>
+            {/* Mobile: Menu */}
+            <div className={styles.menuContainer}>
+              <CircleIconButton
+                icon="fa-ellipsis-vertical"
+                onClick={() => setShowMenu(!showMenu)}
+                ariaLabel="Meal plan options"
+              />
+              {showMenu && (
+                <div className={styles.menuDropdown}>
+                  <button
+                    className={styles.menuItem}
+                    onClick={async () => {
+                      try {
+                        await handleSignOut();
+                        setShowMenu(false);
+                      } catch (error) {
+                        console.error('Error signing out:', error);
+                      }
+                    }}
+                  >
+                    <i className="fa-solid fa-arrow-right-from-bracket" /> Sign Out
+                  </button>
+                </div>
+              )}
             </div>
-          </header>
-        </div>
+          </div>
+        </header>
+      </div>
 
+      <DndContext
+        sensors={sensors}
+        collisionDetection={pointerWithin}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        <div className={styles.scrollContent}>
         {/* Ideas section */}
         <DaySection
           dateKey={IDEAS_KEY}
@@ -389,36 +390,37 @@ const MealPlan = () => {
             />
           );
         })}
-      </div>
+        </div>
 
-      {/* Drag overlay */}
-      <DragOverlay dropAnimation={zoneChanged.current ? null : defaultDropAnimation}>
-        {activeItem && (
-          <MealPlanItemRow
-            item={activeItem}
-            isDragOverlay
-            onDelete={() => {}}
-            onNoteSave={() => {}}
+        {/* Drag overlay */}
+        <DragOverlay dropAnimation={zoneChanged.current ? null : defaultDropAnimation}>
+          {activeItem && (
+            <MealPlanItemRow
+              item={activeItem}
+              isDragOverlay
+              onDelete={() => {}}
+              onNoteSave={() => {}}
+            />
+          )}
+        </DragOverlay>
+
+        {/* Mobile menu backdrop */}
+        {showMenu && (
+          <div
+            className={styles.menuBackdrop}
+            onClick={() => setShowMenu(false)}
           />
         )}
-      </DragOverlay>
 
-      {/* Mobile menu backdrop */}
-      {showMenu && (
-        <div
-          className={styles.menuBackdrop}
-          onClick={() => setShowMenu(false)}
-        />
-      )}
-
-      {/* Recipe picker dialog */}
-      {recipeDialogDate !== null && (
-        <AddRecipeDialog
-          onSelect={(recipe) => handleAddRecipe(recipe, recipeDialogDate)}
-          onClose={() => setRecipeDialogDate(null)}
-        />
-      )}
-    </DndContext>
+        {/* Recipe picker dialog */}
+        {recipeDialogDate !== null && (
+          <AddRecipeDialog
+            onSelect={(recipe) => handleAddRecipe(recipe, recipeDialogDate)}
+            onClose={() => setRecipeDialogDate(null)}
+          />
+        )}
+      </DndContext>
+    </div>
   );
 };
 

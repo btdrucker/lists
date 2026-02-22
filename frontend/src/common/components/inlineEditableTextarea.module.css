@@ -13,6 +13,7 @@
   border: 2px solid transparent;
   border-radius: var(--radius-sm);
   padding: 4px 0;
+  margin-left: -2px;
   outline: none;
   resize: none;
   overflow: hidden;

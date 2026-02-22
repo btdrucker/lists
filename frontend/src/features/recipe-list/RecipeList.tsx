@@ -144,7 +144,7 @@ const RecipeList = () => {
   }
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} ${styles.pageWithFixedHeader}`}>
       <div className={styles.stickyHeader}>
         <header className={styles.header}>
           <h1>My Recipes</h1>
@@ -196,6 +196,7 @@ const RecipeList = () => {
         </div>
       </div>
 
+      <div className={styles.scrollContent}>
       {filteredRecipes.length === 0 ? (
         <div className={styles.empty}>
           {searchQuery ? (
@@ -223,6 +224,7 @@ const RecipeList = () => {
         </div>
       )}
 
+      </div>
 
       {/* Backdrop for menu */}
       {showMenu && (

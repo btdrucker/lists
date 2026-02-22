@@ -5,10 +5,15 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+function isIOS(): boolean {
+  return /iPhone|iPad|iPod/.test(navigator.userAgent);
+}
+
 interface UsePWAInstallReturn {
   isInstallable: boolean;
   isInstalled: boolean;
   isMobile: boolean;
+  isIOS: boolean;
   installPrompt: () => Promise<void>;
 }
 
@@ -89,6 +94,7 @@ export function usePWAInstall(): UsePWAInstallReturn {
     isInstallable: !!deferredPrompt,
     isInstalled,
     isMobile,
+    isIOS: isIOS(),
     installPrompt,
   };
 }

@@ -1,0 +1,15 @@
+/* Desktop: no special handling */
+.wrapper {
+  min-height: 100vh;
+}
+
+/* Mobile: scroll container when body has overflow:hidden */
+@media (max-width: 640px) {
+  .wrapper {
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+    min-height: 0;
+  }
+}

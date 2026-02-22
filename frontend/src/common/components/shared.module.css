@@ -40,3 +40,30 @@
   padding-top: var(--spacing-lg);
   padding-bottom: var(--spacing-lg);
 }
+
+/* Mobile: page with fixed header — header outside scroll, content scrolls (prevents header bounce on overscroll) */
+@media (max-width: 640px) {
+  .pageWithFixedHeader {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    flex: 1;
+  }
+
+  .pageWithFixedHeader .stickyPageHeader {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .scrollContent {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+}

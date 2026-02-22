@@ -111,6 +111,28 @@
   color: var(--color-item-text);
 }
 
+.itemTextarea {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  font-family: inherit;
+  font-size: var(--font-item-size);
+  font-weight: var(--font-item-weight);
+  color: var(--color-item-text);
+  border: none;
+  outline: none;
+  background: transparent;
+  resize: none;
+  padding: 0;
+  margin: 0;
+  line-height: var(--font-item-line-height);
+  overflow: hidden;
+}
+
+.itemTextarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
 .itemTagSection {
   position: relative;
   display: flex;

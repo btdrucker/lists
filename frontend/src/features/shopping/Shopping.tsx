@@ -893,7 +893,7 @@ const Shopping = () => {
   }
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} ${styles.pageWithFixedHeader}`}>
       <div className={styles.stickyHeader}>
         <div className={styles.header}>
           <h1>Shopping List</h1>
@@ -1020,6 +1020,7 @@ const Shopping = () => {
 
       </div>
 
+      <div className={styles.scrollContent}>
       {/* Empty state - Simple view: show when no items and not adding */}
       {items.length === 0 && !addingNewItem && viewMode === 'simple' && (
         <div className={styles.empty}>
@@ -1197,6 +1198,8 @@ const Shopping = () => {
 
         </div>
       )}
+
+      </div>
 
       {/* Recipe picker modal */}
       <RecipePicker

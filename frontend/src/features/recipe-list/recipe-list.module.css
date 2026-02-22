@@ -6,6 +6,14 @@
   min-height: 100vh;
 }
 
+.pageWithFixedHeader {
+  composes: pageWithFixedHeader from '../../common/components/shared.module.css';
+}
+
+.scrollContent {
+  composes: scrollContent from '../../common/components/shared.module.css';
+}
+
 .stickyHeader {
   composes: stickyPageHeader from '../../common/components/shared.module.css';
   padding-left: var(--spacing-lg);

@@ -13,6 +13,7 @@ import RecipeStart from './features/recipe/RecipeStart';
 import EditRecipe from './features/recipe/EditRecipe.tsx';
 import AiDebug from './features/ai-debug/AiDebug';
 import AppShell from './common/components/AppShell';
+import { PageScrollWrapper } from './common/components/PageScrollWrapper';
 import Shopping from './features/shopping/Shopping';
 import EditShoppingItem from './features/shopping/EditShoppingItem';
 import MealPlan from './features/mealplan/MealPlan';
@@ -49,11 +50,13 @@ function AppContent() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
+    <div className="app-main">
+      <BrowserRouter>
+        <div className="app-routes">
+        <Routes>
         {!user ? (
           <>
-            <Route path="/auth" element={<AuthScreen />} />
+            <Route path="/auth" element={<PageScrollWrapper><AuthScreen /></PageScrollWrapper>} />
             <Route path="*" element={<Navigate to="/auth" replace />} />
           </>
         ) : (
@@ -82,17 +85,19 @@ function AppContent() {
                 </AppShell>
               }
             />
-            <Route path="/recipe/:id" element={<ViewRecipe />} />
-            <Route path="/recipe-start" element={<RecipeStart />} />
-            <Route path="/edit-recipe/:id" element={<EditRecipe />} />
-            <Route path="/shopping/edit/:itemId" element={<EditShoppingItem />} />
-            <Route path="/ai-debug" element={<AiDebug />} />
+            <Route path="/recipe/:id" element={<PageScrollWrapper><ViewRecipe /></PageScrollWrapper>} />
+            <Route path="/recipe-start" element={<PageScrollWrapper><RecipeStart /></PageScrollWrapper>} />
+            <Route path="/edit-recipe/:id" element={<PageScrollWrapper><EditRecipe /></PageScrollWrapper>} />
+            <Route path="/shopping/edit/:itemId" element={<PageScrollWrapper><EditShoppingItem /></PageScrollWrapper>} />
+            <Route path="/ai-debug" element={<PageScrollWrapper><AiDebug /></PageScrollWrapper>} />
             <Route path="/" element={<Navigate to="/shopping" replace />} />
             <Route path="*" element={<Navigate to="/shopping" replace />} />
           </>
         )}
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+        </div>
+      </BrowserRouter>
+    </div>
   );
 }
 
@@ -100,10 +105,12 @@ function App() {
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        <OfflineIndicator />
-        <InstallBanner />
-        <UpdatePrompt />
-        <AppContent />
+        <div className="app-root">
+          <OfflineIndicator />
+          <InstallBanner />
+          <UpdatePrompt />
+          <AppContent />
+        </div>
       </PersistGate>
     </Provider>
   );

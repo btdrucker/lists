@@ -52,6 +52,10 @@
   opacity: 0.9;
 }
 
+.instructions {
+  line-height: 1.4;
+}
+
 .buttons {
   display: flex;
   gap: 8px;

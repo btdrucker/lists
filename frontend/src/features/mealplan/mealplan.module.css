@@ -6,6 +6,14 @@
   min-height: 100vh;
 }
 
+.pageWithFixedHeader {
+  composes: pageWithFixedHeader from '../../common/components/shared.module.css';
+}
+
+.scrollContent {
+  composes: scrollContent from '../../common/components/shared.module.css';
+}
+
 .stickyHeader {
   composes: stickyPageHeader from '../../common/components/shared.module.css';
 }
@@ -230,9 +238,6 @@
 .itemText {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: var(--font-item-size);
   font-weight: var(--font-item-weight);
   color: var(--color-item-text);
@@ -394,9 +399,17 @@
 
 /* Mobile responsive */
 @media (max-width: 640px) {
-  .stickyHeader {
-    padding-left: var(--spacing-lg);
-    padding-right: var(--spacing-lg);
+  .container {
+    width: 100%;
+    max-width: 100%;
+    padding-left: var(--spacing-md);
+    padding-right: var(--spacing-md);
+    overflow-x: hidden;
+  }
+
+  .scrollContent {
+    width: 100%;
+    max-width: 100%;
   }
 
   .header h1 {
