@@ -14,6 +14,13 @@
   composes: scrollContent from '../../common/components/shared.module.css';
 }
 
+@media (max-width: 640px) {
+  .scrollContent {
+    /* Pad enough so the last day clears the fixed bottom nav (~68px) when fully scrolled */
+    padding-bottom: 80px;
+  }
+}
+
 .stickyHeader {
   composes: stickyPageHeader from '../../common/components/shared.module.css';
 }
@@ -405,6 +412,7 @@
     padding-left: var(--spacing-md);
     padding-right: var(--spacing-md);
     overflow-x: hidden;
+    min-height: 0;
   }
 
   .scrollContent {

@@ -7,7 +7,7 @@
   padding: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   max-width: 350px;
-  z-index: 1000;
+  z-index: 1002;
   animation: slideInRight 0.3s ease-out;
   border-left: 4px solid #4caf50;
 }
