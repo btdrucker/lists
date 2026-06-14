@@ -37,3 +37,5 @@ When you make a change that alters the architecture of the project — not just 
 - Edit only the relevant section(s). Do not rewrite the whole file.
 - Keep descriptions high-level. Do not paste code or go into function-level detail — the code is the source of truth at that level.
 - Do not add user-facing feature descriptions here — those belong in `SPEC.md`.
+- Do not record design alternatives that were rejected, or rationale for decisions that are now settled.
+- See `documentation.mdc` for the full doc ownership and no-duplication policy.

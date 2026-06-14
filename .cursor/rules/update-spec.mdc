@@ -32,6 +32,7 @@ Whenever you make a change that affects what the user can see or do — a new fe
 
 - Edit only the relevant section(s). Do not rewrite the whole file.
 - Keep the language user-facing: describe what the user experiences, not how it is implemented.
-- If a feature moves from planned to done, move the bullet from "Planned" to "Implemented" in the Status section.
+- If a feature moves from planned to done, move the bullet from "Planned" to "Implemented" in the Status section. Remove it from Planned entirely — do not keep it in both places.
 - If you add a genuinely new feature not mentioned anywhere, add it to the appropriate section.
 - Do not add implementation details, technology names, or code references to SPEC.md.
+- Do not record design history, rejected alternatives, or bug fixes. See `documentation.mdc` for the full doc policy.

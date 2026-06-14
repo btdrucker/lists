@@ -1,143 +1,73 @@
-# EditRecipe Backend Service
+# Backend
 
-Fastify + TypeScript backend for recipe scraping.
+For setup and deployment, see the root [README](../README.md) and [DEPLOYMENT.md](../DEPLOYMENT.md).
 
-## Setup
+## Backend-Specific Environment Variables
 
-### 1. Install Dependencies
-
-```bash
-npm install
-```
-
-### 2. Configure Environment Variables
-
-Create a `.env` file in this directory with:
+The following variables are in addition to the Firebase credentials documented in the root README. They control AI integration:
 
 ```env
-# Firebase Admin SDK Configuration
-# Get these from: Firebase Console → Project Settings → Service Accounts → Generate new private key
-
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project-id.iam.gserviceaccount.com
-
-# Server Configuration
-PORT=3001
-NODE_ENV=development
-
-# Frontend URL (for CORS)
-FRONTEND_URL=http://localhost:5173
-
-# Optional AI settings (Vertex AI via service account)
-# VERTEX_AI_PROJECT_ID defaults to FIREBASE_PROJECT_ID when omitted
-VERTEX_AI_PROJECT_ID=listster-test
+# Vertex AI (default AI path — uses the Firebase service account)
+VERTEX_AI_PROJECT_ID=listster-test   # defaults to FIREBASE_PROJECT_ID if omitted
 VERTEX_AI_LOCATION=us-central1
 
-# Optional legacy Gemini API key (if not using Vertex AI)
+# Legacy Gemini API key (only if not using Vertex AI)
 # GEMINI_API_KEY=your-api-key
 ```
 
-**Note**: The private key must be wrapped in quotes and include the `\n` newline characters.
-
-### 3. Run Development Server
-
-```bash
-npm run dev
-```
-
-Server will run on http://localhost:3001 with hot-reload.
-
 ## API Endpoints
+
+All endpoints require `Authorization: Bearer <firebase-id-token>`.
 
 ### POST `/scrape`
 
-Scrape a recipe from a URL.
+Scrapes a recipe from a URL, parses ingredients with AI, saves to Firestore, and returns the full recipe.
 
-**Headers**:
-```
-Authorization: Bearer <firebase-id-token>
+**Request body:**
+```json
+{ "url": "https://example.com/recipe" }
 ```
 
-**Request Body**:
+**Response:**
 ```json
 {
-  "url": "https://example.com/recipe"
+  "success": true,
+  "recipe": {
+    "id": "...",
+    "userId": "...",
+    "title": "...",
+    "ingredients": [...],
+    "instructions": [...],
+    "sourceUrl": "...",
+    "isPublic": true,
+    "createdAt": "...",
+    "updatedAt": "..."
+  }
 }
 ```
 
 ### GET `/ai-health`
 
-Smoke test for AI connectivity (Vertex AI or API key path).
+Smoke test for AI connectivity.
 
-**Response**:
-```json
-{
-  "status": "ok",
-  "timestamp": "2025-12-25T..."
-}
-```
+**Response:** `{ "status": "ok", "timestamp": "..." }`
 
 ### POST `/ai-debug`
 
-Debug endpoint used by the AI prompt testing UI.
+Used by the in-app AI debug screen. Sends a raw prompt to the AI and returns the response.
 
-**Request Body**:
+**Request body:**
 ```json
 {
-  "systemInstruction": "Normalize these ingredient strings...",
-  "userPrompt": "Ingredients:\n1 cup diced tomatoes\n2 tsp olive oil"
+  "systemInstruction": "...",
+  "userPrompt": "..."
 }
 ```
 
-**Response**:
-```json
-{
-  "status": "ok",
-  "mode": "vertex",
-  "rawText": "[{\"amount\":1,\"unit\":\"CUP\",\"name\":\"diced tomatoes\"}]",
-  "ingredientCount": 2,
-  "timestamp": "2025-12-25T..."
-}
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "recipe": {
-    "id": "generated-id",
-    "userId": "user-uid",
-    "title": "EditRecipe Title",
-    "description": "EditRecipe description",
-    "ingredients": [...],
-    "instructions": [...],
-    "sourceUrl": "https://example.com/recipe",
-    "isPublic": true,
-    "createdAt": "2025-12-25T...",
-    "updatedAt": "2025-12-25T..."
-  }
-}
-```
-
-## Project Structure
-
-```
-src/
-├── index.ts              # Main server setup
-├── middleware/
-│   └── auth.ts           # Firebase Auth token verification
-├── routes/
-│   └── scrape.ts         # EditRecipe scraping endpoint
-├── services/
-│   ├── scraper.ts        # Web scraping logic
-│   └── firestore.ts      # Firestore operations
-└── types/
-    └── index.ts          # TypeScript interfaces
-```
+**Response:** `{ "status": "ok", "mode": "vertex", "rawText": "...", "ingredientCount": 2, "timestamp": "..." }`
 
 ## Scripts
 
-- `npm run dev` - Start development server with hot-reload
-- `npm run build` - Build for production
-- `npm start` - Run production build
+- `npm run dev` — development server with hot-reload (http://localhost:3001)
+- `npm run build` — production build
+- `npm start` — run production build

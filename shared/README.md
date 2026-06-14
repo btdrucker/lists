@@ -1,55 +1,33 @@
 # Shared Types
 
-This package contains TypeScript types shared between the frontend and backend of the Lists app.
+TypeScript types shared between the frontend and backend. The single source of truth for the data model — changes here propagate to both layers automatically.
 
-## Purpose
-
-Eliminates type duplication and ensures frontend and backend use consistent data structures.
+For architectural context, see [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md).
 
 ## Key Types
 
-### `Ingredient`
-Structure for recipe ingredients with amount, unit, name, and section support.
-
-### `RecipeContent`
-Core recipe data that can be scraped or user-provided:
-- title, description, notes
-- ingredients, instructions
-- imageUrl, servings, prepTime, cookTime, tags
-
 ### `RecipeBase<DateType>`
-Generic recipe type with flexible date handling:
-- Backend uses `RecipeBase<Date>` (for Firestore)
-- Frontend uses `RecipeBase<string>` (for Redux serialization)
 
-### `ExtractionMethod`
-Backend-only type tracking which scraping method was used: `'WPRM' | 'DataAttributes' | 'JSON-LD' | 'HTML'`
+The core recipe type is generic over its date fields. Backend uses `RecipeBase<Date>` (Firestore timestamps); frontend uses `RecipeBase<string>` (Redux requires serializable values).
 
-## Usage
+### `Ingredient`
 
-### Backend
-```typescript
-import type { RecipeBase, ExtractionMethod } from '../../../shared/types/index.js';
+Structured ingredient with `amount`, `unit` (from `UnitValue` enum), `name`, `originalText`, and optional `section`. Also carries AI-parsed fields (`aiAmount`, `aiUnit`, `aiName`) that may override the base fields when parse confidence is low.
 
-export interface Recipe extends RecipeBase<Date> {
-  extractionMethod?: ExtractionMethod;
-}
-```
+### Shopping list types
 
-### Frontend
-```typescript
-import type { RecipeBase } from '../../../shared/types/index.js';
+`ShoppingItem`, `Tag`, `ShoppingGroup` — all follow the same `Base<DateType>` pattern. `CombinedItem` and `GroupedItems` are display-only types computed in the frontend; they are never stored in Firestore.
 
-export type Recipe = RecipeBase<string>
-```
+### `MealPlanItem`
 
-## Adding New Fields
+Can be either a `recipe` entry (with `recipeId` and denormalized `recipeTitle`) or a `note` (with `text`). `date` is `null` for unscheduled "Ideas" items.
 
-To add a field that should be shared:
-1. Add to `RecipeContent` in `shared/types/index.ts`
-2. Field automatically available in both frontend and backend Recipe types
-3. No duplicate definitions needed!
+### `UnitValue`
 
-## Notes Field
+Enum of all recognized units (cups, tablespoons, pounds, etc.). Used for ingredient parsing and shopping list aggregation.
 
-The `notes` field was added to fix a latent bug where user notes weren't being saved to Firestore. It's now properly included in the shared `RecipeContent` type.
+## Adding a New Shared Field
+
+1. Add the field to the appropriate interface in `shared/types/index.ts`
+2. Both frontend and backend pick it up automatically — no duplicate definitions needed
+3. Update Firestore reads/writes in `frontend/src/firebase/firestore.ts` and/or `backend/src/services/firestore.ts` if the field needs to be persisted
