@@ -1,89 +1,84 @@
-# EditRecipe Scraping App
+# Listster
 
-A monorepo containing a React/Redux frontend and Fastify backend for scraping and managing recipes.
+A family recipe and shopping app. Manage a shared recipe library, build shopping lists from recipes, and plan meals for the week. Runs as an installable PWA.
 
-## Project Structure
+## Documentation
 
+| Document | Description |
+|---|---|
+| [SPEC.md](SPEC.md) | What the app does — features and user experience |
+| [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | Architecture, tech stack, and how the code is organized |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Environment setup and deployment to test and production |
+
+## Local Development
+
+### Prerequisites
+
+- Node.js 20.19+ or 22.12+ (`node --version` to check)
+- A Firebase project with Authentication (Email/Password + Google) and Firestore enabled
+- A Firebase service account key for the backend
+
+### 1. Configure the backend
+
+Create `backend/.env`:
+
+```env
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project-id.iam.gserviceaccount.com
+PORT=3001
+NODE_ENV=development
+FRONTEND_URL=http://localhost:5173
 ```
-lists/
-├── frontend/          # React + Redux + TypeScript + Vite
-├── backend/           # Fastify + TypeScript + Firebase Admin
-├── firestore.rules    # Firestore security rules
-└── README.md
+
+Get credentials from Firebase Console → Project Settings → Service Accounts → Generate new private key.
+
+### 2. Configure the frontend
+
+Create `frontend/src/firebase/config.ts` with your Firebase web app config:
+
+```typescript
+const firebaseConfig = {
+  apiKey: "...",
+  authDomain: "your-project.firebaseapp.com",
+  projectId: "your-project-id",
+  storageBucket: "your-project.firebasestorage.app",
+  messagingSenderId: "...",
+  appId: "..."
+};
+
+export default firebaseConfig;
 ```
 
-## Prerequisites
+Get values from Firebase Console → Project Settings → General → Your apps.
 
-- Node.js 18+ and npm
-- Firebase project with Authentication and Firestore enabled
-- Firebase service account key (for backend)
+Create `frontend/.env`:
 
-## Setup
+```env
+VITE_API_URL=http://localhost:3001
+```
 
-### 1. Firebase Configuration
+### 3. Install dependencies
 
-1. Create a Firebase project at https://console.firebase.google.com/
-2. Enable **Authentication** → Email/Password provider
-3. Enable **Firestore Database**
-4. Deploy Firestore rules:
-   ```bash
-   firebase deploy --only firestore:rules
-   # Or manually paste rules from firestore.rules into Firebase Console
-   ```
-5. Create a service account for backend:
-   - Project Settings → Service Accounts → Generate new private key
-   - Save JSON file as `backend/.env` (see backend README)
-6. Get Firebase config for frontend (Project Settings → Web app)
+```bash
+cd backend && npm install
+cd ../frontend && npm install
+```
 
-### 2. Backend Setup
+### 4. Run
 
+**Backend** (terminal 1):
 ```bash
 cd backend
-npm install
-# Configure .env file (see backend/README.md)
 npm run dev
+# http://localhost:3001
 ```
 
-Backend runs on http://localhost:3001
-
-### 3. Frontend Setup
-
+**Frontend** (terminal 2):
 ```bash
 cd frontend
-npm install
-# Configure Firebase config (see frontend/README.md)
 npm run dev
+# http://localhost:5173
 ```
 
-Frontend runs on http://localhost:5173
-
-## Features
-
-- **Authentication**: Firebase Auth with email/password
-- **EditRecipe List**: View all recipes (public, any user can read)
-- **Add EditRecipe**: Two modes:
-  - Manual entry with structured ingredient input
-  - URL scraping to extract recipe data from websites
-- **Edit EditRecipe**: Modify title, description, ingredients, instructions
-- **Cost Optimization**: Single Firestore read per session, Redux state management
-
-## Architecture
-
-- **Frontend**: React 19 + Redux Toolkit + TypeScript + Vite
-- **Backend**: Fastify + TypeScript + Firebase Admin
-- **Database**: Firestore
-- **Auth**: Firebase Authentication
-
-## Development
-
-Both frontend and backend run independently with hot-reload. The frontend calls the backend API for recipe scraping only. Manual recipe entry writes directly to Firestore from the frontend.
-
-## Deployment
-
-Frontend and backend can be deployed separately:
-- **Frontend**: Firebase Hosting, Vercel, Netlify, etc.
-- **Backend**: Cloud Run, Railway, Render, etc.
-
-## License
-
-Private project
+For test and production deployment, see [DEPLOYMENT.md](DEPLOYMENT.md).

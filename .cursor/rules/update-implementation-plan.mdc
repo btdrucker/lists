@@ -1,0 +1,39 @@
+---
+description: Keep IMPLEMENTATION_PLAN.md current when architectural changes are made
+globs:
+  - "frontend/src/common/store.ts"
+  - "frontend/src/App.tsx"
+  - "frontend/src/common/components/AppShell.tsx"
+  - "backend/src/index.ts"
+  - "backend/src/routes/**/*.ts"
+  - "shared/types/index.ts"
+---
+
+# Keep IMPLEMENTATION_PLAN.md Updated
+
+When you make a change that alters the architecture of the project — not just feature behavior — update `IMPLEMENTATION_PLAN.md` in the same response.
+
+## What triggers an update
+
+- Adding, removing, or renaming a Redux slice
+- Changing the data strategy for a slice (e.g., switching from one-time load to real-time subscription)
+- Adding or removing a route in `App.tsx`
+- Adding or removing a backend API endpoint
+- Adding a new major dependency that changes how something works at an architectural level
+- Adding or removing a service in the backend (`services/`)
+- Meaningful changes to the shared types that affect how the layers interact
+- Changing whether data is persisted, optimistic, or real-time
+
+## What does NOT trigger an update
+
+- Adding a new feature within an existing slice and existing routes
+- Adding new components under existing features
+- CSS and styling changes
+- Bug fixes
+- Refactors that don't change the architectural shape
+
+## How to update IMPLEMENTATION_PLAN.md
+
+- Edit only the relevant section(s). Do not rewrite the whole file.
+- Keep descriptions high-level. Do not paste code or go into function-level detail — the code is the source of truth at that level.
+- Do not add user-facing feature descriptions here — those belong in `SPEC.md`.

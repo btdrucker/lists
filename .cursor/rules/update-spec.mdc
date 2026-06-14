@@ -1,0 +1,37 @@
+---
+description: Keep SPEC.md current whenever a functional change is made to the app
+globs:
+  - "frontend/src/**/*.tsx"
+  - "frontend/src/**/*.ts"
+  - "backend/src/**/*.ts"
+---
+
+# Keep SPEC.md Updated
+
+Whenever you make a change that affects what the user can see or do — a new feature, a changed behavior, a removed feature, or a changed flow — you **must** update `SPEC.md` in the same response.
+
+## What triggers an update
+
+- Adding or removing a screen or route
+- Adding or removing a user-visible action (button, menu item, gesture, etc.)
+- Changing how a flow works (e.g., save behavior, navigation, confirmation dialogs)
+- Adding or removing a display mode, filter, or sort option
+- Changes to what data is shown on any screen
+- Adding or removing offline/PWA behavior
+- Moving a feature from "Planned" to "Implemented" (or vice versa)
+
+## What does NOT trigger an update
+
+- Internal refactors with no user-facing change
+- Performance improvements
+- Bug fixes that restore already-documented behavior
+- Style or CSS changes
+- Test changes
+
+## How to update SPEC.md
+
+- Edit only the relevant section(s). Do not rewrite the whole file.
+- Keep the language user-facing: describe what the user experiences, not how it is implemented.
+- If a feature moves from planned to done, move the bullet from "Planned" to "Implemented" in the Status section.
+- If you add a genuinely new feature not mentioned anywhere, add it to the appropriate section.
+- Do not add implementation details, technology names, or code references to SPEC.md.
