@@ -1,0 +1,45 @@
+---
+description: Documentation ownership, content boundaries, and no-duplication policy
+globs:
+  - "**/*.md"
+  - "**/*.mdc"
+---
+
+# Documentation Policy
+
+## Document Ownership
+
+Each document has a single, defined purpose. Never put information in a document that belongs to a different one.
+
+| Document | Owns |
+|---|---|
+| `README.md` | What the project is (2-3 sentences). Local development setup. Links to deeper docs. Nothing else. |
+| `SPEC.md` | What the app does from the user's perspective. Features, flows, and UX. Zero implementation or technology details. |
+| `IMPLEMENTATION_PLAN.md` | Technology choices, architecture decisions, project structure, Redux store organization, data strategies. High-level — not function-level detail. |
+| `DEPLOYMENT.md` | All deployment scenarios: one-time environment setup, local dev, remote deployment to test and production. |
+| `backend/README.md` | Backend-specific environment variables not covered in root docs. API endpoint reference. Backend scripts. |
+| `shared/README.md` | Shared type system explanation. How to use and extend the shared types. |
+
+## No Duplication
+
+If information already exists in one document, it must not be repeated in another. This includes:
+
+- Setup steps covered in `README.md` must not be repeated in `backend/README.md` or anywhere else
+- Deployment steps covered in `DEPLOYMENT.md` must not be duplicated in sub-package READMEs
+- Architecture covered in `IMPLEMENTATION_PLAN.md` must not be re-explained in `SPEC.md` or sub-package READMEs
+- When a sub-package README needs to reference something covered above, link to the parent doc instead of restating it
+
+## What Docs Are Not
+
+Documents must not contain:
+
+- **Design alternatives not taken** — do not document options that were considered and rejected
+- **Bug fix history** — do not record "this field was added to fix bug X"
+- **Implementation rationale** that is now settled — if a decision is made and won't be revisited, don't preserve the debate
+- **Stale feature lists** — if a feature is implemented, it belongs in `SPEC.md` under Implemented; remove it from Planned
+
+## Keeping Docs Current
+
+- When a feature is fully implemented, move it from "Planned" to "Implemented" in `SPEC.md`
+- When a planned feature's design changes substantially, update `SPEC.md` to reflect the current plan — do not preserve the old design alongside the new one
+- When a document becomes redundant because its content is now covered by another document, delete it rather than leaving it to go stale
