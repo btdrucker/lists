@@ -1,20 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch, useDebugMode, useNavigateWithDebug, appendDebugToPath } from '../../common/hooks';
-import { 
-  addShoppingItem,
-  updateShoppingItem,
-  subscribeToShoppingItems,
-  subscribeToTags,
-} from '../../firebase/firestore';
+import { subscribeToShoppingItems, subscribeToTags } from '../../firebase/firestore';
 import { setShoppingItems, setTags } from './slice';
 import CircleIconButton from '../../common/components/CircleIconButton';
 import ParsedFieldsDebug from '../../common/components/ParsedFieldsDebug';
-import { parseShoppingItemText } from '../../common/ingredient-parsing-api';
-import { UnitValue } from '../../types';
 import type { ShoppingItem, Tag } from '../../types';
-type UnitValueType = typeof UnitValue[keyof typeof UnitValue];
 import { getItemKey } from './shopping-utils';
+import { useEditShoppingItemSave } from './useEditShoppingItemSave';
 import styles from './editShoppingItem.module.css';
 
 const FAMILY_ID = 'default-family';
@@ -41,7 +34,6 @@ const EditShoppingItem = () => {
   const loading = useAppSelector((state) => state.shopping?.loading ?? true);
 
   const [editableItems, setEditableItems] = useState<EditableItem[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const debugMode = useDebugMode();
 
@@ -116,86 +108,13 @@ const EditShoppingItem = () => {
     setHasChanges(true);
   }, []);
 
-  // Save all changes. Parses originalText via API to get amount/unit/name.
-  // Open question: when to send to AI parsing? (on save, on blur, debounced, etc.)
-  const handleSave = useCallback(async () => {
-    setIsSaving(true);
-    try {
-      if (isAddMode) {
-        const item = editableItems[0];
-        const originalText = item.originalText.trim();
-        if (!originalText) {
-          alert('Please enter an item');
-          setIsSaving(false);
-          return;
-        }
-
-        let amount: number | null = null;
-        let unit: UnitValueType | null = null;
-        let name = '';
-        try {
-          const parsed = await parseShoppingItemText(originalText);
-          amount = parsed.amount;
-          unit = parsed.unit as UnitValueType | null;
-          name = parsed.name;
-        } catch (error) {
-          console.error('Error parsing ingredient:', error);
-        }
-
-        await addShoppingItem({
-          familyId: FAMILY_ID,
-          originalText,
-          name,
-          amount,
-          unit,
-          isChecked: false,
-          tagIds: item.tagIds,
-          ...(customGroupId && { customGroupId }),
-        });
-      } else {
-        for (const item of editableItems) {
-          const original = relatedItems.find((i) => i.id === item.id);
-          if (!original) continue;
-
-          const updates: Partial<ShoppingItem> = {};
-          const originalTextChanged = item.originalText !== (original.originalText ?? '');
-          const tagIdsChanged =
-            JSON.stringify([...item.tagIds].sort()) !==
-            JSON.stringify([...original.tagIds].sort());
-
-          if (originalTextChanged) {
-            updates.originalText = item.originalText.trim();
-            let amount: number | null = null;
-            let unit: UnitValueType | null = null;
-            let name = '';
-            try {
-              const parsed = await parseShoppingItemText(item.originalText.trim());
-              amount = parsed.amount;
-              unit = parsed.unit as UnitValueType | null;
-              name = parsed.name;
-            } catch (error) {
-              console.error('Error parsing ingredient:', error);
-            }
-            updates.amount = amount;
-            updates.unit = unit;
-            updates.name = name;
-          }
-          if (tagIdsChanged) updates.tagIds = item.tagIds;
-
-          if (Object.keys(updates).length > 0) {
-            await updateShoppingItem(item.id, updates);
-          }
-        }
-      }
-
-      navigate('/shopping');
-    } catch (error) {
-      console.error('Error saving items:', error);
-      alert('Failed to save changes');
-    } finally {
-      setIsSaving(false);
-    }
-  }, [editableItems, relatedItems, navigate, isAddMode, customGroupId]);
+  const { isSaving, handleSave } = useEditShoppingItemSave({
+    isAddMode,
+    editableItems,
+    relatedItems,
+    customGroupId,
+    onSuccess: () => navigate('/shopping'),
+  });
 
   // Handle back navigation
   const handleBack = useCallback(() => {

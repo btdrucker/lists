@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppSelector, useAppDispatch, useAddRecipeToCart } from '../../common/hooks';
 import { loadAllRecipes } from './slice.ts';
 import { clearAuth } from '../auth/slice';
@@ -7,6 +7,8 @@ import { InstallButton } from '../../common/components/InstallButton';
 import CircleIconButton from '../../common/components/CircleIconButton';
 import RecipeStart from '../recipe/RecipeStart';
 import RecipeListItemCompact from './RecipeListItemCompact';
+import { filterRecipes } from './recipeSearch';
+import type { Recipe } from '../../types';
 import styles from './recipe-list.module.css';
 
 const ItemComponent = RecipeListItemCompact;
@@ -14,7 +16,7 @@ const ItemComponent = RecipeListItemCompact;
 const RecipeList = () => {
   const dispatch = useAppDispatch();
   const addRecipeToCart = useAddRecipeToCart();
-  const { recipes, loading } = useAppSelector((state) => state.recipes || { recipes: [], loading: false, error: null });
+  const { recipes, loading } = useAppSelector((state) => state.recipes ?? { recipes: [] as Recipe[], loading: false, error: null });
   const hasLoadedRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMenu, setShowMenu] = useState(false);
@@ -26,7 +28,7 @@ const RecipeList = () => {
     dispatch(clearAuth());
   };
 
-  const handleAddToCart = async (recipe: any, e: React.MouseEvent) => {
+  const handleAddToCart = async (recipe: Recipe, e: React.MouseEvent) => {
     e.stopPropagation();
     if (cartState[recipe.id]) return;
 
@@ -62,57 +64,10 @@ const RecipeList = () => {
     }
   };
 
-  // Filter recipes based on search query (client-side)
-  const filteredRecipes = recipes.filter((recipe: any) => {
-    if (!searchQuery.trim()) return true;
-
-    const query = searchQuery.toLowerCase();
-
-    // Search in title
-    if (recipe.title.toLowerCase().includes(query)) {
-      return true;
-    }
-
-    // Search in ingredient names
-    const matchesIngredient = recipe.ingredients.some((ingredient: any) =>
-      ingredient.name.toLowerCase().includes(query)
-    );
-    if (matchesIngredient) {
-      return true;
-    }
-
-    // Search in category
-    if (recipe.category && recipe.category.length > 0) {
-      const matchesCategory = recipe.category.some((cat: string) =>
-        cat.toLowerCase().includes(query)
-      );
-      if (matchesCategory) {
-        return true;
-      }
-    }
-
-    // Search in cuisine
-    if (recipe.cuisine && recipe.cuisine.length > 0) {
-      const matchesCuisine = recipe.cuisine.some((cui: string) =>
-        cui.toLowerCase().includes(query)
-      );
-      if (matchesCuisine) {
-        return true;
-      }
-    }
-
-    // Search in keywords
-    if (recipe.keywords && recipe.keywords.length > 0) {
-      const matchesKeyword = recipe.keywords.some((keyword: string) =>
-        keyword.toLowerCase().includes(query)
-      );
-      if (matchesKeyword) {
-        return true;
-      }
-    }
-
-    return false;
-  });
+  const filteredRecipes = useMemo(
+    () => filterRecipes(recipes, searchQuery),
+    [recipes, searchQuery],
+  );
 
   useEffect(() => {
     if (!hasLoadedRef.current) {
@@ -199,7 +154,7 @@ const RecipeList = () => {
         </div>
       ) : (
         <div className={styles.grid}>
-          {filteredRecipes.map((recipe: any) => (
+          {filteredRecipes.map((recipe) => (
             <ItemComponent
               key={recipe.id}
               recipe={recipe}

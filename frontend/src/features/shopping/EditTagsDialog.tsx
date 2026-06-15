@@ -4,47 +4,10 @@ import Dialog from '../../common/components/Dialog';
 import CircleIconButton from '../../common/components/CircleIconButton';
 import { addTag, updateTag, deleteTag, updateShoppingItem } from '../../firebase/firestore';
 import type { Tag, ShoppingItem } from '../../types';
+import { COLOR_PALETTE, deriveAbbreviation, getDefaultColor } from './tag-utils';
 import styles from './editTagsDialog.module.css';
 
 const FAMILY_ID = 'default-family';
-
-const COLOR_PALETTE = [
-  '#0066CC',
-  '#D32F2F',
-  '#388E3C',
-  '#FF8C00',
-  '#7B1FA2',
-  '#00838F',
-  '#EC407A',
-  '#607D8B',
-];
-
-function deriveAbbreviation(name: string): string {
-  const trimmed = name.trim();
-  if (!trimmed) return '';
-  const words = trimmed.split(/\s+/).filter(Boolean);
-  if (words.length >= 2) {
-    return (words[0][0] + words[1][0]).toUpperCase();
-  }
-  return trimmed.slice(0, 2).toUpperCase();
-}
-
-function getDefaultColor(tags: Tag[]): string {
-  const usedColors = new Set(tags.map((t) => t.color));
-  const firstUnused = COLOR_PALETTE.find((c) => !usedColors.has(c));
-  if (firstUnused) return firstUnused;
-
-  const usedCounts = COLOR_PALETTE.reduce<Record<string, number>>((acc, c) => {
-    acc[c] = 0;
-    return acc;
-  }, {});
-  tags.forEach((t) => {
-    if (usedCounts[t.color] !== undefined) usedCounts[t.color]++;
-  });
-  return COLOR_PALETTE.reduce((least, c) =>
-    usedCounts[c] < usedCounts[least] ? c : least
-  );
-}
 
 interface EditTagsDialogProps {
   isOpen: boolean;
@@ -139,11 +102,13 @@ const EditTagsDialog = ({ isOpen, onClose }: EditTagsDialogProps) => {
       }
 
       try {
-        for (const item of itemsUsingTag) {
-          await updateShoppingItem(item.id, {
-            tagIds: item.tagIds.filter((id) => id !== tagId),
-          });
-        }
+        await Promise.all(
+          itemsUsingTag.map((item) =>
+            updateShoppingItem(item.id, {
+              tagIds: item.tagIds.filter((id) => id !== tagId),
+            })
+          )
+        );
         await deleteTag(tagId);
       } catch (error) {
         console.error('Error deleting tag:', error);
