@@ -2,7 +2,10 @@ import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit';
 import type { RootState } from '../../common/store';
 import type { Recipe } from '../../types';
-import { getAllRecipes, getRecipesByUserId } from '../../firebase/firestore';
+import { getAllRecipes, getRecipesByUserId, updateRecipe } from '../../firebase/firestore';
+import { ensureRecipeHasAiParsing } from '../../common/ingredient-parsing-api';
+import { AI_PARSING_VERSION } from '../../../../shared/aiPrompt.js';
+import type { RecipeWithAiMetadata } from '../../common/recipe-ai-analysis';
 
 export const loadAllRecipes = createAsyncThunk<Recipe[]>(
   'recipes/loadAll',
@@ -12,6 +15,33 @@ export const loadAllRecipes = createAsyncThunk<Recipe[]>(
 export const loadRecipesByUser = createAsyncThunk<Recipe[], string>(
   'recipes/loadByUser',
   async (userId) => getRecipesByUserId(userId),
+);
+
+/**
+ * Ensures a recipe has up-to-date AI-parsed ingredients.
+ * Runs the parse-ingredients API if needed, then writes back to Firestore and Redux.
+ * Returns the recipe with updated ingredients (unchanged if already current).
+ */
+export const ensureRecipeAiParsing = createAsyncThunk<RecipeWithAiMetadata, RecipeWithAiMetadata>(
+  'recipes/ensureAiParsing',
+  async (recipe, { dispatch }) => {
+    const { ingredients, needsUpdate } = await ensureRecipeHasAiParsing(recipe);
+
+    if (!needsUpdate) {
+      return recipe;
+    }
+
+    const updatedRecipe: RecipeWithAiMetadata = {
+      ...recipe,
+      ingredients,
+      lastAiParsingVersion: AI_PARSING_VERSION,
+      aiParsingStatus: 'done',
+    };
+
+    await updateRecipe(recipe.id, updatedRecipe);
+    dispatch(updateRecipeInState(updatedRecipe));
+    return updatedRecipe;
+  }
 );
 
 interface RecipesState {

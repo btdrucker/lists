@@ -2,12 +2,9 @@ import { useState } from 'react';
 import { useAppSelector, useAppDispatch, useNavigateWithDebug } from '../../common/hooks';
 import { addRecipe, updateRecipeInState } from '../recipe-list/slice.ts';
 import { addRecipe as saveRecipe, updateRecipe } from '../../firebase/firestore';
-import {
-  ensureRecipeHasAiParsingForSave,
-  getIngredientText,
-  sanitizeIngredientForSave,
-} from '../../common/aiParsing';
-import type { RecipeWithAiMetadata } from '../../common/aiParsing';
+import { ensureRecipeHasAiParsingForSave } from '../../common/ingredient-parsing-api';
+import { getIngredientText, sanitizeIngredientForSave } from '../../common/ingredient-sanitization';
+import type { RecipeWithAiMetadata } from '../../common/recipe-ai-analysis';
 import type { Ingredient, Recipe } from '../../types';
 import type { Dispatch, SetStateAction } from 'react';
 

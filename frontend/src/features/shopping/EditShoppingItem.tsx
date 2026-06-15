@@ -10,7 +10,7 @@ import {
 import { setShoppingItems, setTags } from './slice';
 import CircleIconButton from '../../common/components/CircleIconButton';
 import ParsedFieldsDebug from '../../common/components/ParsedFieldsDebug';
-import { parseShoppingItemText } from '../../common/aiParsing';
+import { parseShoppingItemText } from '../../common/ingredient-parsing-api';
 import { UnitValue } from '../../types';
 import type { ShoppingItem, Tag } from '../../types';
 type UnitValueType = typeof UnitValue[keyof typeof UnitValue];

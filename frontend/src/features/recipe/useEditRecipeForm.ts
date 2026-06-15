@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo, type Dispatch, type SetStateAction, type RefObject } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAutoHeight } from '../../common/hooks';
-import { getIngredientText } from '../../common/aiParsing';
-import type { RecipeWithAiMetadata } from '../../common/aiParsing';
+import { getIngredientText } from '../../common/ingredient-sanitization';
+import type { RecipeWithAiMetadata } from '../../common/recipe-ai-analysis';
 import type { Ingredient } from '../../types';
 import { applyAiIngredientDefaults } from './recipe-utils';
 

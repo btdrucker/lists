@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { getIdToken } from '../../firebase/auth';
 import { deleteRecipe } from '../../firebase/firestore';
-import type { RecipeWithAiMetadata } from '../../common/aiParsing';
+import type { RecipeWithAiMetadata } from '../../common/recipe-ai-analysis';
 import type { ScrapedRecipeData } from './useEditRecipeForm';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';

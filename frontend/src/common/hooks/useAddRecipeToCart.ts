@@ -1,8 +1,9 @@
 import { useCallback } from 'react';
 import { useAppSelector, useAppDispatch } from './index';
 import { addShoppingItem } from '../../firebase/firestore';
-import { ensureRecipeHasAiParsingAndUpdate, getEffectiveIngredientValues, getIngredientText } from '../aiParsing';
-import type { RecipeWithAiMetadata } from '../aiParsing';
+import { getEffectiveIngredientValues, getIngredientText } from '../ingredient-sanitization';
+import { ensureRecipeAiParsing } from '../../features/recipe-list/slice';
+import type { RecipeWithAiMetadata } from '../recipe-ai-analysis';
 
 const FAMILY_ID = 'default-family';
 
@@ -57,10 +58,8 @@ export function useAddRecipeToCart() {
       }
 
       const recipeWithMetadata = recipe as RecipeWithAiMetadata;
-      const ingredientsToAdd = await ensureRecipeHasAiParsingAndUpdate(
-        recipeWithMetadata,
-        dispatch
-      );
+      const parsedRecipe = await dispatch(ensureRecipeAiParsing(recipeWithMetadata)).unwrap();
+      const ingredientsToAdd = parsedRecipe.ingredients;
 
       const existingNames = new Set(
         existingRecipeItems.map((item) => normalizeItemName(item.name))

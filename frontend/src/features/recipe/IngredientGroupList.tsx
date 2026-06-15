@@ -1,5 +1,5 @@
 import { useDebugMode } from '../../common/hooks';
-import { getEffectiveIngredientValues } from '../../common/aiParsing';
+import { getEffectiveIngredientValues } from '../../common/ingredient-sanitization';
 import ParsedFieldsDebug from '../../common/components/ParsedFieldsDebug';
 import type { Ingredient } from '../../types';
 import { groupIngredients } from './groupIngredients';

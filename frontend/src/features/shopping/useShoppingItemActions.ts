@@ -9,7 +9,7 @@ import {
   removeShoppingItems,
 } from './slice';
 import { addShoppingItem, updateShoppingItem } from '../../firebase/firestore';
-import { parseShoppingItemText } from '../../common/aiParsing';
+import { parseShoppingItemText } from '../../common/ingredient-parsing-api';
 import { UnitValue } from '../../types';
 import type { ShoppingItem } from '../../types';
 

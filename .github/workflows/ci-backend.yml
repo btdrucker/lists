@@ -1,0 +1,35 @@
+name: Backend CI
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "backend/**"
+      - "shared/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "shared/**"
+
+jobs:
+  test:
+    name: Backend tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Run tests
+        run: npm test
+        working-directory: backend
