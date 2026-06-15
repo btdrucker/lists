@@ -186,3 +186,4 @@ Each day has two add actions:
 - Shopping list history / past trips
 - Nutrition information
 - Browser back / swipe-back guard on edit screens: navigating away via the browser back button or gesture does not currently prompt the user about unsaved changes (in-app back arrow does). Requires migrating from `BrowserRouter` to `createBrowserRouter` to enable React Router's navigation blocking API.
+- Local dev on corporate networks with TLS inspection (e.g. Zscaler via GlobalProtect VPN): the backend cannot reach Google's auth servers to verify tokens, causing ingredient parsing to fail with a 401. Fix: export the corporate CA cert from the system keychain and pass it to Node via `NODE_EXTRA_CA_CERTS` in the `dev` script before starting the backend.

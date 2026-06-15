@@ -36,9 +36,11 @@ export async function authenticateUser(
         email: decodedToken.email,
       };
     } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      console.error('[auth] verifyIdToken failed:', error);
       return reply.status(401).send({
         success: false,
-        error: 'Invalid or expired token',
+        error: `Invalid or expired token: ${detail}`,
       });
     }
   } catch (error) {
