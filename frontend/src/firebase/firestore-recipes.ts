@@ -60,8 +60,8 @@ export const addRecipe = async (
   return {
     ...recipe,
     id: docRef.id,
-    createdAt: now.toDate().toISOString(),
-    updatedAt: now.toDate().toISOString(),
+    createdAt: timestampToISO(now),
+    updatedAt: timestampToISO(now),
   };
 };
 

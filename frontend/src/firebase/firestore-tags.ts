@@ -48,8 +48,8 @@ export const addTag = async (
   return {
     ...tag,
     id: docRef.id,
-    createdAt: now.toDate().toISOString(),
-    updatedAt: now.toDate().toISOString(),
+    createdAt: timestampToISO(now),
+    updatedAt: timestampToISO(now),
   };
 };
 

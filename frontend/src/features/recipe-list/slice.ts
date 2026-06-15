@@ -1,6 +1,18 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
+import type { RootState } from '../../common/store';
 import type { Recipe } from '../../types';
+import { getAllRecipes, getRecipesByUserId } from '../../firebase/firestore';
+
+export const loadAllRecipes = createAsyncThunk<Recipe[]>(
+  'recipes/loadAll',
+  async () => getAllRecipes(),
+);
+
+export const loadRecipesByUser = createAsyncThunk<Recipe[], string>(
+  'recipes/loadByUser',
+  async (userId) => getRecipesByUserId(userId),
+);
 
 interface RecipesState {
   recipes: Recipe[];
@@ -17,6 +29,29 @@ const initialState: RecipesState = {
 const recipesSlice = createSlice({
   name: 'recipes',
   initialState,
+  extraReducers: (builder) => {
+    const handlePending = (state: RecipesState) => {
+      state.loading = true;
+      state.error = null;
+    };
+    const handleFulfilled = (state: RecipesState, action: { payload: Recipe[] }) => {
+      state.recipes = action.payload;
+      state.loading = false;
+      state.error = null;
+    };
+    const handleRejected = (state: RecipesState, action: { error: { message?: string } }) => {
+      state.loading = false;
+      state.error = action.error.message ?? 'Failed to load recipes';
+    };
+
+    builder
+      .addCase(loadAllRecipes.pending, handlePending)
+      .addCase(loadAllRecipes.fulfilled, handleFulfilled)
+      .addCase(loadAllRecipes.rejected, handleRejected)
+      .addCase(loadRecipesByUser.pending, handlePending)
+      .addCase(loadRecipesByUser.fulfilled, handleFulfilled)
+      .addCase(loadRecipesByUser.rejected, handleRejected);
+  },
   reducers: {
     setRecipes: (state, action: PayloadAction<Recipe[]>) => {
       state.recipes = action.payload;
@@ -55,3 +90,25 @@ export const {
 } = recipesSlice.actions;
 
 export default recipesSlice.reducer;
+
+const selectRecipesState = (state: RootState) => state.recipes;
+
+export const selectRecipes = createSelector(
+  selectRecipesState,
+  (recipes) => recipes?.recipes ?? [],
+);
+
+export const selectRecipesLoading = createSelector(
+  selectRecipesState,
+  (recipes) => recipes?.loading ?? false,
+);
+
+export const selectRecipesError = createSelector(
+  selectRecipesState,
+  (recipes) => recipes?.error ?? null,
+);
+
+export const selectRecipeById = (id: string | undefined) =>
+  createSelector(selectRecipes, (recipes) =>
+    id ? (recipes.find((r) => r.id === id) ?? null) : null,
+  );

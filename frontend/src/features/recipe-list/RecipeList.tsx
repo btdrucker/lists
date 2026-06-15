@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppSelector, useAppDispatch, useAddRecipeToCart } from '../../common/hooks';
-import { setRecipes, setLoading } from './slice.ts';
+import { loadAllRecipes } from './slice.ts';
 import { clearAuth } from '../auth/slice';
-import { getAllRecipes } from '../../firebase/firestore';
 import { signOut } from '../../firebase/auth';
 import { InstallButton } from '../../common/components/InstallButton';
 import CircleIconButton from '../../common/components/CircleIconButton';
@@ -116,24 +115,11 @@ const RecipeList = () => {
   });
 
   useEffect(() => {
-    const loadRecipes = async () => {
-      // Only load once on mount
-      if (!hasLoadedRef.current) {
-        hasLoadedRef.current = true;
-        dispatch(setLoading(true));
-        try {
-          const allRecipes = await getAllRecipes();
-          dispatch(setRecipes(allRecipes));
-        } catch (error) {
-          console.error('Error loading recipes:', error);
-          dispatch(setLoading(false));
-        }
-      }
-    };
-
-    loadRecipes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      dispatch(loadAllRecipes());
+    }
+  }, [dispatch]);
 
   if (loading && recipes.length === 0) {
     return (

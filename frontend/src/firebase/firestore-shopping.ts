@@ -53,8 +53,8 @@ export const addShoppingItem = async (
   return {
     ...item,
     id: docRef.id,
-    createdAt: now.toDate().toISOString(),
-    updatedAt: now.toDate().toISOString(),
+    createdAt: timestampToISO(now),
+    updatedAt: timestampToISO(now),
   };
 };
 
@@ -144,8 +144,8 @@ export const addShoppingGroup = async (
   return {
     ...group,
     id: docRef.id,
-    createdAt: now.toDate().toISOString(),
-    updatedAt: now.toDate().toISOString(),
+    createdAt: timestampToISO(now),
+    updatedAt: timestampToISO(now),
   };
 };
 
