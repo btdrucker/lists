@@ -1,0 +1,36 @@
+---
+description: Enforce standards for React functional components, Redux Toolkit (RTK) state management, and strict import patterns.
+globs: "src/frontend/**/*.{ts,tsx}"
+---
+
+## Core Philosophy
+- Produce maintainable, highly scalable, and 100% type-safe code following SOLID principles.
+- Favor a functional, declarative programming style over imperative structures.
+
+## Code Style & Formatting
+- **Components**: Always use the standard `function` keyword for React components (e.g., `function UserProfile() {}`). Avoid arrow function component assignments (`const UserProfile: React.FC = ...`).
+- **Naming Conventions**:
+  - Components, Types, Interfaces: `PascalCase`
+  - Variables, Hooks, Functions, Props: `camelCase`
+  - Directories and Files: `kebab-case` (e.g., `user-profile.tsx`)
+- **Exports**: Use named exports exclusively (`export function MyComponent()`). Avoid default exports to preserve refactoring safety and searchability.
+- **Variables**: Use `const` by default. Only use `let` if re-assignment is explicitly required.
+
+## React Best Practices
+- **Hooks Rules**: Never call hooks dynamically inside conditionals, loops, or nested functions.
+- **State Mutation**: Never mutate props or state objects directly. Always practice immutability.
+- **Lists**: Always provide a unique, stable string/number `key` attribute when rendering arrays. Never use the array index as a key.
+- **Side Effects**: Ensure all `useEffect` blocks include explicit, exhaustive dependencies and a cleanup function if handling timers, subscriptions, or events.
+
+## Redux Toolkit (RTK) & Global State
+- **Slices**: Organize state logic using `createSlice`. Reducers must mutate state directly only because RTK utilizes Immer under the hood.
+- **Thunks**: Handle async workflows using `createAsyncThunk`. Explicitly type the arguments and return values.
+- **Hooks**: Never use raw `useDispatch` or `useSelector`. Always use typed wrappers: `useAppDispatch` and `useAppSelector`.
+- **Selectors**: Encapsulate state access with optimized memoized selectors using `createSelector` from RTK to avoid wasteful re-renders.
+
+## Import Organization
+Group and separate imports with a single blank line in the following sequence:
+1. React and core built-in modules
+2. External packages, libraries, and Redux actions
+3. Internal utilities, components, and custom hooks
+4. Types and interfaces (always prefix with `import type { ... }`)

@@ -1,0 +1,23 @@
+---
+description: Enforce zero-any strict TypeScript type safety and eliminate disorganized "kitchen-sink" utility files.
+globs: "src/frontend/**/*.{ts,tsx}"
+---
+
+## 🚫 Absolute Zero-Any Policy
+- The `any` type is strictly forbidden. If a type cannot be determined immediately, use `unknown` and implement runtime type guards.
+- Do not use implicit any types. Enable and enforce explicit parameter and return types for every single function, custom hook, and Redux selector.
+- Avoid aggressive type casting assertions (`as CustomType`). Use data validation patterns or direct interface structures instead.
+
+## 🗂️ Anti-"Kitchen Sink" & File Naming Rules
+- **Minimize General Utilities**: Avoid creating or appending code to generic `utils.ts` or `helpers.ts` files. 
+- **Domain-Specific Grouping**: Functions must be grouped by domain, mathematical relationship, or business logic similarity, and stored in descriptively named files.
+- **Explicit Naming Over Generic Names**:
+  - Instead of `utils.ts` for mixed calculations: Use `date-formatting.ts`, `currency-conversion.ts`, or `string-manipulation.ts`.
+  - Instead of a massive `helpers.tsx` for React blocks: Use `auth-hooks.ts` or `table-transformers.ts`.
+- **Co-location Principle**: If a specialized transformer function is only used by a single component or Redux slice, keep it inside that specific file or directory. Do not export it globally unless a second, unrelated domain requires it.
+
+## 🫙 Type Definitions & Domain Models
+- Prefer `interface` for defining object structures and component props. Use `type` for unions, intersections, or primitives.
+- Do not use `enums`. Use const objects mapped to types (e.g., `const STATUS = { IDLE: 'idle' } as const; type Status = typeof STATUS[keyof typeof STATUS]`).
+- Keep your data contracts clean. All API payload shapes must be defined in explicit, dedicated model files (e.g., `user.types.ts` or `order.model.ts`) instead of being declared inline inside component files.
+- Ensure type files mirror your Redux slices to provide absolute type safety from the network response down to the user interface.

@@ -14,23 +14,10 @@ import { parseShoppingItemText } from '../../common/aiParsing';
 import { UnitValue } from '../../types';
 import type { ShoppingItem, Tag } from '../../types';
 type UnitValueType = typeof UnitValue[keyof typeof UnitValue];
+import { getItemKey } from './shopping-utils';
 import styles from './editShoppingItem.module.css';
 
 const FAMILY_ID = 'default-family';
-
-// Normalize ingredient name for combining
-function normalizeItemName(name: string): string {
-  return name.toLowerCase().trim();
-}
-
-/**
- * Grouping key for aggregating items. Returns null when there's no parsed name
- * (e.g. parse failed) - those items never group with anything.
- */
-function getItemKey(item: ShoppingItem): string | null {
-  if (!item.name?.trim()) return null;
-  return `${normalizeItemName(item.name)}:${item.unit}`;
-}
 
 // Local state: single originalText input per item
 interface EditableItem {

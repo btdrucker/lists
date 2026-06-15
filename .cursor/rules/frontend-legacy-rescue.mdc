@@ -1,0 +1,22 @@
+---
+description: Automatically applied when modifying, refactoring, or extending existing unguided AI-generated code.
+globs: "src/frontend/**/*.{ts,tsx}"
+---
+
+## 🚨 Codebase Rescue Mandate
+You are dealing with an early-stage, unstructured, AI-generated codebase. Before adding any new functionality or blindly modifying a file, you must audit it against these architectural boundaries.
+
+## ✂️ File Splitting & Component Extraction
+- **The 250-Line Rule**: If a single file exceeds 250 lines of code, your immediate priority is to break it down. Do not append more code to it.
+- **Extract Sub-Components**: Any inline mapping block (`.map(() => <div ... />)`) or nested UI section containing its own conditional logic must be extracted into a separate, isolated component file in the same directory.
+- **Separate Local Concerns**: Keep core UI logic, Redux state selectors, and helper functions separate. Refactor nested logic using guard clauses or early returns.
+- **Clean JSX**: The `return` block of a React component should look like clean blueprint HTML. Abstract complex javascript inline executions into helper functions or hooks *above* the return statement.
+
+## ⚡ Performance Optimization & Vercel Guidelines
+- **Zero Async Waterfalls**: Never chain independent async data fetches inside separate `useEffect` hooks. If multiple slices or endpoints need to be hit on mount, execute them concurrently using `Promise.all()` or bundle them within a singular Redux async thunk action.
+- **React Re-render & Context Boundaries**: Keep component states highly localized. Do not push local component UI states (like modal toggles or hover properties) into global Redux Toolkit stores.
+- **Reference Stability**: Every function passing through props to a child component must be wrapped inside `useCallback` to maintain reference stability across renders.
+- **Bundle Optimization**: Enforce strict tree-shaking patterns. Large, non-critical sub-trees or modals must use `React.lazy()` for dynamic code-splitting. Do not import entire third-party utility modules (like `lodash`); import the isolated function directly.
+
+## 🔋 Redux Diagnostics
+- **Selector Optimization**: Check if the code is reading from Redux using inline anonymous functions like `useSelector(state => state.user.data.profile)`. Refactor these into named, memoized selectors using `createSelector` to stop massive re-render waterfalls.

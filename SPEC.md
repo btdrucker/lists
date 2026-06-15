@@ -177,6 +177,7 @@ Each day has two add actions:
 
 ### Planned / Not Yet Implemented
 
+- Unit-aware combining in simple list view: compatible volume units (e.g. 1 tbsp + 2 tsp → 1⅔ tbsp, 1 pint + 1 cup → 3 cups) and compatible weight units (e.g. 1 lb + 4 oz → 1¼ lb) could be summed; incompatible unit pairs (e.g. 1 lb + 1 cup) would remain separate items. Currently items only combine when they share the exact same unit.
 - Family sharing (invite family members, shared access control)
 - Recipe image upload (images currently only come from scraping)
 - Recipe scaling (multiply ingredients by a factor)
@@ -184,3 +185,4 @@ Each day has two add actions:
 - Public recipe discovery
 - Shopping list history / past trips
 - Nutrition information
+- Browser back / swipe-back guard on edit screens: navigating away via the browser back button or gesture does not currently prompt the user about unsaved changes (in-app back arrow does). Requires migrating from `BrowserRouter` to `createBrowserRouter` to enable React Router's navigation blocking API.

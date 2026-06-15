@@ -14,7 +14,7 @@ import EditRecipe from './features/recipe/EditRecipe.tsx';
 import AiDebug from './features/ai-debug/AiDebug';
 import AppShell from './common/components/AppShell';
 import { PageScrollWrapper } from './common/components/PageScrollWrapper';
-import Shopping from './features/shopping/Shopping';
+import { Shopping } from './features/shopping/Shopping';
 import EditShoppingItem from './features/shopping/EditShoppingItem';
 import MealPlan from './features/mealplan/MealPlan';
 import { InstallBanner } from './common/components/InstallBanner';

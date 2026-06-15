@@ -1,0 +1,60 @@
+---
+description: Safe pattern for optimistic Redux updates with Firestore subscriptions
+globs: **/slice.ts,**/use*Subscriptions.ts
+alwaysApply: false
+---
+
+# Firestore Optimistic Updates in Redux
+
+## The Timing Trap
+
+Firestore's Web SDK updates its **local cache immediately** when you call `addDoc`/`setDoc`/`updateDoc`. This means `onSnapshot` fires **before** the write Promise resolves:
+
+```
+addDoc() called
+  → local cache updated → onSnapshot fires → Redux reducer runs   ← optimistic item still "pending"!
+  → server write completes
+  → addDoc Promise resolves → cleanup dispatched                   ← too late, duplicate already shown
+```
+
+❌ **BAD** — relying on post-`await` cleanup to prevent duplicates:
+```ts
+await addShoppingItem({...});
+dispatch(removePendingOptimisticId(optimisticId)); // onSnapshot already fired with duplicate visible
+dispatch(removeShoppingItems([optimisticId]));
+```
+
+## The Fix: Resolve Optimistically Inside the Merge Reducer
+
+Match incoming Firestore items against pending optimistic items **by content** inside `mergeFromFirestore`. When the subscription fires with the real item, drop the optimistic item atomically in the same reducer call.
+
+✅ **GOOD** — resolve in the merge reducer by matching originalText (or equivalent content field):
+```ts
+mergeItemsFromFirestore: (state, action) => {
+  const firestoreItems = action.payload;
+
+  // Count available Firestore items per content key to enable 1-to-1 matching
+  const countByText = new Map<string, number>();
+  for (const fi of firestoreItems) {
+    countByText.set(fi.originalText, (countByText.get(fi.originalText) ?? 0) + 1);
+  }
+
+  const resolvedIds = new Set<string>();
+  for (const item of state.items) {
+    if (!state.pendingOptimisticIds.includes(item.id)) continue;
+    const available = countByText.get(item.originalText) ?? 0;
+    if (available > 0) {
+      resolvedIds.add(item.id);
+      countByText.set(item.originalText, available - 1);
+    }
+  }
+
+  state.pendingOptimisticIds = state.pendingOptimisticIds.filter((id) => !resolvedIds.has(id));
+  const stillPending = state.items.filter((i) => state.pendingOptimisticIds.includes(i.id));
+  state.items = [...firestoreItems, ...stillPending];
+},
+```
+
+The 1-to-1 count map handles two pending items with the same text correctly.
+
+Post-`await` cleanup dispatches can remain as a safety net but will be no-ops for the happy path.

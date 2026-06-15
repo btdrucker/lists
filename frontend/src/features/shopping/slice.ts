@@ -1,5 +1,6 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createSelector } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
+import type { RootState } from '../../common/store';
 import type { ShoppingItem, Tag, ShoppingGroup } from '../../types';
 
 // localStorage keys for persisted state
@@ -53,13 +54,48 @@ const shoppingSlice = createSlice({
       state.items = action.payload;
       state.loading = false;
     },
-    /** Merge Firestore snapshot with pending optimistic items so they persist until write completes */
+    /** Merge Firestore snapshot with pending optimistic items so they persist until write completes.
+     *  When an incoming Firestore item's normalized name+unit matches a pending optimistic item,
+     *  the optimistic item is considered resolved and dropped — preventing a duplicate during the
+     *  window between Firestore's local-cache onSnapshot and the addDoc Promise resolving. */
     mergeShoppingItemsFromFirestore: (state, action: PayloadAction<ShoppingItem[]>) => {
       const firestoreItems = action.payload;
-      const pendingItems = state.items.filter((i) =>
-        state.pendingOptimisticIds.includes(i.id)
+
+      // Build combining key (same logic as getItemKey in shopping-utils): normalized name + unit
+      const makeKey = (item: ShoppingItem): string | null => {
+        const name = item.name?.toLowerCase().trim();
+        if (!name) return null;
+        return `${name}:${item.unit ?? ''}`;
+      };
+
+      // Count available Firestore items per name+unit key so we can match 1-to-1
+      const firestoreKeyCounts = new Map<string, number>();
+      for (const fi of firestoreItems) {
+        const key = makeKey(fi);
+        if (key) firestoreKeyCounts.set(key, (firestoreKeyCounts.get(key) ?? 0) + 1);
+      }
+
+      const resolvedOptimisticIds = new Set<string>();
+      for (const item of state.items) {
+        if (!state.pendingOptimisticIds.includes(item.id)) continue;
+        const key = makeKey(item);
+        const available = key ? (firestoreKeyCounts.get(key) ?? 0) : 0;
+        if (available > 0) {
+          resolvedOptimisticIds.add(item.id);
+          if (key) firestoreKeyCounts.set(key, available - 1);
+        }
+      }
+
+      if (resolvedOptimisticIds.size > 0) {
+        state.pendingOptimisticIds = state.pendingOptimisticIds.filter(
+          (id) => !resolvedOptimisticIds.has(id)
+        );
+      }
+
+      const stillPendingItems = state.items.filter(
+        (i) => state.pendingOptimisticIds.includes(i.id)
       );
-      state.items = [...firestoreItems, ...pendingItems];
+      state.items = [...firestoreItems, ...stillPendingItems];
       state.loading = false;
     },
     addPendingOptimisticId: (state, action: PayloadAction<string>) => {
@@ -149,3 +185,35 @@ export const {
 } = shoppingSlice.actions;
 
 export default shoppingSlice.reducer;
+
+const selectShoppingState = (state: RootState) => state.shopping;
+
+export const selectShoppingItems = createSelector(
+  selectShoppingState,
+  (shopping) => shopping?.items ?? []
+);
+
+export const selectShoppingTags = createSelector(
+  selectShoppingState,
+  (shopping) => shopping?.tags ?? []
+);
+
+export const selectShoppingGroups = createSelector(
+  selectShoppingState,
+  (shopping) => shopping?.groups ?? []
+);
+
+export const selectShoppingLoading = createSelector(
+  selectShoppingState,
+  (shopping) => shopping?.loading ?? true
+);
+
+export const selectShoppingViewMode = createSelector(
+  selectShoppingState,
+  (shopping) => shopping?.viewMode ?? 'simple'
+);
+
+export const selectShoppingSelectedTagIds = createSelector(
+  selectShoppingState,
+  (shopping) => shopping?.selectedTagIds ?? []
+);
