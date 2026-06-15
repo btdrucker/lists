@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAppSelector, useAppDispatch, useAutoHeight, useDebugMode, useWakeLock, useNavigateWithDebug, useAddRecipeToCart } from '../../common/hooks';
-import { updateRecipeInState, removeRecipe } from '../recipe-list/slice';
-import { updateRecipe, deleteRecipe } from '../../firebase/firestore';
+import { useAppSelector, useAppDispatch, useAutoHeight, useWakeLock, useNavigateWithDebug, useAddRecipeToCart } from '../../common/hooks';
+import { removeRecipe, selectRecipeById } from '../recipe-list/slice';
+import { deleteRecipe } from '../../firebase/firestore';
 import CircleIconButton from '../../common/components/CircleIconButton';
-import { getEffectiveIngredientValues } from '../../common/aiParsing';
-import ParsedFieldsDebug from '../../common/components/ParsedFieldsDebug';
+import { useRecipeNotes } from './useRecipeNotes';
+import { IngredientGroupList } from './IngredientGroupList';
 import styles from './viewRecipe.module.css';
 
 // Helper function to extract domain from URL
@@ -23,12 +23,9 @@ const ViewRecipe = () => {
   const dispatch = useAppDispatch();
   const addRecipeToCart = useAddRecipeToCart();
   const { id } = useParams<{ id: string }>();
-  const recipes = useAppSelector((state) => state.recipes?.recipes || []);
-  
-  const recipe = recipes.find((r: any) => r.id === id);
-  
-  const [notes, setNotes] = useState(recipe?.notes || '');
-  const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const recipe = useAppSelector(selectRecipeById(id));
+
+  const { notes, setNotes, isSavingNotes, saveNotes } = useRecipeNotes(recipe, id);
   const [showMenu, setShowMenu] = useState(false);
   const [addToCartState, setAddToCartState] = useState<'idle' | 'loading' | 'success'>('idle');
   const [isAnimatingIn, setIsAnimatingIn] = useState(false);
@@ -36,18 +33,10 @@ const ViewRecipe = () => {
   const notesRef = useAutoHeight<HTMLTextAreaElement>(notes);
   const menuRef = useRef<HTMLDivElement>(null);
   const { isSupported: wakeLockSupported, isActive: cookModeActive, toggle: toggleCookMode } = useWakeLock();
-  const debugMode = useDebugMode();
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [id]);
-
-  // Update local notes when recipe changes
-  useEffect(() => {
-    if (recipe) {
-      setNotes(recipe.notes || '');
-    }
-  }, [recipe]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -62,75 +51,6 @@ const ViewRecipe = () => {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [showMenu]);
-
-  const saveNotes = async () => {
-    if (!recipe || !id) return;
-    
-    // Only save if notes have changed
-    if (notes === (recipe.notes || '')) return;
-
-    setIsSavingNotes(true);
-    try {
-      const updates: any = {};
-      if (notes.trim()) {
-        updates.notes = notes.trim();
-      } else {
-        // If notes are empty, we still need to update to remove them
-        updates.notes = '';
-      }
-
-      await updateRecipe(id, updates);
-      dispatch(updateRecipeInState({
-        ...recipe,
-        ...updates,
-        id
-      }));
-    } catch (error) {
-      console.error('Error saving notes:', error);
-      // Revert to original notes on error
-      setNotes(recipe.notes || '');
-    } finally {
-      setIsSavingNotes(false);
-    }
-  };
-
-  // Save notes on component unmount (browser back, etc)
-  useEffect(() => {
-    return () => {
-      // Check if notes have changed before unmounting
-      if (recipe && notes !== (recipe.notes || '')) {
-        // Fire-and-forget save on unmount
-        const updates: any = {};
-        if (notes.trim()) {
-          updates.notes = notes.trim();
-        } else {
-          updates.notes = '';
-        }
-        updateRecipe(id!, updates).catch(err => 
-          console.error('Error saving notes on unmount:', err)
-        );
-      }
-    };
-  }, [recipe, notes, id]);
-
-  // Try to save on tab close (best effort)
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (recipe && notes !== (recipe.notes || '')) {
-        const updates: any = {};
-        if (notes.trim()) {
-          updates.notes = notes.trim();
-        } else {
-          updates.notes = '';
-        }
-        // Best effort - may not complete in time
-        updateRecipe(id!, updates).catch(() => {});
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [recipe, notes, id]);
 
   const handleBackClick = async () => {
     await saveNotes();
@@ -411,50 +331,14 @@ const ViewRecipe = () => {
 
         <section className={styles.section}>
           <h2>Ingredients</h2>
-          {(() => {
-            // Group ingredients by section
-            const sections = new Map<string | null, any[]>();
-            recipe.ingredients.forEach((ingredient: any) => {
-              const section = ingredient.section || null;
-              if (!sections.has(section)) {
-                sections.set(section, []);
-              }
-              sections.get(section)!.push(ingredient);
-            });
-
-            // Render each section
-            return Array.from(sections.entries()).map(([sectionName, ingredients], sectionIndex) => (
-              <div key={sectionIndex} className={styles.ingredientSection}>
-                {sectionName && <h3 className={styles.ingredientSectionTitle}>{sectionName}</h3>}
-                <ul className={styles.ingredientList}>
-                  {ingredients.map((ingredient: any, index: number) => {
-                    const { amount, unit, name } = getEffectiveIngredientValues(ingredient);
-                    return (
-                      <li key={index}>
-                        {ingredient.originalText ||
-                          ingredient.aiName ||
-                          ingredient.name}
-                        {debugMode && (
-                          <ParsedFieldsDebug
-                            amount={amount}
-                            unit={unit}
-                            name={name ?? ''}
-                          />
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ));
-          })()}
+          <IngredientGroupList ingredients={recipe.ingredients} />
         </section>
 
         <section className={styles.section}>
           <h2>Instructions</h2>
           <ol className={styles.instructionList}>
-            {recipe.instructions.map((instruction: string, index: number) => (
-              <li key={index}>{instruction}</li>
+            {recipe.instructions.map((instruction, index) => (
+              <li key={`${index}-${instruction.slice(0, 20)}`}>{instruction}</li>
             ))}
           </ol>
         </section>
